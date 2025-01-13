@@ -16,14 +16,14 @@
  * @fileoverview Service for all tutorials to be run only for the first time.
  */
 
-import { EventEmitter, Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {EventEmitter, Injectable} from '@angular/core';
+import {downgradeInjectable} from '@angular/upgrade/static';
 
-import { EditorFirstTimeEventsService } from 'pages/exploration-editor-page/services/editor-first-time-events.service';
-import { TutorialEventsBackendApiService } from 'pages/exploration-editor-page/services/tutorial-events-backend-api.service';
+import {EditorFirstTimeEventsService} from 'pages/exploration-editor-page/services/editor-first-time-events.service';
+import {TutorialEventsBackendApiService} from 'pages/exploration-editor-page/services/tutorial-events-backend-api.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class StateTutorialFirstTimeService {
   // Whether this is the first time the tutorial has been seen by this user.
@@ -40,7 +40,8 @@ export class StateTutorialFirstTimeService {
 
   constructor(
     private editorFirstTimeEventsService: EditorFirstTimeEventsService,
-    private tutorialEventsBackendApiService: TutorialEventsBackendApiService) {}
+    private tutorialEventsBackendApiService: TutorialEventsBackendApiService
+  ) {}
 
   initEditor(firstTime: boolean, expId: string): void {
     // After the first call to it in a client session, this does nothing.
@@ -52,7 +53,8 @@ export class StateTutorialFirstTimeService {
       this.enterEditorForTheFirstTimeEventEmitter.emit();
       this.editorFirstTimeEventsService.initRegisterEvents(expId);
       this.tutorialEventsBackendApiService
-        .recordStartedEditorTutorialEventAsync(expId).then(null, () => {
+        .recordStartedEditorTutorialEventAsync(expId)
+        .then(null, () => {
           console.error(
             'Warning: could not record editor tutorial start event.'
           );
@@ -75,8 +77,10 @@ export class StateTutorialFirstTimeService {
 
   initTranslation(expId: string): void {
     // After the first call to it in a client session, this does nothing.
-    if (!this._translationTutorialNotSeenBefore ||
-        !this._currentlyInTranslationFirstVisit) {
+    if (
+      !this._translationTutorialNotSeenBefore ||
+      !this._currentlyInTranslationFirstVisit
+    ) {
       this._currentlyInTranslationFirstVisit = false;
     }
 
@@ -85,9 +89,11 @@ export class StateTutorialFirstTimeService {
       this._currentlyInTranslationFirstVisit = false;
       this.editorFirstTimeEventsService.initRegisterEvents(expId);
       this.tutorialEventsBackendApiService
-        .recordStartedTranslationTutorialEventAsync(expId).then(null, () => {
+        .recordStartedTranslationTutorialEventAsync(expId)
+        .then(null, () => {
           console.error(
-            'Warning: could not record translation tutorial start event.');
+            'Warning: could not record translation tutorial start event.'
+          );
         });
     }
   }
@@ -101,27 +107,30 @@ export class StateTutorialFirstTimeService {
     this._currentlyInTranslationFirstVisit = false;
   }
 
-  get onEnterEditorForTheFirstTime(): EventEmitter<unknown> {
+  get onEnterEditorForTheFirstTime(): EventEmitter<string> {
     return this.enterEditorForTheFirstTimeEventEmitter;
   }
 
-  get onEnterTranslationForTheFirstTime(): EventEmitter<unknown> {
+  get onEnterTranslationForTheFirstTime(): EventEmitter<string> {
     return this.enterTranslationForTheFirstTimeEventEmitter;
   }
 
-  get onOpenEditorTutorial(): EventEmitter<unknown> {
+  get onOpenEditorTutorial(): EventEmitter<string> {
     return this._openEditorTutorialEventEmitter;
   }
 
-  get onOpenPostTutorialHelpPopover(): EventEmitter<unknown> {
+  get onOpenPostTutorialHelpPopover(): EventEmitter<string> {
     return this._openPostTutorialHelpPopoverEventEmitter;
   }
 
-  get onOpenTranslationTutorial(): EventEmitter<unknown> {
+  get onOpenTranslationTutorial(): EventEmitter<string> {
     return this._openTranslationTutorialEventEmitter;
   }
 }
 
-angular.module('oppia').factory(
-  'StateTutorialFirstTimeService',
-  downgradeInjectable(StateTutorialFirstTimeService));
+angular
+  .module('oppia')
+  .factory(
+    'StateTutorialFirstTimeService',
+    downgradeInjectable(StateTutorialFirstTimeService)
+  );

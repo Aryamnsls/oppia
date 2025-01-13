@@ -16,8 +16,8 @@
 
 from __future__ import annotations
 
-import json
 import os
+from unittest import mock
 
 from core import feconf
 from core import utils
@@ -26,7 +26,6 @@ from core.domain import fs_services
 from core.domain import image_services
 from core.domain import user_services
 from core.tests import test_utils
-from proto_files import text_classifier_pb2
 
 
 class GcsFileSystemUnitTests(test_utils.GenericTestBase):
@@ -189,6 +188,61 @@ class SaveOriginalAndCompressedVersionsOfImageTests(test_utils.GenericTestBase):
         self.assertTrue(fs.isfile('image/%s' % self.COMPRESSED_IMAGE_FILENAME))
         self.assertTrue(fs.isfile('image/%s' % self.MICRO_IMAGE_FILENAME))
 
+    def test_skip_upload_if_image_already_exists(self) -> None:
+        with utils.open_file(
+            os.path.join(feconf.TESTS_DATA_DIR, 'img.png'), 'rb', encoding=None
+        ) as f:
+            original_image_content = f.read()
+        fs = fs_services.GcsFileSystem(
+            feconf.ENTITY_TYPE_EXPLORATION, self.EXPLORATION_ID)
+
+        # Save the image for the first time.
+        fs_services.save_original_and_compressed_versions_of_image(
+            self.FILENAME, 'exploration', self.EXPLORATION_ID,
+            original_image_content, 'image', True)
+
+        # Ensure the image is saved.
+        self.assertTrue(fs.isfile('image/%s' % self.FILENAME))
+
+        # Get the content of the saved image.
+        saved_image_content = fs.get('image/%s' % self.FILENAME)
+
+        # Here we use object because we need a generic base class
+        # that can accommodate any type of object,
+        # regardless of its specific implementation.
+        with mock.patch.object(fs, 'commit') as mock_commit:
+            # Save the image again (should be skipped due to existence).
+            fs_services.save_original_and_compressed_versions_of_image(
+                self.FILENAME, 'exploration', self.EXPLORATION_ID,
+                original_image_content, 'image', True)
+
+            # Assert that fs.commit was not called.
+            mock_commit.assert_not_called()
+
+        # Get the content of the image after attempting the second save.
+        new_saved_image_content = fs.get('image/%s' % self.FILENAME)
+
+        # Check that the content of the image remains the same after the second
+        # save attempt.
+        self.assertEqual(saved_image_content, new_saved_image_content)
+
+    def test_validate_and_save_image(self) -> None:
+        with utils.open_file(
+            os.path.join(feconf.TESTS_DATA_DIR, 'img.png'), 'rb', encoding=None
+        ) as f:
+            original_image_content = f.read()
+        fs = fs_services.GcsFileSystem(
+            feconf.ENTITY_TYPE_EXPLORATION, self.EXPLORATION_ID)
+        self.assertFalse(fs.isfile('image/%s' % self.FILENAME))
+        self.assertFalse(fs.isfile('image/%s' % self.COMPRESSED_IMAGE_FILENAME))
+        self.assertFalse(fs.isfile('image/%s' % self.MICRO_IMAGE_FILENAME))
+        fs_services.validate_and_save_image(
+            original_image_content, self.FILENAME, 'image', 'exploration',
+            self.EXPLORATION_ID)
+        self.assertTrue(fs.isfile('image/%s' % self.FILENAME))
+        self.assertTrue(fs.isfile('image/%s' % self.COMPRESSED_IMAGE_FILENAME))
+        self.assertTrue(fs.isfile('image/%s' % self.MICRO_IMAGE_FILENAME))
+
     def test_compress_image_on_prod_mode_with_small_image_size(self) -> None:
         with utils.open_file(
             os.path.join(feconf.TESTS_DATA_DIR, 'img.png'), 'rb',
@@ -294,41 +348,21 @@ class SaveOriginalAndCompressedVersionsOfImageTests(test_utils.GenericTestBase):
             destination_fs.isfile('image/%s' % self.MICRO_IMAGE_FILENAME))
 
 
-class FileSystemClassifierDataTests(test_utils.GenericTestBase):
-    """Unit tests for storing, reading and deleting classifier data."""
+class GetStaticAssetUrlTests(test_utils.GenericTestBase):
+    """Unit tests for get_static_asset_url."""
 
-    def setUp(self) -> None:
-        super().setUp()
-        self.fs = fs_services.GcsFileSystem(
-            feconf.ENTITY_TYPE_EXPLORATION, 'exp_id')
-        self.classifier_data_proto = (
-            text_classifier_pb2.TextClassifierFrozenModel())
-        self.classifier_data_proto.model_json = json.dumps({
-            'param1': 40,
-            'param2': [34.2, 54.13, 95.23],
-            'submodel': {
-                'param1': 12
-            }
-        })
+    def test_function_returns_correct_url_for_emulator_mode(self) -> None:
+        with self.swap(constants, 'EMULATOR_MODE', True):
+            self.assertEqual(
+                fs_services.get_static_asset_url('robots.txt'),
+                'http://localhost:8181/assetsstatic/robots.txt'
+            )
 
-    def test_save_and_get_classifier_data(self) -> None:
-        """Test that classifier data is stored and retrieved correctly."""
-        fs_services.save_classifier_data(
-            'exp_id', 'job_id', self.classifier_data_proto)
-        filepath = 'job_id-classifier-data.pb.xz'
-        fs = fs_services.GcsFileSystem(
-            feconf.ENTITY_TYPE_EXPLORATION, 'exp_id')
-        classifier_data = utils.decompress_from_zlib(fs.get(filepath))
-        classifier_data_proto = text_classifier_pb2.TextClassifierFrozenModel()
-        classifier_data_proto.ParseFromString(classifier_data)
-        self.assertEqual(
-            classifier_data_proto.model_json,
-            self.classifier_data_proto.model_json)
-
-    def test_remove_classifier_data(self) -> None:
-        """Test that classifier data is removed upon deletion."""
-        fs_services.save_classifier_data(
-            'exp_id', 'job_id', self.classifier_data_proto)
-        self.assertTrue(self.fs.isfile('job_id-classifier-data.pb.xz'))
-        fs_services.delete_classifier_data('exp_id', 'job_id')
-        self.assertFalse(self.fs.isfile('job_id-classifier-data.pb.xz'))
+    def test_function_returns_correct_url_for_non_emulator_mode(self) -> None:
+        with self.swap(constants, 'EMULATOR_MODE', False):
+            with self.swap(feconf, 'OPPIA_PROJECT_ID', 'project-id'):
+                self.assertEqual(
+                    fs_services.get_static_asset_url('test/image.png'),
+                    'https://storage.googleapis.com/project-id-static/'
+                    'test/image.png'
+                )

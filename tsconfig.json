@@ -18,6 +18,7 @@
     "resolveJsonModule": true,
     "moduleResolution": "node",
     "baseUrl": ".",
+    "noErrorTruncation": true,
     "paths": {
       "analytics-constants": ["assets/analytics-constants.json"],
       "app.constants": ["core/templates/app.constants"],
@@ -33,7 +34,6 @@
       "modules/*": ["core/templates/modules/*"],
       "pages/*": ["core/templates/pages/*"],
       "services/*": ["core/templates/services/*"],
-      "classifiers/*": ["extensions/classifiers/*"],
       "interactions/*": ["extensions/interactions/*"],
       "rich_text_components/*": ["extensions/rich_text_components/*"],
       "objects/*": ["extensions/objects/*"],
@@ -57,7 +57,6 @@
   "include": ["core", "extensions", "typings"],
   "exclude": [
     "core/tests",
-    "extensions/classifiers/proto",
     "**/*.spec.ts",
     "**/*Spec.ts",
     "**/*.ajs.ts",

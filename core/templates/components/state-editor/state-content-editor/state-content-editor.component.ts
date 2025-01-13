@@ -16,18 +16,25 @@
  * @fileoverview Component for the state content editor.
  */
 
-import { Component, OnInit, ChangeDetectorRef, Input, Output, EventEmitter } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
+import {
+  Component,
+  OnInit,
+  ChangeDetectorRef,
+  Input,
+  Output,
+  EventEmitter,
+} from '@angular/core';
+import {downgradeComponent} from '@angular/upgrade/static';
 
-import { ContextService } from 'services/context.service';
-import { EditabilityService } from 'services/editability.service';
-import { EditorFirstTimeEventsService } from 'pages/exploration-editor-page/services/editor-first-time-events.service';
-import { ExternalSaveService } from 'services/external-save.service';
-import { StateContentService } from 'components/state-editor/state-editor-properties-services/state-content.service';
-import { StateEditorService } from 'components/state-editor/state-editor-properties-services/state-editor.service';
+import {ContextService} from 'services/context.service';
+import {EditabilityService} from 'services/editability.service';
+import {EditorFirstTimeEventsService} from 'pages/exploration-editor-page/services/editor-first-time-events.service';
+import {ExternalSaveService} from 'services/external-save.service';
+import {StateContentService} from 'components/state-editor/state-editor-properties-services/state-content.service';
+import {StateEditorService} from 'components/state-editor/state-editor-properties-services/state-editor.service';
 
-import { SubtitledHtml } from 'domain/exploration/subtitled-html.model';
-import { Subscription } from 'rxjs';
+import {SubtitledHtml} from 'domain/exploration/subtitled-html.model';
+import {Subscription} from 'rxjs';
 
 interface HTMLSchema {
   type: string;
@@ -43,8 +50,6 @@ interface HTMLSchema {
 export class StateContentEditorComponent implements OnInit {
   @Output() intialize: EventEmitter<void> = new EventEmitter();
   @Output() saveStateContent = new EventEmitter<SubtitledHtml>();
-  @Output() showMarkAllAudioAsNeedingUpdateModalIfRequired = (
-    new EventEmitter<(string | null)[]>());
 
   @Input() stateContentPlaceholder!: string;
   @Input() stateContentSaveButtonPlaceholder!: string;
@@ -71,9 +76,9 @@ export class StateContentEditorComponent implements OnInit {
     this.HTML_SCHEMA = {
       type: 'html',
       ui_config: {
-        hide_complex_extensions: (
-          this.contextService.getEntityType() === 'question')
-      }
+        hide_complex_extensions:
+          this.contextService.getEntityType() === 'question',
+      },
     };
     if (this.stateContentService.displayed) {
       this.contentId = this.stateContentService.displayed.contentId;
@@ -81,20 +86,18 @@ export class StateContentEditorComponent implements OnInit {
 
     this.cardHeightLimitWarningIsShown = true;
     this.directiveSubscriptions.add(
-      this.externalSaveService.onExternalSave.subscribe(
-        () => {
-          if (this.contentEditorIsOpen) {
-            this.saveContent();
-          }
+      this.externalSaveService.onExternalSave.subscribe(() => {
+        if (this.contentEditorIsOpen) {
+          this.saveContent();
         }
-      )
+      })
     );
     this.stateEditorService.updateStateContentEditorInitialised();
   }
 
   isCardContentLengthLimitReached(): boolean {
     let content = this.stateContentService.displayed.html;
-    return (content.length > 4500);
+    return content.length > 4500;
   }
 
   isCardHeightLimitReached(): boolean {
@@ -102,7 +105,7 @@ export class StateContentEditorComponent implements OnInit {
       '.oppia-shadow-preview-card .oppia-learner-view-card-top-section'
     );
     let height = shadowPreviewCard.height() as number;
-    return (height > 630);
+    return height > 630;
   }
 
   ngAfterViewChecked(): void {
@@ -131,14 +134,6 @@ export class StateContentEditorComponent implements OnInit {
 
   onSaveContentButtonClicked(): void {
     this.editorFirstTimeEventsService.registerFirstSaveContentEvent();
-    let savedContent = this.stateContentService.savedMemento;
-    let contentHasChanged = (
-      savedContent.html !==
-      this.stateContentService.displayed.html);
-    if (contentHasChanged) {
-      let contentId = this.stateContentService.displayed.contentId;
-      this.showMarkAllAudioAsNeedingUpdateModalIfRequired.emit([contentId]);
-    }
     this.saveContent();
   }
 
@@ -156,7 +151,9 @@ export class StateContentEditorComponent implements OnInit {
   }
 }
 
-angular.module('oppia').directive('oppiaStateContentEditor',
-downgradeComponent({
-  component: StateContentEditorComponent
-}) as angular.IDirectiveFactory);
+angular.module('oppia').directive(
+  'oppiaStateContentEditor',
+  downgradeComponent({
+    component: StateContentEditorComponent,
+  }) as angular.IDirectiveFactory
+);

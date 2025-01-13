@@ -48,7 +48,7 @@ class PracticeSessionsPage(
 
     @acl_decorators.can_access_topic_viewer_page
     def get(self, _: str) -> None:
-        """Handles GET requests."""
+        """Renders the practice session page."""
 
         self.render_template('practice-session-page.mainpage.html')
 
@@ -113,6 +113,14 @@ class PracticeSessionsPageDataHandler(
 
     @acl_decorators.can_access_topic_viewer_page
     def get(self, topic_name: str) -> None:
+        """Retrieves information about a topic.
+
+        Args:
+            topic_name: str. The topic name.
+
+        Raises:
+            NotFoundException. The page cannot be found.
+        """
         assert self.normalized_request is not None
         # Topic cannot be None as an exception will be thrown from its decorator
         # if so.
@@ -131,7 +139,7 @@ class PracticeSessionsPageDataHandler(
         try:
             skills = skill_fetchers.get_multi_skills(selected_skill_ids)
         except Exception as e:
-            raise self.PageNotFoundException(e)
+            raise self.NotFoundException(e)
         skill_ids_to_descriptions_map = {}
         for skill in skills:
             skill_ids_to_descriptions_map[skill.id] = skill.description

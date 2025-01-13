@@ -16,10 +16,12 @@
  * @fileoverview Unit tests for ExplorationStatsTaskEntryModel.
  */
 
-import { TaskEntryBackendDict, TaskEntry } from
-  'domain/improvements/task-entry.model';
+import {
+  TaskEntryBackendDict,
+  TaskEntry,
+} from 'domain/improvements/task-entry.model';
 
-describe('Task entry model', function() {
+describe('Task entry model', function () {
   it('should use same values from backend dict', () => {
     const taskBackendDict: TaskEntryBackendDict = {
       entity_type: 'exploration',
@@ -31,11 +33,9 @@ describe('Task entry model', function() {
       issue_description: '20% of learners dropped at this state',
       status: 'resolved',
       resolver_username: 'test_user',
-      resolver_profile_picture_data_url: './image.png',
       resolved_on_msecs: 123456789,
     };
-    const task: TaskEntry = (
-      TaskEntry.createFromBackendDict(taskBackendDict));
+    const task: TaskEntry = TaskEntry.createFromBackendDict(taskBackendDict);
 
     expect(task.entityType).toEqual('exploration');
     expect(task.entityId).toEqual('eid');
@@ -43,14 +43,14 @@ describe('Task entry model', function() {
     expect(task.taskType).toEqual('high_bounce_rate');
     expect(task.targetType).toEqual('state');
     expect(task.targetId).toEqual('Introduction');
-    expect(task.getIssueDescription())
-      .toEqual('20% of learners dropped at this state');
+    expect(task.getIssueDescription()).toEqual(
+      '20% of learners dropped at this state'
+    );
     expect(task.getStatus()).toEqual('resolved');
     expect(task.isResolved()).toBeTrue();
     expect(task.isObsolete()).toBeFalse();
     expect(task.isOpen()).toBeFalse();
     expect(task.resolverUsername).toEqual('test_user');
-    expect(task.resolverProfilePictureDataUrl).toEqual('./image.png');
     expect(task.resolvedOnMsecs).toEqual(123456789);
 
     expect(task.toBackendDict()).toEqual(taskBackendDict);
@@ -67,7 +67,6 @@ describe('Task entry model', function() {
       issue_description: '20% of learners dropped at this state',
       status: 'resolved',
       resolver_username: 'test_user',
-      resolver_profile_picture_data_url: './image.png',
       resolved_on_msecs: 123456789,
     });
 
@@ -91,7 +90,6 @@ describe('Task entry model', function() {
       issue_description: '20% of learners dropped at this state',
       status: 'open',
       resolver_username: 'test_user',
-      resolver_profile_picture_data_url: './image.png',
       resolved_on_msecs: 123456789,
     });
     expect(task.getStatus()).toEqual('open');

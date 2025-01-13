@@ -16,576 +16,395 @@
  * @fileoverview Unit tests for RteHelperModalController.
  */
 
-import { EventEmitter } from '@angular/core';
-import { AppConstants } from 'app.constants';
-import { importAllAngularServices } from 'tests/unit-test-utils.ajs';
+import {
+  TestBed,
+  ComponentFixture,
+  waitForAsync,
+  fakeAsync,
+  flush,
+} from '@angular/core/testing';
+import {RteHelperModalComponent} from './rte-helper-modal.controller';
+import {ExternalRteSaveService} from './external-rte-save.service';
+import {AlertsService} from './alerts.service';
+import {ContextService} from './context.service';
+import {ImageLocalStorageService} from './image-local-storage.service';
+import {AssetsBackendApiService} from './assets-backend-api.service';
+import {ImageUploadHelperService} from './image-upload-helper.service';
+import {SharedFormsModule} from 'components/forms/shared-forms.module';
+import {FormsModule, ReactiveFormsModule} from '@angular/forms';
+import {DirectivesModule} from 'directives/directives.module';
+import {NgbActiveModal, NgbModalModule} from '@ng-bootstrap/ng-bootstrap';
+import {HttpClientTestingModule} from '@angular/common/http/testing';
+import {EventEmitter} from '@angular/core';
+import {
+  TranslateFakeLoader,
+  TranslateLoader,
+  TranslateModule,
+  TranslateService,
+} from '@ngx-translate/core';
 
-describe('Rte Helper Modal Controller', function() {
-  var $scope = null;
-  var $uibModalInstance = null;
-  var $timeout = null;
+describe('RteHelperModalComponent', () => {
+  let component: RteHelperModalComponent;
+  let fixture: ComponentFixture<RteHelperModalComponent>;
+  let contextService: ContextService;
+  let mockExternalRteSaveEventEmitter = new EventEmitter();
+  let activeModal: NgbActiveModal;
 
-  var mockExternalRteSaveEventEmitter = null;
-
-  importAllAngularServices();
-
-  describe('when customization args has a valid youtube video', function() {
-    var ContextService = null;
-    var customizationArgSpecs = [{
-      name: 'heading',
-      default_value: 'default value'
-    }, {
-      name: 'video_id',
-      default_value: 'https://www.youtube.com/watch?v=Ntcw0H0hwPU'
-    }];
-
-    beforeEach(angular.mock.module('oppia'));
-
-    beforeEach(angular.mock.module('oppia', function($provide) {
-      mockExternalRteSaveEventEmitter = new EventEmitter();
-      $provide.value('ExternalRteSaveService', {
-        onExternalRteSave: mockExternalRteSaveEventEmitter
-      });
-    }));
-
-    beforeEach(angular.mock.inject(function($injector, $controller) {
-      $timeout = $injector.get('$timeout');
-      var $rootScope = $injector.get('$rootScope');
-      ContextService = $injector.get('ContextService');
-
-      $uibModalInstance = jasmine.createSpyObj(
-        '$uibModalInstance', ['close', 'dismiss']);
-
-      $scope = $rootScope.$new();
-      $controller(
-        'RteHelperModalController', {
-          $scope: $scope,
-          $uibModalInstance: $uibModalInstance,
-          attrsCustomizationArgsDict: {
-            heading: 'This value is not default.'
+  beforeEach(waitForAsync(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        SharedFormsModule,
+        FormsModule,
+        ReactiveFormsModule,
+        DirectivesModule,
+        NgbModalModule,
+        HttpClientTestingModule,
+        TranslateModule.forRoot({
+          loader: {
+            provide: TranslateLoader,
+            useClass: TranslateFakeLoader,
           },
-          customizationArgSpecs: customizationArgSpecs,
-        });
-    }));
+        }),
+      ],
+      declarations: [RteHelperModalComponent],
+      providers: [
+        AlertsService,
+        ContextService,
+        ImageLocalStorageService,
+        AssetsBackendApiService,
+        ImageUploadHelperService,
+        {
+          provide: NgbActiveModal,
+          useValue: jasmine.createSpyObj('activeModal', ['close', 'dismiss']),
+        },
+        {
+          provide: ExternalRteSaveService,
+          useValue: {onExternalRteSave: mockExternalRteSaveEventEmitter},
+        },
+        TranslateService,
+      ],
+    }).compileComponents();
+  }));
 
-    it('should load modal correctly', function() {
-      expect($scope.customizationArgSpecs).toEqual(customizationArgSpecs);
-      expect($scope.modalIsLoading).toBe(true);
-      $timeout.flush();
-      expect($scope.modalIsLoading).toBe(false);
-    });
-
-    it('should close modal when clicking on cancel button', function() {
-      $scope.cancel();
-      expect($uibModalInstance.dismiss).toHaveBeenCalledWith(false);
-    });
-
-    it('should save modal customization args when closing it', function() {
-      spyOn(mockExternalRteSaveEventEmitter, 'emit').and.callThrough();
-      spyOn(ContextService, 'getEntityType').and.returnValue('exploration');
-
-      expect($scope.disableSaveButtonForMathRte()).toBe(false);
-      $scope.save();
-      expect(mockExternalRteSaveEventEmitter.emit).toHaveBeenCalled();
-      expect($uibModalInstance.close).toHaveBeenCalledWith({
-        heading: 'This value is not default.',
-        video_id: 'Ntcw0H0hwPU'
-      });
-    });
+  beforeEach(() => {
+    fixture = TestBed.createComponent(RteHelperModalComponent);
+    component = fixture.componentInstance;
+    contextService = TestBed.inject(ContextService);
+    activeModal = TestBed.inject(NgbActiveModal);
   });
 
-  describe('when the editor is Math expression editor', function() {
-    var customizationArgSpecs = [{
-      name: 'math_content',
-      default_value: {
-        raw_latex: '',
-        svg_filename: ''
-      }
-    }];
-    var $q = null;
-    var AssetsBackendApiService = null;
-    var ImageUploadHelperService = null;
-    var ContextService = null;
-    beforeEach(angular.mock.module('oppia'));
-
-    beforeEach(angular.mock.module('oppia', function($provide) {
-      mockExternalRteSaveEventEmitter = new EventEmitter();
-      $provide.value('ExternalRteSaveService', {
-        onExternalRteSave: mockExternalRteSaveEventEmitter
-      });
-    }));
-
-    beforeEach(angular.mock.inject(function($injector, $controller) {
-      $timeout = $injector.get('$timeout');
-      var $rootScope = $injector.get('$rootScope');
-      $q = $injector.get('$q');
-
-      AssetsBackendApiService = $injector.get('AssetsBackendApiService');
-      ImageUploadHelperService = $injector.get('ImageUploadHelperService');
-      ContextService = $injector.get('ContextService');
-      $uibModalInstance = jasmine.createSpyObj(
-        '$uibModalInstance', ['close', 'dismiss']);
-
-      $scope = $rootScope.$new();
-      $controller(
-        'RteHelperModalController', {
-          $scope: $scope,
-          $uibModalInstance: $uibModalInstance,
-          attrsCustomizationArgsDict: {
-            math_content: {
-              raw_latex: '',
-              svg_filename: ''
-            }
-          },
-          customizationArgSpecs: customizationArgSpecs,
-        });
-    }));
-
-    it('should load modal correctly', function() {
-      expect($scope.customizationArgSpecs).toEqual(customizationArgSpecs);
-      expect($scope.currentRteIsMathExpressionEditor).toBe(true);
-    });
-
-    it('should close modal when clicking on cancel button', function() {
-      $scope.cancel();
-      expect($uibModalInstance.dismiss).toHaveBeenCalledWith(false);
-    });
-
-    it('should save modal customization args when closing it', function() {
-      spyOn(mockExternalRteSaveEventEmitter, 'emit').and.callThrough();
-      spyOn(ContextService, 'getImageSaveDestination').and.returnValue(
-        AppConstants.IMAGE_SAVE_DESTINATION_SERVER);
-      spyOn(ContextService, 'getEntityType').and.returnValue('exploration');
-      $scope.tmpCustomizationArgs = [{
-        name: 'math_content',
-        value: {
-          raw_latex: 'x^2',
-          svgFile: 'Svg Data',
-          svg_filename: 'mathImage.svg',
-          mathExpressionSvgIsBeingProcessed: true
-        }
-      }];
-      expect($scope.disableSaveButtonForMathRte()).toBe(true);
-      $scope.tmpCustomizationArgs[0].value.mathExpressionSvgIsBeingProcessed = (
-        false);
-      expect($scope.disableSaveButtonForMathRte()).toBe(false);
-      var response = {
-        filename: 'mathImage.svg'
-      };
-      var imageFile = new Blob();
-      spyOn(AssetsBackendApiService, 'saveMathExpresionImage').and.returnValue(
-        $q.resolve(response));
-      spyOn(
-        ImageUploadHelperService,
-        'convertImageDataToImageFile').and.returnValue(imageFile);
-      $scope.save();
-      $scope.$apply();
-      expect(mockExternalRteSaveEventEmitter.emit).toHaveBeenCalled();
-      expect($uibModalInstance.close).toHaveBeenCalledWith({
-        math_content: {
-          raw_latex: 'x^2',
-          svg_filename: 'mathImage.svg'
-        }
-      });
-    });
-
-    it('should cancel the modal when saving of math SVG fails', function() {
-      spyOn(mockExternalRteSaveEventEmitter, 'emit').and.callThrough();
-      spyOn(ContextService, 'getImageSaveDestination').and.returnValue(
-        AppConstants.IMAGE_SAVE_DESTINATION_SERVER);
-      spyOn(ContextService, 'getEntityType').and.returnValue('exploration');
-      $scope.tmpCustomizationArgs = [{
-        name: 'math_content',
-        value: {
-          raw_latex: 'x^2',
-          svgFile: 'Svg Data',
-          svg_filename: 'mathImage.svg'
-        }
-      }];
-      var imageFile = new Blob();
-      spyOn(AssetsBackendApiService, 'saveMathExpresionImage').and.returnValue(
-        $q.reject({}));
-      spyOn(
-        ImageUploadHelperService,
-        'convertImageDataToImageFile').and.returnValue(imageFile);
-      $scope.save();
-      $scope.$apply();
-      expect(mockExternalRteSaveEventEmitter.emit).toHaveBeenCalled();
-      expect($uibModalInstance.dismiss).toHaveBeenCalledWith('cancel');
-    });
-
-    it('should cancel the modal when math SVG exceeds 100 KB', function() {
-      spyOn(mockExternalRteSaveEventEmitter, 'emit').and.callThrough();
-      spyOn(ContextService, 'getEntityType').and.returnValue('exploration');
-      $scope.tmpCustomizationArgs = [{
-        name: 'math_content',
-        value: {
-          raw_latex: 'x^2 + y^2 + x^2 + y^2 + x^2 + y^2 + x^2 + y^2 + x^2',
-          svgFile: 'Svg Data',
-          svg_filename: 'mathImage.svg'
-        }
-      }];
-      var imageFile = (
-        new Blob(
-          [new ArrayBuffer(102 * 1024)], {type: 'application/octet-stream'}));
-      spyOn(
-        ImageUploadHelperService,
-        'convertImageDataToImageFile').and.returnValue(imageFile);
-      $scope.save();
-      $scope.$apply();
-      expect(mockExternalRteSaveEventEmitter.emit).toHaveBeenCalled();
-      expect($uibModalInstance.dismiss).toHaveBeenCalledWith('cancel');
-    });
-
-    it('should cancel the modal when SVG exceeds 1 MB for blog post',
-      function() {
-        spyOn(mockExternalRteSaveEventEmitter, 'emit').and.callThrough();
-        spyOn(ContextService, 'getEntityType').and.returnValue('blog_post');
-        $scope.tmpCustomizationArgs = [{
-          name: 'math_content',
-          value: {
-            raw_latex: 'x^2 + y^2 + x^2 + y^2 + x^2 + y^2 + x^2 + y^2 + x^2',
-            svgFile: 'Svg Data',
-            svg_filename: 'mathImage.svg'
-          }
-        }];
-        var imageFile = (
-          new Blob(
-            [new ArrayBuffer(102 * 1024 * 1024)],
-            {type: 'application/octet-stream'})
-        );
-        spyOn(
-          ImageUploadHelperService,
-          'convertImageDataToImageFile').and.returnValue(imageFile);
-        $scope.save();
-        $scope.$apply();
-        expect(mockExternalRteSaveEventEmitter.emit).toHaveBeenCalled();
-        expect($uibModalInstance.dismiss).toHaveBeenCalledWith('cancel');
-      });
-
-    it('should cancel the modal when if the rawLatex or filename field is' +
-       'empty for a math expression', function() {
-      spyOn(mockExternalRteSaveEventEmitter, 'emit').and.callThrough();
-      spyOn(ContextService, 'getEntityType').and.returnValue('exploration');
-      $scope.tmpCustomizationArgs = [{
-        name: 'math_content',
-        value: {
-          raw_latex: '',
-          svgFile: null,
-          svg_filename: ''
-        }
-      }];
-      $scope.save();
-      $scope.$apply();
-      expect(mockExternalRteSaveEventEmitter.emit).toHaveBeenCalled();
-      expect($uibModalInstance.dismiss).toHaveBeenCalledWith('cancel');
-    });
-
-    it('should save modal customization args while in local storage',
-      function() {
-        spyOn(mockExternalRteSaveEventEmitter, 'emit').and.callThrough();
-        spyOn(ContextService, 'getEntityType').and.returnValue('exploration');
-        $scope.tmpCustomizationArgs = [{
-          name: 'math_content',
-          value: {
-            raw_latex: 'x^2',
-            svgFile: 'Svg Data',
-            svg_filename: 'mathImage.svg'
-          }
-        }];
-
-        var imageFile = new Blob();
-        spyOn(ContextService, 'getImageSaveDestination').and.returnValue(
-          AppConstants.IMAGE_SAVE_DESTINATION_LOCAL_STORAGE);
-        spyOn(
-          ImageUploadHelperService,
-          'convertImageDataToImageFile').and.returnValue(imageFile);
-        $scope.save();
-        $scope.$apply();
-        expect(mockExternalRteSaveEventEmitter.emit).toHaveBeenCalled();
-        expect($uibModalInstance.close).toHaveBeenCalledWith({
-          math_content: {
-            raw_latex: 'x^2',
-            svg_filename: 'mathImage.svg'
-          }
-        });
-      });
-  });
-
-  describe('when the editor is Link editor', function() {
-    var ContextService = null;
-    const customizationArgSpecs = [{
-      name: 'url',
-      default_value: 'google.com'
-    }, {
-      name: 'text',
-      default_value: ''
-    }];
-
-    beforeEach(angular.mock.module('oppia'));
-
-    beforeEach(angular.mock.module('oppia', function($provide) {
-      mockExternalRteSaveEventEmitter = new EventEmitter();
-      $provide.value('ExternalRteSaveService', {
-        onExternalRteSave: mockExternalRteSaveEventEmitter
-      });
-    }));
-
-    beforeEach(angular.mock.inject(function($injector, $controller) {
-      $timeout = $injector.get('$timeout');
-      var $rootScope = $injector.get('$rootScope');
-      ContextService = $injector.get('ContextService');
-
-      $uibModalInstance = jasmine.createSpyObj(
-        '$uibModalInstance', ['close', 'dismiss']);
-
-      $scope = $rootScope.$new();
-      $controller(
-        'RteHelperModalController', {
-          $scope: $scope,
-          $uibModalInstance: $uibModalInstance,
-          attrsCustomizationArgsDict: {
-            url: 'google.com',
-            text: ''
-          },
-          customizationArgSpecs: customizationArgSpecs,
-        });
-    }));
-
-    it('should load modal correctly', function() {
-      expect($scope.customizationArgSpecs).toEqual(customizationArgSpecs);
-      expect($scope.currentRteIsLinkEditor).toBeTrue();
-    });
-
-    it('should not disable save button when not in link editor', function() {
-      $scope.currentRteIsLinkEditor = false;
-
-      expect($scope.disableSaveButtonForLinkRte()).toBeFalse();
-    });
-
-    it('should disable save button when text may be misleading', function() {
-      const URLs = ['malicious.com', 'www.malicious.com',
-        'https://malicious.com', 'https://www.malicious.com'];
-      const texts = ['google.com', 'friendly.org', 'https://www.happy.gov'];
-
-      for (const URL of URLs) {
-        for (const text of texts) {
-          $scope.tmpCustomizationArgs = [{
-            name: 'url',
-            value: URL
-          }, {
-            name: 'text',
-            value: text
-          }];
-
-          expect($scope.disableSaveButtonForLinkRte()).toBeTrue();
-        }
-      }
-    });
-
-    it('should enable save button when text matches url', function() {
-      $scope.tmpCustomizationArgs = [{
-        name: 'url',
-        value: 'www.google.com'
-      }, {
-        name: 'text',
-        value: 'https://google.com'
-      }];
-
-      expect($scope.disableSaveButtonForLinkRte()).toBeFalse();
-    });
-
-    it('should enable save button when text is not a URL', function() {
-      $scope.tmpCustomizationArgs = [{
-        name: 'url',
-        value: 'www.google.com'
-      }, {
-        name: 'text',
-        value: 'click here'
-      }];
-
-      expect($scope.disableSaveButtonForLinkRte()).toBeFalse();
-    });
-
-    it('should save modal customization args when closing it', function() {
-      spyOn(mockExternalRteSaveEventEmitter, 'emit').and.callThrough();
-      spyOn(ContextService, 'getEntityType').and.returnValue('exploration');
-
-      expect($scope.disableSaveButtonForLinkRte()).toBe(false);
-
-      $scope.save();
-
-      expect(mockExternalRteSaveEventEmitter.emit).toHaveBeenCalled();
-      expect($uibModalInstance.close).toHaveBeenCalledWith({
-        url: 'google.com',
-        text: 'google.com'
-      });
-    });
-  });
-
-  describe('when customization args doesn\'t have a valid youtube video',
-    function() {
-      var ContextService = null;
-      var customizationArgSpecs = [{
+  describe('when customization args has a valid youtube video', function () {
+    var customizationArgSpecs = [
+      {
         name: 'heading',
-        default_value: ''
-      }, {
+        default_value: 'default value',
+      },
+      {
         name: 'video_id',
-        default_value: 'https://www.youtube.com'
-      }];
+        default_value: 'https://www.youtube.com/watch?v=Ntcw0H0hwPU',
+      },
+    ];
 
-      beforeEach(angular.mock.module('oppia'));
-
-      beforeEach(angular.mock.module('oppia', function($provide) {
-        mockExternalRteSaveEventEmitter = new EventEmitter();
-        $provide.value('ExternalRteSaveService', {
-          onExternalRteSave: mockExternalRteSaveEventEmitter
-        });
-      }));
-
-      beforeEach(angular.mock.inject(function($injector, $controller) {
-        $timeout = $injector.get('$timeout');
-        var $rootScope = $injector.get('$rootScope');
-        ContextService = $injector.get('ContextService');
-
-        $uibModalInstance = jasmine.createSpyObj(
-          '$uibModalInstance', ['close', 'dismiss']);
-
-        $scope = $rootScope.$new();
-        $controller(
-          'RteHelperModalController', {
-            $scope: $scope,
-            $uibModalInstance: $uibModalInstance,
-            attrsCustomizationArgsDict: {
-              heading: {}
-            },
-            customizationArgSpecs: customizationArgSpecs,
-          });
-      }));
-
-      it('should load modal correctly', function() {
-        expect($scope.customizationArgSpecs).toEqual(customizationArgSpecs);
-        expect($scope.modalIsLoading).toBe(true);
-        $timeout.flush();
-        expect($scope.modalIsLoading).toBe(false);
-      });
-
-      it('should close modal when clicking on cancel button', function() {
-        $scope.cancel();
-        expect($uibModalInstance.dismiss).toHaveBeenCalledWith(false);
-      });
-
-      it('should save modal customization args when closing it', function() {
-        spyOn(mockExternalRteSaveEventEmitter, 'emit').and.callThrough();
-        spyOn(ContextService, 'getEntityType').and.returnValue('exploration');
-
-        $scope.save();
-
-        expect(mockExternalRteSaveEventEmitter.emit).toHaveBeenCalled();
-        expect($uibModalInstance.close).toHaveBeenCalledWith({
-          heading: {},
-          video_id: 'https://www.youtube.com'
-        });
-      });
+    beforeEach(() => {
+      fixture = TestBed.createComponent(RteHelperModalComponent);
+      component = fixture.componentInstance;
+      component.componentId = 'video';
+      component.attrsCustomizationArgsDict = {
+        heading: 'This value is not default.',
+      };
+      component.customizationArgSpecs = customizationArgSpecs;
     });
 
-  describe('when cancel is clicked with default customization args', () => {
-    var customizationArgSpecs = [{
-      name: 'filepath',
-      default_value: ''
-    }, {
-      name: 'caption',
-      default_value: ''
-    }, {
-      name: 'alt',
-      default_value: ''
-    }];
-
-    beforeEach(angular.mock.module('oppia'));
-
-    beforeEach(angular.mock.module('oppia', function($provide) {
-      mockExternalRteSaveEventEmitter = new EventEmitter();
-      $provide.value('ExternalRteSaveService', {
-        onExternalRteSave: mockExternalRteSaveEventEmitter
-      });
+    it('should load modal correctly', fakeAsync(() => {
+      expect(component.customizationArgSpecs).toEqual(customizationArgSpecs);
+      expect(component.modalIsLoading).toBe(true);
+      component.ngOnInit();
+      flush();
+      expect(component.modalIsLoading).toBe(false);
     }));
 
-    beforeEach(angular.mock.inject(function($injector, $controller) {
-      $timeout = $injector.get('$timeout');
-      var $rootScope = $injector.get('$rootScope');
-
-      $uibModalInstance = jasmine.createSpyObj(
-        '$uibModalInstance', ['close', 'dismiss']);
-
-      $scope = $rootScope.$new();
-      $controller(
-        'RteHelperModalController', {
-          $scope: $scope,
-          $uibModalInstance: $uibModalInstance,
-          attrsCustomizationArgsDict: {
-            alt: '',
-            caption: '',
-            filepath: ''
-          },
-          customizationArgSpecs: customizationArgSpecs,
-        });
+    it('should close modal when clicking on cancel button', fakeAsync(() => {
+      component.ngOnInit();
+      flush();
+      component.cancel();
+      expect(activeModal.dismiss).toHaveBeenCalledWith(false);
     }));
 
-    it('should detect whether the default RTE component is used', ()=>{
-      expect($scope.defaultRTEComponent).toBeTrue();
-    });
-
-    it('should close modal and remove the tag', function() {
-      $scope.cancel();
-      expect($uibModalInstance.dismiss).toHaveBeenCalledWith(true);
-    });
+    it('should save modal customization args when closing it', fakeAsync(() => {
+      spyOn(mockExternalRteSaveEventEmitter, 'emit').and.callThrough();
+      spyOn(contextService, 'getEntityType').and.returnValue('exploration');
+      component.ngOnInit();
+      flush();
+      component.onCustomizationArgsFormChange(
+        component.attrsCustomizationArgsDict.heading
+      );
+      expect(component.isErrorMessageNonempty()).toBe(false);
+      component.save();
+      flush();
+      expect(mockExternalRteSaveEventEmitter.emit).toHaveBeenCalled();
+      expect(activeModal.close).toHaveBeenCalledWith({
+        heading: 'This value is not default.',
+        video_id: 'Ntcw0H0hwPU',
+      });
+    }));
   });
 
-  describe('when delete is clicked', () => {
-    var customizationArgSpecs = [{
-      name: 'filepath',
-      default_value: ''
-    }, {
-      name: 'caption',
-      default_value: ''
-    }, {
-      name: 'alt',
-      default_value: ''
-    }];
+  describe('when there are validation errors in any form control', function () {
+    var customizationArgSpecs = [
+      {
+        name: 'alt',
+        default_value: 'def',
+        schema: {
+          type: 'unicode',
+          validators: [
+            {
+              id: 'has_length_at_least',
+              min_value: 5,
+            },
+          ],
+        },
+      },
+    ];
 
-    beforeEach(angular.mock.module('oppia'));
-
-    beforeEach(angular.mock.module('oppia', function($provide) {
-      mockExternalRteSaveEventEmitter = new EventEmitter();
-      $provide.value('ExternalRteSaveService', {
-        onExternalRteSave: mockExternalRteSaveEventEmitter
-      });
-    }));
-
-    beforeEach(angular.mock.inject(function($injector, $controller) {
-      $timeout = $injector.get('$timeout');
-      var $rootScope = $injector.get('$rootScope');
-
-      $uibModalInstance = jasmine.createSpyObj(
-        '$uibModalInstance', ['close', 'dismiss']);
-
-      $scope = $rootScope.$new();
-      $controller(
-        'RteHelperModalController', {
-          $scope: $scope,
-          $uibModalInstance: $uibModalInstance,
-          attrsCustomizationArgsDict: {
-            alt: '',
-            caption: '',
-            filepath: ''
-          },
-          customizationArgSpecs: customizationArgSpecs,
-        });
-    }));
-
-    it('should delete the RTE component', ()=>{
-      $scope.delete();
-      expect($uibModalInstance.dismiss).toHaveBeenCalledWith(true);
+    beforeEach(() => {
+      fixture = TestBed.createComponent(RteHelperModalComponent);
+      component = fixture.componentInstance;
+      component.attrsCustomizationArgsDict = {
+        heading: 'This value is not default.',
+      };
+      component.customizationArgSpecs = customizationArgSpecs;
     });
+
+    it('should disable save button', fakeAsync(() => {
+      component.ngOnInit();
+      flush();
+      fixture.detectChanges();
+      flush();
+    }));
+  });
+
+  describe('when there are validation errors in link form control', function () {
+    var customizationArgSpecs = [
+      {
+        name: 'url',
+        default_value: 'oppia.org',
+      },
+      {
+        name: 'text',
+        default_value: 'oppia',
+      },
+    ];
+
+    beforeEach(() => {
+      fixture = TestBed.createComponent(RteHelperModalComponent);
+      component = fixture.componentInstance;
+      (component.componentId = 'link'),
+        (component.attrsCustomizationArgsDict = {
+          url: 'oppia.org',
+          text: 'oppia',
+        });
+      component.customizationArgSpecs = customizationArgSpecs;
+    });
+
+    it('should disable save button and display error message', fakeAsync(() => {
+      component.ngOnInit();
+      flush();
+      component.customizationArgsForm.value[0] = 'oppia.org';
+      component.customizationArgsForm.value[1] = 'oppia.com';
+      component.onCustomizationArgsFormChange(
+        component.customizationArgsForm.value
+      );
+      expect(component.isErrorMessageNonempty()).toBe(true);
+      expect(component.errorMessage).toBe(
+        'It seems like clicking on this link will lead the user to a ' +
+          'different URL than the text specifies. Please change the text.'
+      );
+      flush();
+    }));
+  });
+
+  describe('when the text is empty in link form control', function () {
+    var customizationArgSpecs = [
+      {
+        name: 'url',
+        default_value: 'oppia.org',
+      },
+      {
+        name: 'text',
+        default_value: ' ',
+      },
+    ];
+
+    beforeEach(() => {
+      fixture = TestBed.createComponent(RteHelperModalComponent);
+      component = fixture.componentInstance;
+      (component.componentId = 'link'),
+        (component.attrsCustomizationArgsDict = {
+          url: 'oppia.org',
+          text: ' ',
+        });
+      component.customizationArgSpecs = customizationArgSpecs;
+    });
+
+    it('should make the text equal to url when text is empty', fakeAsync(() => {
+      component.ngOnInit();
+      flush();
+      component.customizationArgsForm.value[0] = 'oppia.org';
+      component.customizationArgsForm.value[1] = '';
+      component.onCustomizationArgsFormChange(
+        component.customizationArgsForm.value
+      );
+      expect(component.isErrorMessageNonempty()).toBe(false);
+      expect(component.customizationArgsForm.value[1]).toBe('oppia.org');
+      flush();
+    }));
+
+    it('should make the text equal to url when text contain only whitespace', fakeAsync(() => {
+      component.ngOnInit();
+      flush();
+      component.customizationArgsForm.value[0] = 'oppia.org';
+      component.customizationArgsForm.value[1] = ' ';
+      component.onCustomizationArgsFormChange(
+        component.customizationArgsForm.value
+      );
+      expect(component.isErrorMessageNonempty()).toBe(false);
+      expect(component.customizationArgsForm.value[1]).toBe('oppia.org');
+      flush();
+    }));
+
+    it('should make the text equal to url when text contain only whitespace', fakeAsync(() => {
+      const whitespaceChars =
+        '\u0009\u000A\u000B\u000C\u000D\u0020\u00A0\u1680\u2000' +
+        '\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008' +
+        '\u2009\u200A\u2028\u2029\u202F\u205F\u3000';
+
+      component.ngOnInit();
+      flush();
+      component.customizationArgsForm.value[0] = 'oppia.org';
+      component.customizationArgsForm.value[1] = whitespaceChars;
+      component.onCustomizationArgsFormChange(
+        component.customizationArgsForm.value
+      );
+      expect(component.isErrorMessageNonempty()).toBe(false);
+      expect(component.customizationArgsForm.value[1]).toBe('oppia.org');
+      flush();
+    }));
+  });
+
+  describe('when there are validation errors in video form control', function () {
+    var customizationArgSpecs = [
+      {
+        name: 'video_id',
+        default_value: 'https://www.youtube.com/watch?v=Ntcw0H0hwPU',
+      },
+      {
+        name: 'start',
+        default_value: 0,
+      },
+      {
+        name: 'end',
+        default_value: 0,
+      },
+      {
+        name: 'autoplay',
+        default_value: false,
+      },
+    ];
+
+    beforeEach(() => {
+      fixture = TestBed.createComponent(RteHelperModalComponent);
+      component = fixture.componentInstance;
+      (component.componentId = 'video'),
+        (component.attrsCustomizationArgsDict = {
+          video_id: 'Ntcw0H0hwPU',
+          start: 0,
+          end: 0,
+          autoplay: false,
+        });
+      component.customizationArgSpecs = customizationArgSpecs;
+    });
+
+    it('should disable save button and display error message', fakeAsync(() => {
+      component.ngOnInit();
+      flush();
+
+      component.customizationArgsForm.value[1] = 10;
+      component.customizationArgsForm.value[2] = 0;
+      component.onCustomizationArgsFormChange(
+        component.customizationArgsForm.value
+      );
+      expect(component.isErrorMessageNonempty()).toBe(true);
+      expect(component.errorMessage).toBe(
+        'Please ensure that the start time of the video is earlier than ' +
+          'the end time.'
+      );
+      flush();
+    }));
+  });
+
+  describe('when there are validation errors in tabs form control', function () {
+    var customizationArgSpecs = [
+      {
+        name: 'tab_contents',
+        default_value: [
+          {
+            title: 'Tab 1',
+            content: 'Content for Tab 1',
+          },
+          {
+            title: 'Tab 2',
+            content: 'Content for Tab 2',
+          },
+        ],
+      },
+    ];
+
+    beforeEach(() => {
+      fixture = TestBed.createComponent(RteHelperModalComponent);
+      component = fixture.componentInstance;
+      (component.componentId = 'tabs'),
+        (component.attrsCustomizationArgsDict = {
+          tabs_contents: [
+            {
+              title: 'Tab 1',
+              content: 'Content for Tab 1',
+            },
+            {
+              title: 'Tab 2',
+              content: 'Content for Tab 2',
+            },
+          ],
+        });
+      component.customizationArgSpecs = customizationArgSpecs;
+    });
+
+    it('should disable save button and display error message', fakeAsync(() => {
+      component.ngOnInit();
+      flush();
+      component.customizationArgsForm.value[0][0].title = '';
+      component.onCustomizationArgsFormChange(
+        component.customizationArgsForm.value
+      );
+      expect(component.isErrorMessageNonempty()).toBe(true);
+      expect(component.errorMessage).toBe(
+        'Please ensure that the title of tab 1 is filled.'
+      );
+      flush();
+    }));
+
+    it('should disable save button and display error message', fakeAsync(() => {
+      component.ngOnInit();
+      flush();
+      component.customizationArgsForm.value[0][0].title = 'Tab 1';
+      component.customizationArgsForm.value[0][1].content = '';
+      component.onCustomizationArgsFormChange(
+        component.customizationArgsForm.value
+      );
+      expect(component.isErrorMessageNonempty()).toBe(true);
+      expect(component.errorMessage).toBe(
+        'Please ensure that the content of tab 2 is filled.'
+      );
+      flush();
+    }));
   });
 });

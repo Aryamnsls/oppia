@@ -16,29 +16,38 @@
  * @fileoverview Component for the hint editor.
  */
 
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { FormControl, FormGroup } from '@angular/forms';
-import { Subscription } from 'rxjs';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  OnDestroy,
+  OnInit,
+  Output,
+} from '@angular/core';
+import {downgradeComponent} from '@angular/upgrade/static';
+import {FormControl, FormGroup} from '@angular/forms';
+import {Subscription} from 'rxjs';
 import cloneDeep from 'lodash/cloneDeep';
-import { ContextService } from 'services/context.service';
-import { EditabilityService } from 'services/editability.service';
-import { ExternalSaveService } from 'services/external-save.service';
-import { Hint } from 'domain/exploration/HintObjectFactory';
+import {ContextService} from 'services/context.service';
+import {EditabilityService} from 'services/editability.service';
+import {ExternalSaveService} from 'services/external-save.service';
+import {Hint} from 'domain/exploration/hint-object.model';
+import {ExplorationEditorPageConstants} from 'pages/exploration-editor-page/exploration-editor-page.constants';
+import {
+  CALCULATION_TYPE_CHARACTER,
+  HtmlLengthService,
+} from 'services/html-length.service';
 
 interface HintFormSchema {
   type: string;
-  'ui_config': object;
+  ui_config: object;
 }
 
 @Component({
   selector: 'oppia-hint-editor',
-  templateUrl: './hint-editor.component.html'
+  templateUrl: './hint-editor.component.html',
 })
 export class HintEditorComponent implements OnInit, OnDestroy {
-  @Output() showMarkAllAudioAsNeedingUpdateModalIfRequired =
-    new EventEmitter<string[]>();
-
   @Output() saveHint = new EventEmitter<void>();
   // These properties are initialized using Angular lifecycle hooks
   // and we need to do non-null assertion. For more information, see
@@ -56,6 +65,7 @@ export class HintEditorComponent implements OnInit, OnDestroy {
     private contextService: ContextService,
     private editabilityService: EditabilityService,
     private externalSaveService: ExternalSaveService,
+    private htmlLengthService: HtmlLengthService
   ) {}
 
   getSchema(): HintFormSchema {
@@ -74,23 +84,16 @@ export class HintEditorComponent implements OnInit, OnDestroy {
   }
 
   isHintLengthExceeded(): boolean {
-    return (this.hint.hintContent._html.length > 500);
+    return Boolean(
+      this.htmlLengthService.computeHtmlLength(
+        this.hint.hintContent._html,
+        CALCULATION_TYPE_CHARACTER
+      ) > ExplorationEditorPageConstants.HINT_CHARACTER_LIMIT
+    );
   }
 
   saveThisHint(): void {
     this.hintEditorIsOpen = false;
-    const contentHasChanged = (
-      this.hintMemento.hintContent.html !== this.hint.hintContent.html);
-
-    if (contentHasChanged) {
-      const hintContentId = this.hint.hintContent.contentId;
-      if (hintContentId === null) {
-        throw new Error('Expected content id to be non-null');
-      }
-      this.showMarkAllAudioAsNeedingUpdateModalIfRequired.emit(
-        [hintContentId]);
-    }
-
     this.saveHint.emit();
   }
 
@@ -109,15 +112,16 @@ export class HintEditorComponent implements OnInit, OnDestroy {
         if (this.hintEditorIsOpen && this.editHintForm.valid) {
           this.saveThisHint();
         }
-      }));
+      })
+    );
     this.isEditable = this.editabilityService.isEditable();
     this.hintEditorIsOpen = false;
     this.HINT_FORM_SCHEMA = {
       type: 'html',
       ui_config: {
-        hide_complex_extensions: (
-          this.contextService.getEntityType() === 'question')
-      }
+        hide_complex_extensions:
+          this.contextService.getEntityType() === 'question',
+      },
     };
   }
 
@@ -126,5 +130,9 @@ export class HintEditorComponent implements OnInit, OnDestroy {
   }
 }
 
-angular.module('oppia').directive('oppiaHintEditor',
-  downgradeComponent({component: HintEditorComponent}));
+angular
+  .module('oppia')
+  .directive(
+    'oppiaHintEditor',
+    downgradeComponent({component: HintEditorComponent})
+  );

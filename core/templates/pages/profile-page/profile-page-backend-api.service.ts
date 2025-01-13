@@ -17,57 +17,73 @@
  * backend.
  */
 
-import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import {HttpClient} from '@angular/common/http';
+import {Injectable} from '@angular/core';
 
-import { ProfilePageDomainConstants } from
-  'pages/profile-page/profile-page-domain.constants';
-import { UrlInterpolationService } from
-  'domain/utilities/url-interpolation.service';
-import { UrlService } from 'services/contextual/url.service';
-import { UserProfile, UserProfileBackendDict } from
-  'domain/user/user-profile.model';
+import {ProfilePageDomainConstants} from 'pages/profile-page/profile-page-domain.constants';
+import {UrlInterpolationService} from 'domain/utilities/url-interpolation.service';
+import {UrlService} from 'services/contextual/url.service';
+import {
+  UserProfile,
+  UserProfileBackendDict,
+} from 'domain/user/user-profile.model';
+import {UserService} from 'services/user.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ProfilePageBackendApiService {
   constructor(
     private urlInterpolationService: UrlInterpolationService,
     private http: HttpClient,
-    private urlService: UrlService
+    private urlService: UrlService,
+    private userService: UserService
   ) {}
 
   async _postSubscribeAsync(creatorUsername: string): Promise<void> {
-    return this.http.post<void>(
-      ProfilePageDomainConstants.PROFILE_SUBSCRIBE_URL,
-      { creator_username: creatorUsername }
-    ).toPromise().then(() => {}, errorResponse => {
-      console.error(errorResponse.error.error);
-      throw new Error(errorResponse.error.error);
-    });
+    return this.http
+      .post<void>(ProfilePageDomainConstants.PROFILE_SUBSCRIBE_URL, {
+        creator_username: creatorUsername,
+      })
+      .toPromise()
+      .then(
+        () => {},
+        errorResponse => {
+          console.error(errorResponse.error.error);
+          throw new Error(errorResponse.error.error);
+        }
+      );
   }
 
   async _postUnsubscribeAsync(creatorUsername: string): Promise<void> {
-    return this.http.post<void>(
-      ProfilePageDomainConstants.PROFILE_UNSUBSCRIBE_URL,
-      { creator_username: creatorUsername }
-    ).toPromise().then(() => {}, errorResponse => {
-      throw new Error(errorResponse.error.error);
-    });
+    return this.http
+      .post<void>(ProfilePageDomainConstants.PROFILE_UNSUBSCRIBE_URL, {
+        creator_username: creatorUsername,
+      })
+      .toPromise()
+      .then(
+        () => {},
+        errorResponse => {
+          throw new Error(errorResponse.error.error);
+        }
+      );
   }
 
   async _fetchProfileDataAsync(): Promise<UserProfile> {
-    return this.http.get<UserProfileBackendDict>(
-      this.urlInterpolationService.interpolateUrl(
-        ProfilePageDomainConstants.PROFILE_DATA_URL,
-        {username: this.urlService.getUsernameFromProfileUrl()}
+    return this.http
+      .get<UserProfileBackendDict>(
+        this.urlInterpolationService.interpolateUrl(
+          ProfilePageDomainConstants.PROFILE_DATA_URL,
+          {username: this.urlService.getUsernameFromProfileUrl()}
+        )
       )
-    ).toPromise().then(
-      userProfileDict => UserProfile.createFromBackendDict(
-        userProfileDict), errorResponse => {
-        throw new Error(errorResponse.error.error);
-      });
+      .toPromise()
+      .then(
+        userProfileDict => UserProfile.createFromBackendDict(userProfileDict),
+        errorResponse => {
+          throw new Error(errorResponse.error.error);
+        }
+      );
   }
 
   /**

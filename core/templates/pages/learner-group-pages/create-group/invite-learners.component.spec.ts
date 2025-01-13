@@ -16,101 +16,129 @@
  * @fileoverview Unit tests for inviting learners to learner group.
  */
 
-import { NO_ERRORS_SCHEMA } from '@angular/core';
-import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
-import { MockTranslatePipe } from 'tests/unit-test-utils';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
-import { InviteLearnersComponent } from './invite-learners.component';
-import { LearnerGroupBackendApiService } from
-  'domain/learner_group/learner-group-backend-api.service';
-import { LearnerGroupUserInfo } from
-  'domain/learner_group/learner-group-user-info.model';
+import {NO_ERRORS_SCHEMA} from '@angular/core';
+import {
+  ComponentFixture,
+  fakeAsync,
+  TestBed,
+  tick,
+} from '@angular/core/testing';
+import {MockTranslatePipe} from 'tests/unit-test-utils';
+import {HttpClientTestingModule} from '@angular/common/http/testing';
+import {InviteLearnersComponent} from './invite-learners.component';
+import {LearnerGroupBackendApiService} from 'domain/learner_group/learner-group-backend-api.service';
+import {LearnerGroupUserInfo} from 'domain/learner_group/learner-group-user-info.model';
+import {UserService} from 'services/user.service';
 
 describe('InviteLearnersComponent', () => {
   let component: InviteLearnersComponent;
   let fixture: ComponentFixture<InviteLearnersComponent>;
   let learnerGroupBackendApiService: LearnerGroupBackendApiService;
+  let userService: UserService;
 
   const userInfo = LearnerGroupUserInfo.createFromBackendDict({
     username: 'username1',
-    profile_picture_data_url: 'profile_picture_url1',
-    error: ''
+    error: '',
   });
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
-      declarations: [
-        InviteLearnersComponent,
-        MockTranslatePipe
-      ],
+      declarations: [InviteLearnersComponent, MockTranslatePipe],
       providers: [],
-      schemas: [NO_ERRORS_SCHEMA]
+      schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents();
   });
 
   beforeEach(() => {
     learnerGroupBackendApiService = TestBed.inject(
-      LearnerGroupBackendApiService);
+      LearnerGroupBackendApiService
+    );
     fixture = TestBed.createComponent(InviteLearnersComponent);
+    userService = TestBed.inject(UserService);
     component = fixture.componentInstance;
+    spyOn(userService, 'getProfileImageDataUrl').and.returnValue([
+      'default-image-url-png',
+      'default-image-url-webp',
+    ]);
     fixture.detectChanges();
   });
 
-  it('should search new learners to add to the learner group',
+  it('should search new learners to add to the learner group', fakeAsync(() => {
+    spyOn(
+      learnerGroupBackendApiService,
+      'searchNewLearnerToAddAsync'
+    ).and.returnValue(Promise.resolve(userInfo));
+
+    expect(component.invitedUsersInfo).toEqual([]);
+    expect(component.invitedUsernames).toEqual([]);
+
+    component.onSearchQueryChangeExec('username1');
+    tick();
+    fixture.detectChanges();
+
+    expect(component.invitedUsersInfo).toEqual([userInfo]);
+    expect(component.invitedUsernames).toEqual(['username1']);
+  }));
+
+  it('should get user profile image png data url correctly', () => {
+    expect(component.getProfileImagePngDataUrl('username')).toBe(
+      'default-image-url-png'
+    );
+  });
+
+  it('should get user profile image webp data url correctly', () => {
+    expect(component.getProfileImageWebpDataUrl('username')).toBe(
+      'default-image-url-webp'
+    );
+  });
+
+  it(
+    'should show error message when trying to add an invalid learners to ' +
+      'the learner group',
     fakeAsync(() => {
-      spyOn(learnerGroupBackendApiService, 'searchNewLearnerToAddAsync')
-        .and.returnValue(Promise.resolve(userInfo));
+      const userInfo2 = LearnerGroupUserInfo.createFromBackendDict({
+        username: 'username2',
+        error: 'You cannot invite yourself to the learner group.',
+      });
+      spyOn(
+        learnerGroupBackendApiService,
+        'searchNewLearnerToAddAsync'
+      ).and.returnValue(Promise.resolve(userInfo2));
 
       expect(component.invitedUsersInfo).toEqual([]);
       expect(component.invitedUsernames).toEqual([]);
 
-      component.onSearchQueryChangeExec('username1');
-      tick();
-      fixture.detectChanges();
+      component.onSearchQueryChangeExec('username2');
 
-      expect(component.invitedUsersInfo).toEqual([userInfo]);
-      expect(component.invitedUsernames).toEqual(['username1']);
+      tick();
+
+      expect(component.invitedUsersInfo).toEqual([]);
+      expect(component.invitedUsernames).toEqual([]);
+      expect(component.errorMessage).toEqual(
+        'You cannot invite yourself to the learner group.'
+      );
     })
   );
 
-  it('should show error message when trying to add an invalid learners to ' +
-  'the learner group', fakeAsync(() => {
-    const userInfo2 = LearnerGroupUserInfo.createFromBackendDict({
-      username: 'username2',
-      profile_picture_data_url: '',
-      error: 'You cannot invite yourself to the learner group.'
-    });
-    spyOn(learnerGroupBackendApiService, 'searchNewLearnerToAddAsync')
-      .and.returnValue(Promise.resolve(userInfo2));
+  it(
+    'should show error message when trying to add an already invited ' +
+      'learner to the learner group',
+    fakeAsync(() => {
+      component.invitedUsersInfo = [userInfo];
+      component.invitedUsernames = ['username1'];
 
-    expect(component.invitedUsersInfo).toEqual([]);
-    expect(component.invitedUsernames).toEqual([]);
+      component.onSearchQueryChangeExec('username1');
 
-    component.onSearchQueryChangeExec('username2');
+      tick();
 
-    tick();
-
-    expect(component.invitedUsersInfo).toEqual([]);
-    expect(component.invitedUsernames).toEqual([]);
-    expect(component.errorMessage).toEqual(
-      'You cannot invite yourself to the learner group.');
-  }));
-
-  it('should show error message when trying to add an already invited ' +
-  'learner to the learner group', fakeAsync(() => {
-    component.invitedUsersInfo = [userInfo];
-    component.invitedUsernames = ['username1'];
-
-    component.onSearchQueryChangeExec('username1');
-
-    tick();
-
-    expect(component.invitedUsersInfo).toEqual([userInfo]);
-    expect(component.invitedUsernames).toEqual(['username1']);
-    expect(component.errorMessage).toEqual(
-      'User with username username1 has been already invited.');
-  }));
+      expect(component.invitedUsersInfo).toEqual([userInfo]);
+      expect(component.invitedUsernames).toEqual(['username1']);
+      expect(component.errorMessage).toEqual(
+        'User with username username1 has been already invited.'
+      );
+    })
+  );
 
   it('should remove invited learner successfully', () => {
     component.invitedUsersInfo = [userInfo];

@@ -16,12 +16,12 @@
  * @fileoverview Unit tests for parameter name editor.
  */
 
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
-import { NO_ERRORS_SCHEMA } from '@angular/core';
-import { ParameterNameEditorComponent } from './parameter-name-editor.component';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
-import { ParamSpecsObjectFactory } from 'domain/exploration/ParamSpecsObjectFactory';
-import { ExplorationParamSpecsService } from 'pages/exploration-editor-page/services/exploration-param-specs.service';
+import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
+import {NO_ERRORS_SCHEMA} from '@angular/core';
+import {ParameterNameEditorComponent} from './parameter-name-editor.component';
+import {HttpClientTestingModule} from '@angular/common/http/testing';
+import {ParamSpecsObjectFactory} from 'domain/exploration/ParamSpecsObjectFactory';
+import {ExplorationParamSpecsService} from 'pages/exploration-editor-page/services/exploration-param-specs.service';
 
 describe('StateHintsEditorComponent', () => {
   let component: ParameterNameEditorComponent;
@@ -31,17 +31,10 @@ describe('StateHintsEditorComponent', () => {
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [
-        HttpClientTestingModule
-      ],
-      declarations: [
-        ParameterNameEditorComponent
-      ],
-      providers: [
-        ParamSpecsObjectFactory,
-        ExplorationParamSpecsService
-      ],
-      schemas: [NO_ERRORS_SCHEMA]
+      imports: [HttpClientTestingModule],
+      declarations: [ParameterNameEditorComponent],
+      providers: [ParamSpecsObjectFactory, ExplorationParamSpecsService],
+      schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents();
   }));
 
@@ -53,14 +46,19 @@ describe('StateHintsEditorComponent', () => {
     explorationParamSpecsService = TestBed.inject(ExplorationParamSpecsService);
 
     explorationParamSpecsService.init(
+      // This throws "Type object is not assignable to type
+      // 'string'." We need to suppress this error
+      // because of the need to test validations.
+      // @ts-ignore
       paramSpecsObjectFactory.createFromBackendDict({
         y: {
-          obj_type: 'UnicodeString'
+          obj_type: 'UnicodeString',
         },
         a: {
-          obj_type: 'UnicodeString'
-        }
-      }) as unknown as string);
+          obj_type: 'UnicodeString',
+        },
+      }) as string
+    );
     fixture.detectChanges();
   });
 
@@ -71,7 +69,7 @@ describe('StateHintsEditorComponent', () => {
     expect(component.value).toBe('y');
     expect(component.SCHEMA).toEqual({
       type: 'unicode',
-      choices: ['y', 'a']
+      choices: ['y', 'a'],
     });
   });
 
@@ -87,8 +85,7 @@ describe('StateHintsEditorComponent', () => {
   });
 
   it('should get schema', () => {
-    expect(component.getSchema())
-      .toEqual(component.SCHEMA);
+    expect(component.getSchema()).toEqual(component.SCHEMA);
   });
 
   it('should update value when user enter new local value', () => {

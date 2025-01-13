@@ -16,24 +16,20 @@
  * @fileoverview Component for showing learner dashboard icons.
  */
 
-import { Component, OnInit, OnChanges, SimpleChanges, Input } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
+import {Component, OnInit, Input} from '@angular/core';
 
-import constants from 'assets/constants';
-import { LearnerDashboardIdsBackendApiService } from
-  'domain/learner_dashboard/learner-dashboard-ids-backend-api.service';
-import { LearnerDashboardActivityBackendApiService } from
-  'domain/learner_dashboard/learner-dashboard-activity-backend-api.service';
-import { LearnerDashboardActivityIds } from
-  'domain/learner_dashboard/learner-dashboard-activity-ids.model';
-import { LearnerPlaylistModalComponent } from './modal-templates/learner-playlist-modal.component';
-import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import {AppConstants} from 'app.constants';
+import {LearnerDashboardIdsBackendApiService} from 'domain/learner_dashboard/learner-dashboard-ids-backend-api.service';
+import {LearnerDashboardActivityBackendApiService} from 'domain/learner_dashboard/learner-dashboard-activity-backend-api.service';
+import {LearnerDashboardActivityIds} from 'domain/learner_dashboard/learner-dashboard-activity-ids.model';
+import {LearnerPlaylistModalComponent} from './modal-templates/learner-playlist-modal.component';
+import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 
 @Component({
   selector: 'oppia-learner-dashboard-icons',
   templateUrl: './learner-dashboard-icons.component.html',
 })
-export class LearnerDashboardIconsComponent implements OnInit, OnChanges {
+export class LearnerDashboardIconsComponent implements OnInit {
   // These properties are initialized using Angular lifecycle hooks
   // and we need to do non-null assertion. For more information, see
   // https://github.com/oppia/oppia/wiki/Guide-on-defining-types#ts-7-1
@@ -45,36 +41,19 @@ export class LearnerDashboardIconsComponent implements OnInit, OnChanges {
   learnerDashboardActivityIds!: LearnerDashboardActivityIds;
   activityIsCurrentlyHoveredOver: boolean = true;
   playlistTooltipIsEnabled: boolean = false;
-  @Input()
-  get activityActive(): boolean {
-    return this.activityIsCurrentlyHoveredOver;
-  }
-
-  set activityActive(hoverState: boolean) {
-    this.activityIsCurrentlyHoveredOver = hoverState;
-  }
 
   constructor(
-    private learnerDashboardIdsBackendApiService:
-      LearnerDashboardIdsBackendApiService,
-    private learnerDashboardActivityBackendApiService:
-      LearnerDashboardActivityBackendApiService,
+    private learnerDashboardIdsBackendApiService: LearnerDashboardIdsBackendApiService,
+    private learnerDashboardActivityBackendApiService: LearnerDashboardActivityBackendApiService,
     private ngbModal: NgbModal
   ) {}
 
   ngOnInit(): void {
-    this.learnerDashboardIdsBackendApiService.
-      fetchLearnerDashboardIdsAsync().then(
-        (learnerDashboardActivityIds) => {
-          this.learnerDashboardActivityIds = learnerDashboardActivityIds;
-        }
-      );
-  }
-
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes.activityActive !== undefined) {
-      this.setHoverState(changes.activityActive.currentValue);
-    }
+    this.learnerDashboardIdsBackendApiService
+      .fetchLearnerDashboardIdsAsync()
+      .then(learnerDashboardActivityIds => {
+        this.learnerDashboardActivityIds = learnerDashboardActivityIds;
+      });
   }
 
   enablePlaylistTooltip(): void {
@@ -85,37 +64,26 @@ export class LearnerDashboardIconsComponent implements OnInit, OnChanges {
     this.playlistTooltipIsEnabled = false;
   }
 
-  setHoverState(hoverState: boolean): void {
-    this.activityIsCurrentlyHoveredOver = hoverState;
-  }
-
   canActivityBeAddedToLearnerPlaylist(activityId: string): boolean {
     if (this.learnerDashboardActivityIds) {
-      if (this.learnerDashboardActivityIds.includesActivity(
-        activityId)) {
+      if (this.learnerDashboardActivityIds.includesActivity(activityId)) {
         return false;
-      } else {
-        if (this.isContainerNarrow) {
-          return true;
-        } else {
-          return this.activityIsCurrentlyHoveredOver;
-        }
       }
     }
-    return false;
+    return true;
   }
 
   belongsToLearnerPlaylist(): boolean {
     var activityType = this.activityType;
     if (this.learnerDashboardActivityIds) {
-      if (activityType === constants.ACTIVITY_TYPE_EXPLORATION) {
-        return (
-          this.learnerDashboardActivityIds.belongsToExplorationPlaylist(
-            this.activityId));
-      } else if (activityType === constants.ACTIVITY_TYPE_COLLECTION) {
-        return (
-          this.learnerDashboardActivityIds.belongsToCollectionPlaylist(
-            this.activityId));
+      if (activityType === AppConstants.ACTIVITY_TYPE_EXPLORATION) {
+        return this.learnerDashboardActivityIds.belongsToExplorationPlaylist(
+          this.activityId
+        );
+      } else if (activityType === AppConstants.ACTIVITY_TYPE_COLLECTION) {
+        return this.learnerDashboardActivityIds.belongsToCollectionPlaylist(
+          this.activityId
+        );
       }
     }
     return false;
@@ -124,22 +92,22 @@ export class LearnerDashboardIconsComponent implements OnInit, OnChanges {
   belongsToCompletedActivities(): boolean {
     var activityType = this.activityType;
     if (this.learnerDashboardActivityIds) {
-      if (activityType === constants.ACTIVITY_TYPE_EXPLORATION) {
-        return (
-          this.learnerDashboardActivityIds.belongsToCompletedExplorations(
-            this.activityId));
-      } else if (activityType === constants.ACTIVITY_TYPE_COLLECTION) {
-        return (
-          this.learnerDashboardActivityIds.belongsToCompletedCollections(
-            this.activityId));
-      } else if (activityType === constants.ACTIVITY_TYPE_STORY) {
-        return (
-          this.learnerDashboardActivityIds.belongsToCompletedStories(
-            this.activityId));
-      } else if (activityType === constants.ACTIVITY_TYPE_LEARN_TOPIC) {
-        return (
-          this.learnerDashboardActivityIds.belongsToLearntTopics(
-            this.activityId));
+      if (activityType === AppConstants.ACTIVITY_TYPE_EXPLORATION) {
+        return this.learnerDashboardActivityIds.belongsToCompletedExplorations(
+          this.activityId
+        );
+      } else if (activityType === AppConstants.ACTIVITY_TYPE_COLLECTION) {
+        return this.learnerDashboardActivityIds.belongsToCompletedCollections(
+          this.activityId
+        );
+      } else if (activityType === AppConstants.ACTIVITY_TYPE_STORY) {
+        return this.learnerDashboardActivityIds.belongsToCompletedStories(
+          this.activityId
+        );
+      } else if (activityType === AppConstants.ACTIVITY_TYPE_LEARN_TOPIC) {
+        return this.learnerDashboardActivityIds.belongsToLearntTopics(
+          this.activityId
+        );
       }
     }
     return false;
@@ -148,34 +116,41 @@ export class LearnerDashboardIconsComponent implements OnInit, OnChanges {
   belongsToIncompleteActivities(): boolean {
     var activityType = this.activityType;
     if (this.learnerDashboardActivityIds) {
-      if (activityType === constants.ACTIVITY_TYPE_EXPLORATION) {
-        return (
-          this.learnerDashboardActivityIds.belongsToIncompleteExplorations(
-            this.activityId));
-      } else if (activityType === constants.ACTIVITY_TYPE_COLLECTION) {
-        return (
-          this.learnerDashboardActivityIds.belongsToIncompleteCollections(
-            this.activityId));
-      } else if (activityType === constants.ACTIVITY_TYPE_LEARN_TOPIC) {
-        return (
-          this.learnerDashboardActivityIds.belongsToPartiallyLearntTopics(
-            this.activityId));
+      if (activityType === AppConstants.ACTIVITY_TYPE_EXPLORATION) {
+        return this.learnerDashboardActivityIds.belongsToIncompleteExplorations(
+          this.activityId
+        );
+      } else if (activityType === AppConstants.ACTIVITY_TYPE_COLLECTION) {
+        return this.learnerDashboardActivityIds.belongsToIncompleteCollections(
+          this.activityId
+        );
+      } else if (activityType === AppConstants.ACTIVITY_TYPE_LEARN_TOPIC) {
+        return this.learnerDashboardActivityIds.belongsToPartiallyLearntTopics(
+          this.activityId
+        );
       }
     }
     return false;
   }
 
-  addToLearnerPlaylist(activityId: string, activityType: string): void {
-    var isSuccessfullyAdded = (
-      this.learnerDashboardActivityBackendApiService.addToLearnerPlaylist(
-        activityId, activityType));
+  async addToLearnerPlaylist(
+    activityId: string,
+    activityType: string
+  ): Promise<void> {
+    var isSuccessfullyAdded =
+      await this.learnerDashboardActivityBackendApiService.addToLearnerPlaylist(
+        activityId,
+        activityType
+      );
     if (isSuccessfullyAdded) {
-      if (activityType === constants.ACTIVITY_TYPE_EXPLORATION) {
+      if (activityType === AppConstants.ACTIVITY_TYPE_EXPLORATION) {
         this.learnerDashboardActivityIds.addToExplorationLearnerPlaylist(
-          activityId);
-      } else if (activityType === constants.ACTIVITY_TYPE_COLLECTION) {
+          activityId
+        );
+      } else if (activityType === AppConstants.ACTIVITY_TYPE_COLLECTION) {
         this.learnerDashboardActivityIds.addToCollectionLearnerPlaylist(
-          activityId);
+          activityId
+        );
       }
       this.disablePlaylistTooltip();
     }
@@ -184,7 +159,10 @@ export class LearnerDashboardIconsComponent implements OnInit, OnChanges {
   // This function will open a modal to remove an exploration
   // from the 'Play Later' list in the Library Page.
   removeFromLearnerPlaylist(
-      activityId: string, activityTitle: string, activityType: string): void {
+    activityId: string,
+    activityTitle: string,
+    activityType: string
+  ): void {
     // This following logic of showing a modal for confirmation previously
     // resided in learnerDashboardActivityBackendApiService. However, in
     // issue #14225, we noticed some errors with dynamic component creation.
@@ -194,27 +172,29 @@ export class LearnerDashboardIconsComponent implements OnInit, OnChanges {
     // injector used is the root injector and not the page module injector.
     // The entry components specified in page module won't be available when
     // we use the root injector.
-    // TODO(14290): Find a better way to refactor code that opens modals
+    // TODO(#14290): Find a better way to refactor code that opens modals
     // into new services that use the page specific injector rather than
     // the root injector.
-    const modelRef = this.ngbModal.open(
-      LearnerPlaylistModalComponent, {backdrop: true});
+    const modelRef = this.ngbModal.open(LearnerPlaylistModalComponent, {
+      backdrop: true,
+    });
     modelRef.componentInstance.activityId = activityId;
     modelRef.componentInstance.activityTitle = activityTitle;
     modelRef.componentInstance.activityType = activityType;
-    modelRef.result.then((playlistUrl) => {
-      this.learnerDashboardActivityBackendApiService
-        .removeFromLearnerPlaylist(
-          activityId, activityType,
-          this.learnerDashboardActivityIds, playlistUrl);
-    }, () => {
-      // Note to developers:
-      // This callback is triggered when the Cancel button is clicked.
-      // No further action is needed.
-    });
+    modelRef.result.then(
+      playlistUrl => {
+        this.learnerDashboardActivityBackendApiService.removeFromLearnerPlaylist(
+          activityId,
+          activityType,
+          this.learnerDashboardActivityIds,
+          playlistUrl
+        );
+      },
+      () => {
+        // Note to developers:
+        // This callback is triggered when the Cancel button is clicked.
+        // No further action is needed.
+      }
+    );
   }
 }
-
-angular.module('oppia').directive(
-  'oppiaLearnerDashboardIcons', downgradeComponent(
-    {component: LearnerDashboardIconsComponent}));

@@ -36,67 +36,6 @@ if MYPY: # pragma: no cover
 ])
 
 
-class ConfigPropertySnapshotContentModelTests(test_utils.GenericTestBase):
-
-    def test_get_deletion_policy_is_not_applicable(self) -> None:
-        self.assertEqual(
-            config_models.ConfigPropertySnapshotContentModel
-            .get_deletion_policy(),
-            base_models.DELETION_POLICY.NOT_APPLICABLE)
-
-
-class ConfigPropertyModelUnitTests(test_utils.GenericTestBase):
-    """Test ConfigPropertyModel class."""
-
-    def test_get_deletion_policy(self) -> None:
-        self.assertEqual(
-            config_models.ConfigPropertyModel.get_deletion_policy(),
-            base_models.DELETION_POLICY.NOT_APPLICABLE)
-
-    def test_create_model(self) -> None:
-        config_model = config_models.ConfigPropertyModel(
-            value='b')
-        self.assertEqual(config_model.value, 'b')
-
-    def test_commit(self) -> None:
-        config_model1 = config_models.ConfigPropertyModel(
-            id='config_model1', value='c')
-        config_model1.commit(feconf.SYSTEM_COMMITTER_ID, [])
-        retrieved_model1 = config_models.ConfigPropertyModel.get_version(
-            'config_model1', 1)
-        # Ruling out the possibility of None for mypy type checking.
-        assert retrieved_model1 is not None
-
-        self.assertEqual(retrieved_model1.value, 'c')
-        retrieved_model1.value = 'd'
-        retrieved_model1.commit(feconf.SYSTEM_COMMITTER_ID, [])
-        retrieved_model2 = config_models.ConfigPropertyModel.get_version(
-            'config_model1', 2)
-        # Ruling out the possibility of None for mypy type checking.
-        assert retrieved_model2 is not None
-
-        self.assertEqual(retrieved_model2.value, 'd')
-
-    def test_get_model_association_to_user(self) -> None:
-        self.assertEqual(
-            config_models.ConfigPropertyModel.get_model_association_to_user(),
-            base_models.MODEL_ASSOCIATION_TO_USER.NOT_CORRESPONDING_TO_USER
-        )
-
-    def test_get_export_policy(self) -> None:
-        expected_export_policy_dict = {
-            'created_on': base_models.EXPORT_POLICY.NOT_APPLICABLE,
-            'last_updated': base_models.EXPORT_POLICY.NOT_APPLICABLE,
-            'deleted': base_models.EXPORT_POLICY.NOT_APPLICABLE,
-            'version': base_models.EXPORT_POLICY.NOT_APPLICABLE,
-            'value': base_models.EXPORT_POLICY.NOT_APPLICABLE
-        }
-        self.assertEqual(
-            config_models.ConfigPropertyModel.get_export_policy(),
-            expected_export_policy_dict
-        )
-
-
 class PlatformParameterSnapshotContentModelTests(test_utils.GenericTestBase):
 
     def test_get_deletion_policy_is_not_applicable(self) -> None:
@@ -120,6 +59,7 @@ class PlatformParameterModelUnitTests(test_utils.GenericTestBase):
             rule_dicts=[{'filters': [], 'value_when_matched': False}],
             rule_schema_version=(
                 feconf.CURRENT_PLATFORM_PARAMETER_RULE_SCHEMA_VERSION),
+            default_value=False
         )
         self.assertEqual(param_model.id, 'parameter_name')
         self.assertEqual(
@@ -128,6 +68,7 @@ class PlatformParameterModelUnitTests(test_utils.GenericTestBase):
         self.assertEqual(
             param_model.rules,
             [{'filters': [], 'value_when_matched': False}])
+        self.assertEqual(param_model.default_value, False)
 
     def test_commit(self) -> None:
         parameter_name = 'parameter_name'
@@ -140,6 +81,7 @@ class PlatformParameterModelUnitTests(test_utils.GenericTestBase):
             rule_dicts=rule_dicts,
             rule_schema_version=(
                 feconf.CURRENT_PLATFORM_PARAMETER_RULE_SCHEMA_VERSION),
+            default_value=False
         )
 
         param_model.commit(feconf.SYSTEM_COMMITTER_ID, 'commit message', [])
@@ -182,6 +124,7 @@ class PlatformParameterModelUnitTests(test_utils.GenericTestBase):
             rule_dicts=rule_dicts,
             rule_schema_version=(
                 feconf.CURRENT_PLATFORM_PARAMETER_RULE_SCHEMA_VERSION),
+            default_value=False
         )
 
         param_model.commit(feconf.SYSTEM_COMMITTER_ID, 'commit message', [])
@@ -203,6 +146,7 @@ class PlatformParameterModelUnitTests(test_utils.GenericTestBase):
             rule_dicts=rule_dicts,
             rule_schema_version=(
                 feconf.CURRENT_PLATFORM_PARAMETER_RULE_SCHEMA_VERSION),
+            default_value=False
         )
         param_model.commit(feconf.SYSTEM_COMMITTER_ID, 'commit message', [])
 
@@ -238,9 +182,54 @@ class PlatformParameterModelUnitTests(test_utils.GenericTestBase):
             'deleted': base_models.EXPORT_POLICY.NOT_APPLICABLE,
             'version': base_models.EXPORT_POLICY.NOT_APPLICABLE,
             'rules': base_models.EXPORT_POLICY.NOT_APPLICABLE,
-            'rule_schema_version': base_models.EXPORT_POLICY.NOT_APPLICABLE
+            'rule_schema_version': base_models.EXPORT_POLICY.NOT_APPLICABLE,
+            'default_value': base_models.EXPORT_POLICY.NOT_APPLICABLE
         }
         self.assertEqual(
             config_models.PlatformParameterModel.get_export_policy(),
+            expected_export_policy_dict
+        )
+
+
+class FeatureFlagConfigModelUnitTests(test_utils.GenericTestBase):
+    """Test FeatureFlagConfigModel class."""
+
+    def test_get_deletion_policy_is_not_applicable(self) -> None:
+        self.assertEqual(
+            config_models.FeatureFlagConfigModel.get_deletion_policy(),
+            base_models.DELETION_POLICY.NOT_APPLICABLE)
+
+    def test_create_model(self) -> None:
+        feature_model = config_models.FeatureFlagConfigModel.create(
+            feature_flag_name='feature_name',
+            force_enable_for_all_users=False,
+            rollout_percentage=50,
+            user_group_ids=['User Group 1', 'User Group 2']
+        )
+        self.assertEqual(feature_model.id, 'feature_name')
+        self.assertEqual(feature_model.rollout_percentage, 50)
+        self.assertEqual(
+            feature_model.user_group_ids,
+            ['User Group 1', 'User Group 2'])
+        self.assertEqual(feature_model.force_enable_for_all_users, False)
+
+    def test_get_model_association_to_user(self) -> None:
+        self.assertEqual(
+            config_models.FeatureFlagConfigModel.get_model_association_to_user(), # pylint: disable=line-too-long
+            base_models.MODEL_ASSOCIATION_TO_USER.NOT_CORRESPONDING_TO_USER
+        )
+
+    def test_get_export_policy(self) -> None:
+        expected_export_policy_dict = {
+            'created_on': base_models.EXPORT_POLICY.NOT_APPLICABLE,
+            'last_updated': base_models.EXPORT_POLICY.NOT_APPLICABLE,
+            'deleted': base_models.EXPORT_POLICY.NOT_APPLICABLE,
+            'force_enable_for_all_users': (
+                base_models.EXPORT_POLICY.NOT_APPLICABLE),
+            'rollout_percentage': base_models.EXPORT_POLICY.NOT_APPLICABLE,
+            'user_group_ids': base_models.EXPORT_POLICY.NOT_APPLICABLE
+        }
+        self.assertEqual(
+            config_models.FeatureFlagConfigModel.get_export_policy(),
             expected_export_policy_dict
         )
