@@ -16,11 +16,10 @@
  * @fileoverview Service provides emitter for external rte save
  */
 
-import { Injectable, EventEmitter } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {Injectable, EventEmitter} from '@angular/core';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ExternalRteSaveService {
   private _externalRteSaveEventEmitter = new EventEmitter<void>();
@@ -29,6 +28,3 @@ export class ExternalRteSaveService {
     return this._externalRteSaveEventEmitter;
   }
 }
-
-angular.module('oppia').factory('ExternalRteSaveService',
-  downgradeInjectable(ExternalRteSaveService));

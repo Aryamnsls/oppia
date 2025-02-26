@@ -16,13 +16,12 @@
  * @fileoverview Service for HTML serialization and escaping.
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { Injectable } from '@angular/core';
+import {Injectable} from '@angular/core';
 
-import { LoggerService } from 'services/contextual/logger.service';
+import {LoggerService} from 'services/contextual/logger.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class HtmlEscaperService {
   constructor(private loggerService: LoggerService) {}
@@ -36,7 +35,6 @@ export class HtmlEscaperService {
     return this.unescapedStrToEscapedStr(JSON.stringify(obj));
   }
 
-
   /**
    * This function is used to convert
    * a escaped JSON string to its object counterpart.
@@ -44,7 +42,7 @@ export class HtmlEscaperService {
    * @return {object} an unescaped non-JSON version of the original string.
    * @throws Will throw error if empty string is passed to JSON decoder.
    */
-  escapedJsonToObj(json: string): Object {
+  escapedJsonToObj(json: string): Object | string {
     if (!json) {
       this.loggerService.error('Empty string was passed to JSON decoder.');
       return '';
@@ -76,12 +74,9 @@ export class HtmlEscaperService {
   escapedStrToUnescapedStr(value: string): string {
     return String(value)
       .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, '\'')
+      .replace(/&#39;/g, "'")
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&amp;/g, '&');
   }
 }
-
-angular.module('oppia').factory(
-  'HtmlEscaperService', downgradeInjectable(HtmlEscaperService));

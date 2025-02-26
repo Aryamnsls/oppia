@@ -16,60 +16,66 @@
  * @fileoverview Unit tests for the content translation language service.
  */
 
-import { TestBed } from '@angular/core/testing';
+import {HttpClientTestingModule} from '@angular/common/http/testing';
+import {TestBed} from '@angular/core/testing';
 
-import { ContentTranslationLanguageService } from
-  'pages/exploration-player-page/services/content-translation-language.service';
-import { ContentTranslationManagerService } from
-  'pages/exploration-player-page/services/content-translation-manager.service';
-import { UrlService } from 'services/contextual/url.service';
+import {ContentTranslationLanguageService} from 'pages/exploration-player-page/services/content-translation-language.service';
+import {UrlService} from 'services/contextual/url.service';
 
 describe('Content translation language service', () => {
   let ctls: ContentTranslationLanguageService;
-  let ctms: ContentTranslationManagerService;
   let us: UrlService;
   let availableLanguageCodes: string[];
 
   beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+    });
+
     ctls = TestBed.inject(ContentTranslationLanguageService);
-    ctms = TestBed.inject(ContentTranslationManagerService);
     us = TestBed.inject(UrlService);
     availableLanguageCodes = ['fr', 'zh'];
   });
 
   it('should correctly set the language to a valid URL parameter', () => {
     spyOn(us, 'getUrlParams').and.returnValue({
-      initialContentLanguageCode: 'fr'
+      initialContentLanguageCode: 'fr',
     });
 
     ctls.init(availableLanguageCodes, [], 'en');
     expect(ctls.getCurrentContentLanguageCode()).toBe('fr');
   });
 
-  it('should correctly set the language to the first available preferred ' +
-    'exploration language if there is no valid URL parameter', () => {
-    spyOn(us, 'getUrlParams').and.returnValue({});
+  it(
+    'should correctly set the language to the first available preferred ' +
+      'exploration language if there is no valid URL parameter',
+    () => {
+      spyOn(us, 'getUrlParams').and.returnValue({});
 
-    ctls.init(availableLanguageCodes, ['fr'], 'en');
-    expect(ctls.getCurrentContentLanguageCode()).toBe('fr');
+      ctls.init(availableLanguageCodes, ['fr'], 'en');
+      expect(ctls.getCurrentContentLanguageCode()).toBe('fr');
 
-    ctls.init(availableLanguageCodes, ['zh'], 'en');
-    expect(ctls.getCurrentContentLanguageCode()).toBe('zh');
-  });
+      ctls.init(availableLanguageCodes, ['zh'], 'en');
+      expect(ctls.getCurrentContentLanguageCode()).toBe('zh');
+    }
+  );
 
-  it('should correctly set the language to the exploration language code ' +
-     'if there is no valid URL parameter and there are no matches with the ' +
-     'preferred exploration languages', () => {
-    spyOn(us, 'getUrlParams').and.returnValue({
-      initialContentLanguageCode: 'invalidLanguageCode'
-    });
+  it(
+    'should correctly set the language to the exploration language code ' +
+      'if there is no valid URL parameter and there are no matches with the ' +
+      'preferred exploration languages',
+    () => {
+      spyOn(us, 'getUrlParams').and.returnValue({
+        initialContentLanguageCode: 'invalidLanguageCode',
+      });
 
-    ctls.init(availableLanguageCodes, [], 'fr');
-    expect(ctls.getCurrentContentLanguageCode()).toBe('fr');
+      ctls.init(availableLanguageCodes, [], 'fr');
+      expect(ctls.getCurrentContentLanguageCode()).toBe('fr');
 
-    ctls.init(availableLanguageCodes, ['zz'], 'zh');
-    expect(ctls.getCurrentContentLanguageCode()).toBe('zh');
-  });
+      ctls.init(availableLanguageCodes, ['zz'], 'zh');
+      expect(ctls.getCurrentContentLanguageCode()).toBe('zh');
+    }
+  );
 
   it('should throw error if the exploration language code is invalid', () => {
     expect(() => {
@@ -82,16 +88,13 @@ describe('Content translation language service', () => {
     expect(ctls.getLanguageOptionsForDropdown()).toEqual([
       {value: 'fr', displayed: 'français (French)'},
       {value: 'zh', displayed: '中文 (Chinese)'},
-      {value: 'en', displayed: 'English'}
+      {value: 'en', displayed: 'English'},
     ]);
   });
 
-  it('should correctly set the current language code and call the content ' +
-     'translation manager service', () => {
-    const displayTranslationsSpy = spyOn(ctms, 'displayTranslations');
+  it('should correctly set the current language code', () => {
     ctls.init(availableLanguageCodes, [], 'en');
     ctls.setCurrentContentLanguageCode('fr');
     expect(ctls.getCurrentContentLanguageCode()).toBe('fr');
-    expect(displayTranslationsSpy).toHaveBeenCalledWith('fr');
   });
 });

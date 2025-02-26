@@ -16,17 +16,31 @@
  * @fileoverview Component for the showing rich text.
  */
 
-import { TemplatePortal } from '@angular/cdk/portal';
-import { AfterViewInit, ChangeDetectorRef, Component, Directive, ElementRef, Input, SimpleChanges, TemplateRef, ViewChild, ViewContainerRef } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { OppiaRteParserService, OppiaRteNode, TextNode } from 'services/oppia-rte-parser.service';
+import {TemplatePortal} from '@angular/cdk/portal';
+import {
+  AfterViewInit,
+  ChangeDetectorRef,
+  Component,
+  Directive,
+  ElementRef,
+  Input,
+  SimpleChanges,
+  TemplateRef,
+  ViewChild,
+  ViewContainerRef,
+} from '@angular/core';
+import {
+  OppiaRteParserService,
+  OppiaRteNode,
+  TextNode,
+} from 'services/oppia-rte-parser.service';
 
-type PortalTree = (TemplatePortal<unknown> | PortalTree) [];
+type PortalTree = (TemplatePortal<unknown> | PortalTree)[];
 
 @Component({
   selector: 'oppia-rte-output-display',
   templateUrl: './rte-output-display.component.html',
-  styleUrls: []
+  styleUrls: [],
 })
 export class RteOutputDisplayComponent implements AfterViewInit {
   // Native HTML elements.
@@ -51,6 +65,7 @@ export class RteOutputDisplayComponent implements AfterViewInit {
   @ViewChild('tabs') tabsTagPortal: TemplateRef<unknown>;
   @ViewChild('video') videoTagPortal: TemplateRef<unknown>;
   @Input() rteString: string;
+  @Input() altTextIsDisplayed: boolean = false;
   node: OppiaRteNode | string = '';
   show = false;
   portalTree: PortalTree = [];
@@ -86,9 +101,7 @@ export class RteOutputDisplayComponent implements AfterViewInit {
     try {
       this.node = this.oppiaHtmlParserService.constructFromDomParser(dom);
     } catch (e) {
-      const additionalInfo = (
-        '\nRTE String: ' + this.rteString
-      );
+      const additionalInfo = '\nRTE String: ' + this.rteString;
       e.message += additionalInfo;
       throw e;
     }
@@ -112,23 +125,23 @@ export class RteOutputDisplayComponent implements AfterViewInit {
     // of whiteSpace characters and new lines. The setTimeout is needed to run
     // it in the next clock cycle so that the view has been rendered.
     setTimeout(() => {
-      (
-        this.elementRef.nativeElement as HTMLElement
-      ).querySelectorAll('pre').forEach(preNode => {
-        for (let i = 0; i < preNode.childNodes.length; i++) {
-          if (preNode.childNodes[i].nodeType === 8) {
-            preNode.removeChild(preNode.childNodes[i]);
-            i--;
-            continue;
-          }
-          if (preNode.childNodes[i].nodeType === 3) {
-            if (preNode.childNodes[i].nodeValue.replace(/\s/g, '') === '') {
+      (this.elementRef.nativeElement as HTMLElement)
+        .querySelectorAll('pre')
+        .forEach(preNode => {
+          for (let i = 0; i < preNode.childNodes.length; i++) {
+            if (preNode.childNodes[i].nodeType === 8) {
               preNode.removeChild(preNode.childNodes[i]);
               i--;
+              continue;
+            }
+            if (preNode.childNodes[i].nodeType === 3) {
+              if (preNode.childNodes[i].nodeValue.replace(/\s/g, '') === '') {
+                preNode.removeChild(preNode.childNodes[i]);
+                i--;
+              }
             }
           }
-        }
-      });
+        });
     });
   }
 
@@ -139,34 +152,34 @@ export class RteOutputDisplayComponent implements AfterViewInit {
   }
 
   private _getTemplatePortal(
-      node: OppiaRteNode | TextNode
+    node: OppiaRteNode | TextNode
   ): TemplatePortal<unknown> {
     if ('value' in node) {
-      return new TemplatePortal(
-        this.textTagPortal,
-        this._viewContainerRef,
-        { $implicit: node }
-      );
+      return new TemplatePortal(this.textTagPortal, this._viewContainerRef, {
+        $implicit: node,
+      });
     }
     if (node.nodeType === 'component') {
       return new TemplatePortal(
         this[node.selector.split('oppia-noninteractive-')[1] + 'TagPortal'],
         this._viewContainerRef,
-        { $implicit: node.attrs }
+        {$implicit: node.attrs}
       );
     }
     if (this[node.selector + 'TagPortal'] !== undefined) {
       return new TemplatePortal(
         this[node.selector + 'TagPortal'],
         this._viewContainerRef,
-        { $implicit: node }
+        {$implicit: node}
       );
     }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes.rteString &&
-        changes.rteString.previousValue !== changes.rteString.currentValue) {
+    if (
+      changes.rteString &&
+      changes.rteString.previousValue !== changes.rteString.currentValue
+    ) {
       /**
        * The following serves as an excellent example of why we shouldn't use
        * js and elementRef.nativeElement to manipulate the DOM. When doing so
@@ -198,14 +211,10 @@ export class RteOutputDisplayComponent implements AfterViewInit {
       textNodes.forEach(node => node.parentElement.removeChild(node));
 
       this._updateNode();
-      setTimeout(() => this.show = true, 0);
+      setTimeout(() => (this.show = true), 0);
     }
   }
 }
-
-angular.module('oppia').directive('oppiaRteOutputDisplay', downgradeComponent({
-  component: RteOutputDisplayComponent
-}));
 
 /**
  * The directive below is required because we have &nbsp; in the string. String
@@ -216,11 +225,9 @@ angular.module('oppia').directive('oppiaRteOutputDisplay', downgradeComponent({
  * operation because of TextNodes. It should prevent all HTML injection attacks
  * including XSS attacks.
  */
-@Directive({ selector: '[oppiaRteTextNode]' })
+@Directive({selector: '[oppiaRteTextNode]'})
 export class OppiaRteTextNodeDirective implements AfterViewInit {
-  constructor(
-    private elementRef: ElementRef
-  ) { }
+  constructor(private elementRef: ElementRef) {}
 
   @Input() oppiaRteTextNode: string = '';
   ngAfterViewInit(): void {

@@ -17,11 +17,10 @@
  * within a card.
  */
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {Injectable} from '@angular/core';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class NumberAttemptsService {
   /**
@@ -52,6 +51,3 @@ export class NumberAttemptsService {
     return NumberAttemptsService.numberAttempts;
   }
 }
-
-angular.module('oppia').factory(
-  'NumberAttemptsService', downgradeInjectable(NumberAttemptsService));

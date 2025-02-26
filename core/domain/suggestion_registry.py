@@ -25,25 +25,29 @@ from core import feconf
 from core import utils
 from core.constants import constants
 from core.domain import change_domain
-from core.domain import config_domain
 from core.domain import exp_domain
 from core.domain import exp_fetchers
 from core.domain import exp_services
 from core.domain import fs_services
 from core.domain import html_cleaner
+from core.domain import opportunity_services
+from core.domain import platform_parameter_list
+from core.domain import platform_parameter_services
 from core.domain import question_domain
 from core.domain import question_services
 from core.domain import skill_domain
 from core.domain import skill_fetchers
 from core.domain import state_domain
+from core.domain import topic_fetchers
+from core.domain import translation_domain
+from core.domain import translation_services
 from core.domain import user_services
 from core.platform import models
 from extensions import domain
 
 from typing import (
-    Any, Callable, Dict, List, Mapping, Optional, Set, Type, TypedDict, Union,
-    cast
-)
+    Any, Callable, Dict, List, Mapping, Optional, Set, Type,
+    TypedDict, Union, cast)
 
 MYPY = False
 if MYPY:  # pragma: no cover
@@ -63,10 +67,11 @@ class BaseSuggestionDict(TypedDict):
     status: str
     author_name: str
     final_reviewer_id: Optional[str]
-    change: Dict[str, change_domain.AcceptableChangeDictTypes]
+    change_cmd: Dict[str, change_domain.AcceptableChangeDictTypes]
     score_category: str
     language_code: str
     last_updated: float
+    created_on: float
     edited_by_reviewer: bool
 
 
@@ -84,7 +89,7 @@ class BaseSuggestion:
         author_id: str. The ID of the user who submitted the suggestion.
         final_reviewer_id: str. The ID of the reviewer who has accepted/rejected
             the suggestion.
-        change: Change. The details of the suggestion. This should be an
+        change_cmd: Change. The details of the suggestion. This should be an
             object of type ExplorationChange, TopicChange, etc.
         score_category: str. The scoring category for the suggestion.
         last_updated: datetime.datetime. Date and time when the suggestion
@@ -110,9 +115,10 @@ class BaseSuggestion:
     target_id: str
     target_version_at_submission: int
     author_id: str
-    change: change_domain.BaseChange
+    change_cmd: change_domain.BaseChange
     score_category: str
     last_updated: datetime.datetime
+    created_on: datetime.datetime
     language_code: str
     edited_by_reviewer: bool
     image_context: str
@@ -137,10 +143,11 @@ class BaseSuggestion:
             'status': self.status,
             'author_name': self.get_author_name(),
             'final_reviewer_id': self.final_reviewer_id,
-            'change': self.change.to_dict(),
+            'change_cmd': self.change_cmd.to_dict(),
             'score_category': self.score_category,
             'language_code': self.language_code,
             'last_updated': utils.get_time_in_millisecs(self.last_updated),
+            'created_on': utils.get_time_in_millisecs(self.created_on),
             'edited_by_reviewer': self.edited_by_reviewer
         }
 
@@ -199,7 +206,7 @@ class BaseSuggestion:
         """Validates the BaseSuggestion object. Each subclass must implement
         this function.
 
-        The subclasses must validate the change and score_category fields.
+        The subclasses must validate the change_cmd and score_category fields.
 
         Raises:
             ValidationError. One or more attributes of the BaseSuggestion object
@@ -301,7 +308,7 @@ class BaseSuggestion:
             'pre_accept_validate.')
 
     def populate_old_value_of_change(self) -> None:
-        """Populates the old_value field of the change."""
+        """Populates the old_value field of the change_cmd."""
         raise NotImplementedError(
             'Subclasses of BaseSuggestion should implement '
             'populate_old_value_of_change.')
@@ -312,7 +319,7 @@ class BaseSuggestion:
     # in every sub-class where this pre_update_validate method is used. So, to
     # avoid the error in every sub-class, we have used Any type here but once
     # this BaseSuggestion class is refactored, we can remove type Any from here.
-    def pre_update_validate(self, change: Any) -> None:
+    def pre_update_validate(self, change_cmd: Any) -> None:
         """Performs the pre update validation. This function needs to be called
         before updating the suggestion.
         """
@@ -366,7 +373,7 @@ class BaseSuggestion:
     def convert_html_in_suggestion_change(
         self, conversion_fn: Callable[[str], str]
     ) -> None:
-        """Checks for HTML fields in a suggestion change and converts it
+        """Checks for HTML fields in a suggestion change_cmd and converts it
         according to the conversion function.
         """
         raise NotImplementedError(
@@ -396,11 +403,12 @@ class SuggestionEditStateContent(BaseSuggestion):
         status: str,
         author_id: str,
         final_reviewer_id: Optional[str],
-        change: Mapping[str, change_domain.AcceptableChangeDictTypes],
+        change_cmd: Mapping[str, change_domain.AcceptableChangeDictTypes],
         score_category: str,
         language_code: Optional[str],
         edited_by_reviewer: bool,
-        last_updated: Optional[datetime.datetime] = None
+        last_updated: datetime.datetime,
+        created_on: datetime.datetime
     ) -> None:
         """Initializes an object of type SuggestionEditStateContent
         corresponding to the SUGGESTION_TYPE_EDIT_STATE_CONTENT choice.
@@ -414,8 +422,8 @@ class SuggestionEditStateContent(BaseSuggestion):
         self.target_id = target_id
         self.target_version_at_submission = target_version_at_submission
         self.author_id = author_id
-        self.change: exp_domain.EditExpStatePropertyContentCmd = (
-            exp_domain.EditExpStatePropertyContentCmd(change)
+        self.change_cmd: exp_domain.EditExpStatePropertyContentCmd = (
+            exp_domain.EditExpStatePropertyContentCmd(change_cmd)
         )
         self.score_category = score_category
         # Here we use MyPy ignore because in BaseSuggestion, language_code
@@ -424,14 +432,8 @@ class SuggestionEditStateContent(BaseSuggestion):
         # well. So, due to this conflict in types MyPy throws an `Incompatible
         # types in assignment` error. Thus to avoid the error, we used ignore.
         self.language_code = language_code  # type: ignore[assignment]
-        # TODO(#16048): Here we use MyPy ignore because in BaseSuggestion,
-        # last_updated is defined with only datetime type but here
-        # last_updated is of Optional[datetime] type because while creating
-        # 'SuggestionEditStateContent' through create_suggestion() method, we
-        # are not providing 'last_updated' and just using None default value.
-        # So, once this suggestion_services.create_suggestion() method is
-        # fixed, we can remove both todo and MyPy ignore from here.
-        self.last_updated = last_updated  # type: ignore[assignment]
+        self.last_updated = last_updated
+        self.created_on = created_on
         self.edited_by_reviewer = edited_by_reviewer
         # Here we use MyPy ignore because in BaseSuggestion, image_context
         # is defined as string type attribute but currently, we don't
@@ -450,10 +452,10 @@ class SuggestionEditStateContent(BaseSuggestion):
         """
         super().validate()
 
-        if not isinstance(self.change, exp_domain.ExplorationChange):
+        if not isinstance(self.change_cmd, exp_domain.ExplorationChange):
             raise utils.ValidationError(
-                'Expected change to be an ExplorationChange, received %s'
-                % type(self.change))
+                'Expected change_cmd to be an ExplorationChange, received %s'
+                % type(self.change_cmd))
 
         if self.get_score_type() != suggestion_models.SCORE_TYPE_CONTENT:
             raise utils.ValidationError(
@@ -462,17 +464,17 @@ class SuggestionEditStateContent(BaseSuggestion):
                     suggestion_models.SCORE_TYPE_CONTENT,
                     self.get_score_type()))
 
-        if self.change.cmd != exp_domain.CMD_EDIT_STATE_PROPERTY:
+        if self.change_cmd.cmd != exp_domain.CMD_EDIT_STATE_PROPERTY:
             raise utils.ValidationError(
                 'Expected cmd to be %s, received %s' % (
-                    exp_domain.CMD_EDIT_STATE_PROPERTY, self.change.cmd))
+                    exp_domain.CMD_EDIT_STATE_PROPERTY, self.change_cmd.cmd))
 
-        if (self.change.property_name !=
+        if (self.change_cmd.property_name !=
                 exp_domain.STATE_PROPERTY_CONTENT):
             raise utils.ValidationError(
                 'Expected property_name to be %s, received %s' % (
                     exp_domain.STATE_PROPERTY_CONTENT,
-                    self.change.property_name))
+                    self.change_cmd.property_name))
 
         # Suggestions of this type do not have an associated language code,
         # since they are not translation-related.
@@ -487,42 +489,43 @@ class SuggestionEditStateContent(BaseSuggestion):
         """
         self.validate()
         states = exp_fetchers.get_exploration_by_id(self.target_id).states
-        if self.change.state_name not in states:
+        if self.change_cmd.state_name not in states:
             raise utils.ValidationError(
                 'Expected %s to be a valid state name' %
-                self.change.state_name)
+                self.change_cmd.state_name)
 
     def _get_change_list_for_accepting_edit_state_content_suggestion(
         self
     ) -> List[exp_domain.ExplorationChange]:
-        """Gets a complete change for the SuggestionEditStateContent.
+        """Gets a complete change_cmd for the SuggestionEditStateContent.
 
         Returns:
             list(ExplorationChange). The change_list corresponding to the
             suggestion.
         """
-        change = self.change
+        change_cmd = self.change_cmd
         exploration = exp_fetchers.get_exploration_by_id(self.target_id)
         old_content = (
-            exploration.states[self.change.state_name].content.to_dict())
+            exploration.states[self.change_cmd.state_name].content.to_dict())
 
-        change.old_value = old_content
-        change.new_value['content_id'] = old_content['content_id']
+        change_cmd.old_value = old_content
+        change_cmd.new_value['content_id'] = old_content['content_id']
 
-        return [change]
+        return [change_cmd]
 
     def populate_old_value_of_change(self) -> None:
-        """Populates old value of the change."""
+        """Populates old value of the change_cmd."""
         exploration = exp_fetchers.get_exploration_by_id(self.target_id)
-        if self.change.state_name not in exploration.states:
+        if self.change_cmd.state_name not in exploration.states:
             # As the state doesn't exist now, we cannot find the content of the
             # state to populate the old_value field. So we set it as None.
             old_content = None
         else:
             old_content = (
-                exploration.states[self.change.state_name].content.to_dict())
+                exploration.states
+                [self.change_cmd.state_name].content.to_dict())
 
-        self.change.old_value = old_content
+        self.change_cmd.old_value = old_content
 
     def accept(self, commit_message: str) -> None:
         """Accepts the suggestion.
@@ -538,33 +541,33 @@ class SuggestionEditStateContent(BaseSuggestion):
         assert self.final_reviewer_id is not None
         exp_services.update_exploration(
             self.final_reviewer_id, self.target_id, change_list,
-            commit_message, is_suggestion=True)
+            commit_message)
 
     def pre_update_validate(
-        self, change: exp_domain.EditExpStatePropertyContentCmd
+        self, change_cmd: exp_domain.EditExpStatePropertyContentCmd
     ) -> None:
         """Performs the pre update validation. This function needs to be called
         before updating the suggestion.
 
         Args:
-            change: ExplorationChange. The new change.
+            change_cmd: ExplorationChange. The new change_cmd.
 
         Raises:
-            ValidationError. Invalid new change.
+            ValidationError. Invalid new change_cmd.
         """
-        if self.change.cmd != change.cmd:
+        if self.change_cmd.cmd != change_cmd.cmd:
             raise utils.ValidationError(
-                'The new change cmd must be equal to %s' %
-                self.change.cmd)
-        if self.change.property_name != change.property_name:
+                'The new change_cmd cmd must be equal to %s' %
+                self.change_cmd.cmd)
+        if self.change_cmd.property_name != change_cmd.property_name:
             raise utils.ValidationError(
-                'The new change property_name must be equal to %s' %
-                self.change.property_name)
-        if self.change.state_name != change.state_name:
+                'The new change_cmd property_name must be equal to %s' %
+                self.change_cmd.property_name)
+        if self.change_cmd.state_name != change_cmd.state_name:
             raise utils.ValidationError(
-                'The new change state_name must be equal to %s' %
-                self.change.state_name)
-        if self.change.new_value['html'] == change.new_value['html']:
+                'The new change_cmd state_name must be equal to %s' %
+                self.change_cmd.state_name)
+        if self.change_cmd.new_value['html'] == change_cmd.new_value['html']:
             raise utils.ValidationError(
                 'The new html must not match the old html')
 
@@ -574,9 +577,9 @@ class SuggestionEditStateContent(BaseSuggestion):
         Returns:
             list(str). The list of html content strings.
         """
-        html_string_list = [self.change.new_value['html']]
-        if self.change.old_value is not None:
-            html_string_list.append(self.change.old_value['html'])
+        html_string_list = [self.change_cmd.new_value['html']]
+        if self.change_cmd.old_value is not None:
+            html_string_list.append(self.change_cmd.old_value['html'])
         return html_string_list
 
     def get_target_entity_html_strings(self) -> List[str]:
@@ -587,26 +590,26 @@ class SuggestionEditStateContent(BaseSuggestion):
             list(str). The list of html content strings from target entity used
             in the suggestion.
         """
-        if self.change.old_value is not None:
-            return [self.change.old_value['html']]
+        if self.change_cmd.old_value is not None:
+            return [self.change_cmd.old_value['html']]
 
         return []
 
     def convert_html_in_suggestion_change(
         self, conversion_fn: Callable[[str], str]
     ) -> None:
-        """Checks for HTML fields in a suggestion change and converts it
+        """Checks for HTML fields in a suggestion change_cmd and converts it
         according to the conversion function.
 
         Args:
             conversion_fn: function. The function to be used for converting the
                 HTML.
         """
-        if self.change.old_value is not None:
-            self.change.old_value['html'] = (
-                conversion_fn(self.change.old_value['html']))
-        self.change.new_value['html'] = (
-            conversion_fn(self.change.new_value['html']))
+        if self.change_cmd.old_value is not None:
+            self.change_cmd.old_value['html'] = (
+                conversion_fn(self.change_cmd.old_value['html']))
+        self.change_cmd.new_value['html'] = (
+            conversion_fn(self.change_cmd.new_value['html']))
 
 
 class SuggestionTranslateContent(BaseSuggestion):
@@ -622,11 +625,12 @@ class SuggestionTranslateContent(BaseSuggestion):
         status: str,
         author_id: str,
         final_reviewer_id: Optional[str],
-        change: Mapping[str, change_domain.AcceptableChangeDictTypes],
+        change_cmd: Mapping[str, change_domain.AcceptableChangeDictTypes],
         score_category: str,
         language_code: str,
         edited_by_reviewer: bool,
-        last_updated: Optional[datetime.datetime] = None
+        last_updated: datetime.datetime,
+        created_on: datetime.datetime
     ) -> None:
         """Initializes an object of type SuggestionTranslateContent
         corresponding to the SUGGESTION_TYPE_TRANSLATE_CONTENT choice.
@@ -640,19 +644,13 @@ class SuggestionTranslateContent(BaseSuggestion):
         self.target_id = target_id
         self.target_version_at_submission = target_version_at_submission
         self.author_id = author_id
-        self.change: exp_domain.AddWrittenTranslationCmd = (
-            exp_domain.AddWrittenTranslationCmd(change)
+        self.change_cmd: exp_domain.AddWrittenTranslationCmd = (
+            exp_domain.AddWrittenTranslationCmd(change_cmd)
         )
         self.score_category = score_category
         self.language_code = language_code
-        # TODO(#16048): Here we use MyPy ignore because in BaseSuggestion,
-        # last_updated is defined with only datetime type but here
-        # last_updated is of Optional[datetime] type because while creating
-        # 'SuggestionTranslateContent' through create_suggestion() method, we
-        # are not providing 'last_updated' and just using None default value.
-        # So, once this suggestion_services.create_suggestion() method is
-        # fixed, we can remove both todo and MyPy ignore from here.
-        self.last_updated = last_updated  # type: ignore[assignment]
+        self.last_updated = last_updated
+        self.created_on = created_on
         self.edited_by_reviewer = edited_by_reviewer
         self.image_context = feconf.IMAGE_CONTEXT_EXPLORATION_SUGGESTIONS
 
@@ -665,10 +663,10 @@ class SuggestionTranslateContent(BaseSuggestion):
         """
         super().validate()
 
-        if not isinstance(self.change, exp_domain.ExplorationChange):
+        if not isinstance(self.change_cmd, exp_domain.ExplorationChange):
             raise utils.ValidationError(
-                'Expected change to be an ExplorationChange, received %s'
-                % type(self.change))
+                'Expected change_cmd to be an ExplorationChange, received %s'
+                % type(self.change_cmd))
         # The score sub_type needs to match the validation for exploration
         # category, i.e the second part of the score_category should match
         # the target exploration's category and we have a prod validation
@@ -689,53 +687,57 @@ class SuggestionTranslateContent(BaseSuggestion):
             exp_domain.DEPRECATED_CMD_ADD_TRANSLATION,
             exp_domain.CMD_ADD_WRITTEN_TRANSLATION
         ]
-        if self.change.cmd not in accepted_cmds:
+        if self.change_cmd.cmd not in accepted_cmds:
             raise utils.ValidationError(
                 'Expected cmd to be %s, received %s' % (
-                    exp_domain.CMD_ADD_WRITTEN_TRANSLATION, self.change.cmd))
+                    exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
+                    self.change_cmd.cmd))
 
         if not utils.is_supported_audio_language_code(
-                self.change.language_code):
+                self.change_cmd.language_code):
             raise utils.ValidationError(
-                'Invalid language_code: %s' % self.change.language_code)
+                'Invalid language_code: %s' % self.change_cmd.language_code)
 
-        if isinstance(self.change.translation_html, str):
-            html_cleaner.validate_rte_tags(self.change.translation_html)
+        if isinstance(self.change_cmd.translation_html, str):
+            html_cleaner.validate_rte_tags(self.change_cmd.translation_html)
 
         if self.language_code is None:
             raise utils.ValidationError('language_code cannot be None')
 
-        if self.language_code != self.change.language_code:
+        if self.language_code != self.change_cmd.language_code:
             raise utils.ValidationError(
                 'Expected language_code to be %s, received %s' % (
-                    self.change.language_code, self.language_code))
+                    self.change_cmd.language_code, self.language_code))
 
-    def pre_update_validate(self, change: exp_domain.ExplorationChange) -> None:
+    def pre_update_validate(
+        self,
+        change_cmd: exp_domain.ExplorationChange
+    ) -> None:
         """Performs the pre update validation. This function needs to be called
         before updating the suggestion.
 
         Args:
-            change: ExplorationChange. The new change.
+            change_cmd: ExplorationChange. The new change_cmd.
 
         Raises:
-            ValidationError. Invalid new change.
+            ValidationError. Invalid new change_cmd.
         """
-        if self.change.cmd != change.cmd:
+        if self.change_cmd.cmd != change_cmd.cmd:
             raise utils.ValidationError(
-                'The new change cmd must be equal to %s' %
-                self.change.cmd)
-        if self.change.state_name != change.state_name:
+                'The new change_cmd cmd must be equal to %s' %
+                self.change_cmd.cmd)
+        if self.change_cmd.state_name != change_cmd.state_name:
             raise utils.ValidationError(
-                'The new change state_name must be equal to %s' %
-                self.change.state_name)
-        if self.change.content_html != change.content_html:
+                'The new change_cmd state_name must be equal to %s' %
+                self.change_cmd.state_name)
+        if self.change_cmd.content_html != change_cmd.content_html:
             raise utils.ValidationError(
-                'The new change content_html must be equal to %s' %
-                self.change.content_html)
-        if self.change.language_code != change.language_code:
+                'The new change_cmd content_html must be equal to %s' %
+                self.change_cmd.content_html)
+        if self.change_cmd.language_code != change_cmd.language_code:
             raise utils.ValidationError(
                 'The language code must be equal to %s' %
-                self.change.language_code)
+                self.change_cmd.language_code)
 
     def pre_accept_validate(self) -> None:
         """Performs referential validation. This function needs to be called
@@ -743,35 +745,47 @@ class SuggestionTranslateContent(BaseSuggestion):
         """
         self.validate()
         exploration = exp_fetchers.get_exploration_by_id(self.target_id)
-        if self.change.state_name not in exploration.states:
+        if self.change_cmd.state_name not in exploration.states:
             raise utils.ValidationError(
-                'Expected %s to be a valid state name' % self.change.state_name)
+                'Expected %s to be a valid state name'
+                % self.change_cmd.state_name)
 
-    def accept(self, commit_message: str) -> None:
-        """Accepts the suggestion.
+    def accept(self, unused_commit_message: str) -> None:
+        """Accepts the suggestion."""
+        translated_content = translation_domain.TranslatedContent(
+            self.change_cmd.translation_html,
+            translation_domain.TranslatableContentFormat(
+                self.change_cmd.data_format),
+            needs_update=False
+        )
 
-        Args:
-            commit_message: str. The commit message.
-        """
+        translation_services.add_new_translation(
+            feconf.TranslatableEntityType.EXPLORATION,
+            self.target_id,
+            self.target_version_at_submission,
+            self.language_code,
+            self.change_cmd.content_id,
+            translated_content)
+
+        (
+            opportunity_services.
+            update_translation_opportunity_with_accepted_suggestion(
+                self.target_id, self.language_code)
+        )
+
         # If the translation is for a set of strings, we don't want to process
         # the HTML strings for images.
         # Before calling this accept method we are already checking if user
         # with 'final_reviewer_id' exists or not.
         assert self.final_reviewer_id is not None
         if (
-                hasattr(self.change, 'data_format') and
-                state_domain.WrittenTranslation.is_data_format_list(
-                    self.change.data_format)
+            hasattr(self.change_cmd, 'data_format') and
+            translation_domain.TranslatableContentFormat.is_data_format_list(
+                self.change_cmd.data_format)
         ):
-            exp_services.update_exploration(
-                self.final_reviewer_id, self.target_id, [self.change],
-                commit_message, is_suggestion=True)
             return
 
         self._copy_new_images_to_target_entity_storage()
-        exp_services.update_exploration(
-            self.final_reviewer_id, self.target_id, [self.change],
-            commit_message, is_suggestion=True)
 
     def get_all_html_content_strings(self) -> List[str]:
         """Gets all html content strings used in this suggestion.
@@ -780,14 +794,14 @@ class SuggestionTranslateContent(BaseSuggestion):
             list(str). The list of html content strings.
         """
         content_strings = []
-        if isinstance(self.change.translation_html, list):
-            content_strings.extend(self.change.translation_html)
+        if isinstance(self.change_cmd.translation_html, list):
+            content_strings.extend(self.change_cmd.translation_html)
         else:
-            content_strings.append(self.change.translation_html)
-        if isinstance(self.change.content_html, list):
-            content_strings.extend(self.change.content_html)
+            content_strings.append(self.change_cmd.translation_html)
+        if isinstance(self.change_cmd.content_html, list):
+            content_strings.extend(self.change_cmd.content_html)
         else:
-            content_strings.append(self.change.content_html)
+            content_strings.append(self.change_cmd.content_html)
         return content_strings
 
     def get_target_entity_html_strings(self) -> List[str]:
@@ -798,22 +812,22 @@ class SuggestionTranslateContent(BaseSuggestion):
             list(str). The list of html content strings from target entity used
             in the suggestion.
         """
-        return [self.change.content_html]
+        return [self.change_cmd.content_html]
 
     def convert_html_in_suggestion_change(
         self, conversion_fn: Callable[[str], str]
     ) -> None:
-        """Checks for HTML fields in a suggestion change and converts it
+        """Checks for HTML fields in a suggestion change_cmd and converts it
         according to the conversion function.
 
         Args:
             conversion_fn: function. The function to be used for converting the
                 HTML.
         """
-        self.change.content_html = (
-            conversion_fn(self.change.content_html))
-        self.change.translation_html = (
-            conversion_fn(self.change.translation_html))
+        self.change_cmd.content_html = (
+            conversion_fn(self.change_cmd.content_html))
+        self.change_cmd.translation_html = (
+            conversion_fn(self.change_cmd.translation_html))
 
 
 class SuggestionAddQuestion(BaseSuggestion):
@@ -849,11 +863,12 @@ class SuggestionAddQuestion(BaseSuggestion):
         status: str,
         author_id: str,
         final_reviewer_id: Optional[str],
-        change: Mapping[str, change_domain.AcceptableChangeDictTypes],
+        change_cmd: Mapping[str, change_domain.AcceptableChangeDictTypes],
         score_category: str,
         language_code: str,
         edited_by_reviewer: bool,
-        last_updated: Optional[datetime.datetime] = None
+        last_updated: datetime.datetime,
+        created_on: datetime.datetime
     ) -> None:
         """Initializes an object of type SuggestionAddQuestion
         corresponding to the SUGGESTION_TYPE_ADD_QUESTION choice.
@@ -865,19 +880,15 @@ class SuggestionAddQuestion(BaseSuggestion):
         self.target_id = target_id
         self.target_version_at_submission = target_version_at_submission
         self.author_id = author_id
-        self.change: question_domain.CreateNewFullySpecifiedQuestionSuggestionCmd = (  # pylint: disable=line-too-long
-            question_domain.CreateNewFullySpecifiedQuestionSuggestionCmd(change)
+        self.change_cmd: question_domain.CreateNewFullySpecifiedQuestionSuggestionCmd = (  # pylint: disable=line-too-long
+            question_domain.CreateNewFullySpecifiedQuestionSuggestionCmd(
+                change_cmd
+                )
         )
         self.score_category = score_category
         self.language_code = language_code
-        # TODO(#16048): Here we use MyPy ignore because in BaseSuggestion,
-        # last_updated is defined with only datetime type but here
-        # last_updated is of Optional[datetime] type because while creating
-        # 'SuggestionAddQuestion' through create_suggestion() method, we
-        # are not providing 'last_updated' and just using None default value.
-        # So, once this suggestion_services.create_suggestion() method is
-        # fixed, we can remove both todo and MyPy ignore from here.
-        self.last_updated = last_updated  # type: ignore[assignment]
+        self.last_updated = last_updated
+        self.created_on = created_on
         self.image_context = feconf.IMAGE_CONTEXT_QUESTION_SUGGESTIONS
         self._update_change_to_latest_state_schema_version()
         self.edited_by_reviewer = edited_by_reviewer
@@ -891,7 +902,8 @@ class SuggestionAddQuestion(BaseSuggestion):
             Exception. The state_schema_version of suggestion cannot be
                 processed.
         """
-        question_dict: question_domain.QuestionDict = self.change.question_dict
+        question_dict: question_domain.QuestionDict = (
+            self.change_cmd.question_dict)
 
         state_schema_version = question_dict[
             'question_state_data_schema_version']
@@ -914,9 +926,9 @@ class SuggestionAddQuestion(BaseSuggestion):
                 versioned_question_state, state_schema_version)
             state_schema_version += 1
 
-        self.change.question_dict['question_state_data'] = (
+        self.change_cmd.question_dict['question_state_data'] = (
             versioned_question_state['state'])
-        self.change.question_dict['question_state_data_schema_version'] = (
+        self.change_cmd.question_dict['question_state_data_schema_version'] = (
             state_schema_version)
 
     def validate(self) -> None:
@@ -935,25 +947,27 @@ class SuggestionAddQuestion(BaseSuggestion):
                     suggestion_models.SCORE_TYPE_QUESTION,
                     self.get_score_type()))
         if not isinstance(
-                self.change, question_domain.QuestionSuggestionChange):
+                self.change_cmd, question_domain.QuestionSuggestionChange):
             raise utils.ValidationError(
-                'Expected change to be an instance of QuestionSuggestionChange')
+                'Expected change_cmd to be an instance '
+                'of QuestionSuggestionChange')
 
-        if not self.change.cmd:
-            raise utils.ValidationError('Expected change to contain cmd')
+        if not self.change_cmd.cmd:
+            raise utils.ValidationError('Expected change_cmd to contain cmd')
 
         if (
-                self.change.cmd !=
+                self.change_cmd.cmd !=
                 question_domain.CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION):
             raise utils.ValidationError('Expected cmd to be %s, obtained %s' % (
                 question_domain.CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION,
-                self.change.cmd))
+                self.change_cmd.cmd))
 
-        if not self.change.question_dict:
+        if not self.change_cmd.question_dict:
             raise utils.ValidationError(
-                'Expected change to contain question_dict')
+                'Expected change_cmd to contain question_dict')
 
-        question_dict: question_domain.QuestionDict = self.change.question_dict
+        question_dict: question_domain.QuestionDict = (
+            self.change_cmd.question_dict)
 
         if self.language_code != constants.DEFAULT_LANGUAGE_CODE:
             raise utils.ValidationError(
@@ -967,15 +981,16 @@ class SuggestionAddQuestion(BaseSuggestion):
                     question_dict['language_code'],
                     self.language_code))
 
-        if not self.change.skill_difficulty:
+        if not self.change_cmd.skill_difficulty:
             raise utils.ValidationError(
-                'Expected change to contain skill_difficulty')
+                'Expected change_cmd to contain skill_difficulty')
 
         skill_difficulties = list(
             constants.SKILL_DIFFICULTY_LABEL_TO_FLOAT.values())
         if self._get_skill_difficulty() not in skill_difficulties:
             raise utils.ValidationError(
-                'Expected change skill_difficulty to be one of %s, found %s '
+                'Expected change_cmd skill_difficulty'
+                ' to be one of %s, found %s '
                 % (skill_difficulties, self._get_skill_difficulty()))
 
         # Here we use MyPy ignore because here we are building Question
@@ -983,19 +998,21 @@ class SuggestionAddQuestion(BaseSuggestion):
         # provided as None which causes MyPy to throw 'invalid argument
         # type' error. Thus, to avoid the error, we used ignore here.
         question = question_domain.Question(
-            None,  # type: ignore[arg-type]
+            None, # type: ignore[arg-type]
             state_domain.State.from_dict(
-                question_dict['question_state_data']
+                self.change_cmd.question_dict['question_state_data']
             ),
-            question_dict['question_state_data_schema_version'],
-            question_dict['language_code'],
+            self.change_cmd.question_dict['question_state_data_schema_version'],
+            self.change_cmd.question_dict['language_code'],
             # Here we use MyPy ignore because here we are building Question
             # domain object only for validation purpose, so 'version' is
             # provided as None which causes MyPy to throw 'invalid argument
             # type' error. Thus, to avoid the error, we use ignore here.
             None,  # type: ignore[arg-type]
-            question_dict['linked_skill_ids'],
-            question_dict['inapplicable_skill_misconception_ids'])
+            self.change_cmd.question_dict['linked_skill_ids'],
+            self.change_cmd.question_dict
+            ['inapplicable_skill_misconception_ids'],
+            self.change_cmd.question_dict['next_content_id_index'])
         question_state_data_schema_version = (
             question_dict['question_state_data_schema_version'])
         if question_state_data_schema_version != (
@@ -1011,13 +1028,14 @@ class SuggestionAddQuestion(BaseSuggestion):
         """Performs referential validation. This function needs to be called
         before accepting the suggestion.
         """
-        if self.change.skill_id is None:
-            raise utils.ValidationError('Expected change to contain skill_id')
+        if self.change_cmd.skill_id is None:
+            raise utils.ValidationError(
+                'Expected change_cmd to contain skill_id')
         self.validate()
 
-        skill_domain.Skill.require_valid_skill_id(self.change.skill_id)
+        skill_domain.Skill.require_valid_skill_id(self.change_cmd.skill_id)
         skill = skill_fetchers.get_skill_by_id(
-            self.change.skill_id, strict=False)
+            self.change_cmd.skill_id, strict=False)
         if skill is None:
             raise utils.ValidationError(
                 'The skill with the given id doesn\'t exist.')
@@ -1030,11 +1048,12 @@ class SuggestionAddQuestion(BaseSuggestion):
                 consistency with the existing suggestions. As a default commit
                 message is used in the add_question function, the arg is unused.
         """
-        question_dict: question_domain.QuestionDict = self.change.question_dict
+        question_dict: question_domain.QuestionDict = (
+            self.change_cmd.question_dict)
         question_dict['version'] = 1
         question_dict['id'] = (
             question_services.get_new_question_id())
-        question_dict['linked_skill_ids'] = [self.change.skill_id]
+        question_dict['linked_skill_ids'] = [self.change_cmd.skill_id]
         question = question_domain.Question.from_dict(question_dict)
         question.validate()
 
@@ -1067,21 +1086,21 @@ class SuggestionAddQuestion(BaseSuggestion):
         question_services.add_question(self.author_id, question)
 
         skill = skill_fetchers.get_skill_by_id(
-            self.change.skill_id, strict=False)
+            self.change_cmd.skill_id, strict=False)
         if skill is None:
             raise utils.ValidationError(
                 'The skill with the given id doesn\'t exist.')
         question_services.create_new_question_skill_link(
-            self.author_id, question_dict['id'], self.change.skill_id,
+            self.author_id, question_dict['id'], self.change_cmd.skill_id,
             self._get_skill_difficulty())
 
     def populate_old_value_of_change(self) -> None:
-        """Populates old value of the change."""
+        """Populates old value of the change_cmd."""
         pass
 
     def pre_update_validate(
         self,
-        change: Union[
+        change_cmd: Union[
             question_domain.CreateNewFullySpecifiedQuestionSuggestionCmd,
             question_domain.CreateNewFullySpecifiedQuestionCmd
         ]
@@ -1090,29 +1109,29 @@ class SuggestionAddQuestion(BaseSuggestion):
         before updating the suggestion.
 
         Args:
-            change: QuestionChange. The new change.
+            change_cmd: QuestionChange. The new change_cmd.
 
         Raises:
-            ValidationError. Invalid new change.
+            ValidationError. Invalid new change_cmd.
         """
-        if self.change.cmd != change.cmd:
+        if self.change_cmd.cmd != change_cmd.cmd:
             raise utils.ValidationError(
-                'The new change cmd must be equal to %s' %
-                self.change.cmd)
-        if self.change.skill_id != change.skill_id:
+                'The new change_cmd cmd must be equal to %s' %
+                self.change_cmd.cmd)
+        if self.change_cmd.skill_id != change_cmd.skill_id:
             raise utils.ValidationError(
-                'The new change skill_id must be equal to %s' %
-                self.change.skill_id)
+                'The new change_cmd skill_id must be equal to %s' %
+                self.change_cmd.skill_id)
 
-        if (self.change.skill_difficulty == change.skill_difficulty) and (
-                self.change.question_dict == change.question_dict):
+        if ((self.change_cmd.skill_difficulty == change_cmd.skill_difficulty)
+            and (self.change_cmd.question_dict == change_cmd.question_dict)):
             raise utils.ValidationError(
                 'At least one of the new skill_difficulty or question_dict '
                 'should be changed.')
 
     def _get_skill_difficulty(self) -> float:
         """Returns the suggestion's skill difficulty."""
-        return self.change.skill_difficulty
+        return self.change_cmd.skill_difficulty
 
     def get_all_html_content_strings(self) -> List[str]:
         """Gets all html content strings used in this suggestion.
@@ -1120,7 +1139,8 @@ class SuggestionAddQuestion(BaseSuggestion):
         Returns:
             list(str). The list of html content strings.
         """
-        question_dict: question_domain.QuestionDict = self.change.question_dict
+        question_dict: question_domain.QuestionDict = (
+            self.change_cmd.question_dict)
         state_object = (
             state_domain.State.from_dict(
                 question_dict['question_state_data']))
@@ -1136,14 +1156,15 @@ class SuggestionAddQuestion(BaseSuggestion):
     def convert_html_in_suggestion_change(
         self, conversion_fn: Callable[[str], str]
     ) -> None:
-        """Checks for HTML fields in the suggestion change and converts it
+        """Checks for HTML fields in the suggestion change_cmd and converts it
         according to the conversion function.
 
         Args:
             conversion_fn: function. The function to be used for converting the
                 HTML.
         """
-        question_dict: question_domain.QuestionDict = self.change.question_dict
+        question_dict: question_domain.QuestionDict = (
+            self.change_cmd.question_dict)
         question_dict['question_state_data'] = (
             state_domain.State.convert_html_fields_in_state(
                 question_dict['question_state_data'],
@@ -1316,7 +1337,7 @@ class CommunityContributionStats:
         suggestions in a given language need more reviewers if the number of
         translation suggestions in that language divided by the number of
         translation reviewers in that language is greater than
-        config_domain.MAX_NUMBER_OF_SUGGESTIONS_PER_REVIEWER.
+        ParamName.MAX_NUMBER_OF_SUGGESTIONS_PER_REVIEWER.
 
         Args:
             lang_code: str. The language code of the translation
@@ -1336,10 +1357,18 @@ class CommunityContributionStats:
             self.translation_reviewer_counts_by_lang_code[lang_code])
         number_of_suggestions = (
             self.translation_suggestion_counts_by_lang_code[lang_code])
+        max_number_of_suggestions_per_reviewer = (
+            platform_parameter_services.get_platform_parameter_value(
+                platform_parameter_list.ParamName.
+                MAX_NUMBER_OF_SUGGESTIONS_PER_REVIEWER.value
+            )
+        )
+        assert isinstance(max_number_of_suggestions_per_reviewer, int)
         return bool(
             number_of_suggestions > (
-                config_domain.MAX_NUMBER_OF_SUGGESTIONS_PER_REVIEWER.value * (
-                    number_of_reviewers)))
+                max_number_of_suggestions_per_reviewer * number_of_reviewers
+            )
+        )
 
     def get_translation_language_codes_that_need_reviewers(self) -> Set[str]:
         """Returns the language codes where more reviewers are needed to review
@@ -1347,7 +1376,7 @@ class CommunityContributionStats:
         given language need more reviewers if the number of translation
         suggestions in that language divided by the number of translation
         reviewers in that language is greater than
-        config_domain.MAX_NUMBER_OF_SUGGESTIONS_PER_REVIEWER.
+        ParamName.MAX_NUMBER_OF_SUGGESTIONS_PER_REVIEWER.
 
         Returns:
             set. A set of of the language codes where more translation reviewers
@@ -1364,7 +1393,7 @@ class CommunityContributionStats:
         """Returns whether or not more reviewers are needed to review question
         suggestions. Question suggestions need more reviewers if the number of
         question suggestions divided by the number of question reviewers is
-        greater than config_domain.MAX_NUMBER_OF_SUGGESTIONS_PER_REVIEWER.
+        greater than ParamName.MAX_NUMBER_OF_SUGGESTIONS_PER_REVIEWER.
 
         Returns:
             bool. Whether or not more reviewers are needed to review
@@ -1376,18 +1405,28 @@ class CommunityContributionStats:
         if self.question_reviewer_count == 0:
             return True
 
+        max_number_of_suggestions_per_reviewer = (
+            platform_parameter_services.get_platform_parameter_value(
+                platform_parameter_list.ParamName.
+                MAX_NUMBER_OF_SUGGESTIONS_PER_REVIEWER.value
+            )
+        )
+        assert isinstance(max_number_of_suggestions_per_reviewer, int)
+
         return bool(
             self.question_suggestion_count > (
-                config_domain.MAX_NUMBER_OF_SUGGESTIONS_PER_REVIEWER.value * (
-                    self.question_reviewer_count)))
+                max_number_of_suggestions_per_reviewer *
+                self.question_reviewer_count
+            )
+        )
 
 
 class TranslationContributionStatsDict(TypedDict):
     """Dictionary representing the TranslationContributionStats object."""
 
-    language_code: Optional[str]
-    contributor_user_id: Optional[str]
-    topic_id: Optional[str]
+    language_code: str
+    contributor_user_id: str
+    topic_id: str
     submitted_translations_count: int
     submitted_translation_word_count: int
     accepted_translations_count: int
@@ -1403,8 +1442,8 @@ class TranslationContributionStatsFrontendDict(TypedDict):
     object for frontend.
     """
 
-    language_code: Optional[str]
-    topic_id: Optional[str]
+    language_code: str
+    topic_id: str
     submitted_translations_count: int
     submitted_translation_word_count: int
     accepted_translations_count: int
@@ -1421,9 +1460,9 @@ class TranslationContributionStats:
 
     def __init__(
         self,
-        language_code: Optional[str],
-        contributor_user_id: Optional[str],
-        topic_id: Optional[str],
+        language_code: str,
+        contributor_user_id: str,
+        topic_id: str,
         submitted_translations_count: int,
         submitted_translation_word_count: int,
         accepted_translations_count: int,
@@ -1446,32 +1485,6 @@ class TranslationContributionStats:
         self.rejected_translations_count = rejected_translations_count
         self.rejected_translation_word_count = rejected_translation_word_count
         self.contribution_dates = contribution_dates
-
-    @classmethod
-    def create_default(
-        cls,
-        language_code: Optional[str] = None,
-        contributor_user_id: Optional[str] = None,
-        topic_id: Optional[str] = None
-    ) -> TranslationContributionStats:
-        """Create default translation contribution stats.
-
-        Args:
-            language_code: str. The language code for which are these stats
-                generated.
-            contributor_user_id: str. User ID of the contributor to which
-                these stats belong.
-            topic_id: str. ID of the topic for which were
-                the translations created.
-
-        Returns:
-            TranslationContributionStats. Default translation contribution
-            stats.
-        """
-        return cls(
-            language_code, contributor_user_id, topic_id,
-            0, 0, 0, 0, 0, 0, 0, set()
-        )
 
     def to_dict(self) -> TranslationContributionStatsDict:
         """Returns a dict representation of a TranslationContributionStats
@@ -1823,6 +1836,52 @@ class QuestionReviewStats:
         }
 
 
+class ContributorCertificateInfoDict(TypedDict):
+    """Dictionary representing the ContributorCertificateInfo object."""
+
+    from_date: str
+    to_date: str
+    team_lead: str
+    contribution_hours: str
+    language: Optional[str]
+
+
+class ContributorCertificateInfo:
+    """Encapsulates key information that is used to generate contributor
+    certificate.
+    """
+
+    def __init__(
+        self,
+        from_date: str,
+        to_date: str,
+        team_lead: str,
+        contribution_hours: str,
+        language: Optional[str]
+    ) -> None:
+        self.from_date = from_date
+        self.to_date = to_date
+        self.team_lead = team_lead
+        self.contribution_hours = contribution_hours
+        self.language = language
+
+    def to_dict(self) -> ContributorCertificateInfoDict:
+        """Returns a dict representation of a ContributorCertificateInfo
+        domain object.
+
+        Returns:
+            dict. A dict representation of a ContributorCertificateInfo
+            domain object.
+        """
+        return {
+            'from_date': self.from_date,
+            'to_date': self.to_date,
+            'team_lead': self.team_lead,
+            'contribution_hours': self.contribution_hours,
+            'language': self.language
+        }
+
+
 class ContributorMilestoneEmailInfo:
     """Encapsulates key information that is used to create the email content for
     notifying contributors about milestones they achieved.
@@ -1940,3 +1999,339 @@ class ReviewableSuggestionEmailInfo:
         self.language_code = language_code
         self.suggestion_content = suggestion_content
         self.submission_datetime = submission_datetime
+
+
+class TranslationSubmitterTotalContributionStatsFrontendDict(TypedDict):
+    """Dictionary representing the TranslationSubmitterTotalContributionStats
+    object for frontend.
+    """
+
+    language_code: str
+    contributor_name: str
+    topic_names: List[str]
+    recent_performance: int
+    overall_accuracy: float
+    submitted_translations_count: int
+    submitted_translation_word_count: int
+    accepted_translations_count: int
+    accepted_translations_without_reviewer_edits_count: int
+    accepted_translation_word_count: int
+    rejected_translations_count: int
+    rejected_translation_word_count: int
+    first_contribution_date: str
+    last_contributed_in_days: int
+
+
+class TranslationSubmitterTotalContributionStats:
+    """Domain object for the TranslationSubmitterTotalContributionStatsModel."""
+
+    def __init__(
+        self,
+        language_code: str,
+        contributor_id: str,
+        topic_ids_with_translation_submissions: List[str],
+        recent_review_outcomes: List[str],
+        recent_performance: int,
+        overall_accuracy: float,
+        submitted_translations_count: int,
+        submitted_translation_word_count: int,
+        accepted_translations_count: int,
+        accepted_translations_without_reviewer_edits_count: int,
+        accepted_translation_word_count: int,
+        rejected_translations_count: int,
+        rejected_translation_word_count: int,
+        first_contribution_date: datetime.date,
+        last_contribution_date: datetime.date
+    ) -> None:
+        self.language_code = language_code
+        self.contributor_id = contributor_id
+        self.topic_ids_with_translation_submissions = (
+            topic_ids_with_translation_submissions)
+        self.recent_review_outcomes = recent_review_outcomes
+        self.recent_performance = recent_performance
+        self.overall_accuracy = overall_accuracy
+        self.submitted_translations_count = submitted_translations_count
+        self.submitted_translation_word_count = submitted_translation_word_count
+        self.accepted_translations_count = accepted_translations_count
+        self.accepted_translations_without_reviewer_edits_count = (
+            accepted_translations_without_reviewer_edits_count
+        )
+        self.accepted_translation_word_count = accepted_translation_word_count
+        self.rejected_translations_count = rejected_translations_count
+        self.rejected_translation_word_count = rejected_translation_word_count
+        self.first_contribution_date = first_contribution_date
+        self.last_contribution_date = last_contribution_date
+
+    def to_frontend_dict(
+            self) -> TranslationSubmitterTotalContributionStatsFrontendDict:
+        """Returns a dict representation of a
+        TranslationSubmitterTotalContributionStats domain object for frontend.
+
+        Returns:
+            dict. The dict representation.
+        """
+        topic_summaries = topic_fetchers.get_multi_topic_summaries(
+            self.topic_ids_with_translation_submissions)
+        topic_name_by_topic_id = []
+        for topic_summary in topic_summaries:
+            if topic_summary is not None:
+                topic_name_by_topic_id.append(topic_summary.name)
+        contributor_name = user_services.get_username(self.contributor_id)
+
+        return {
+            'language_code': self.language_code,
+            'contributor_name': contributor_name,
+            'topic_names': topic_name_by_topic_id,
+            'recent_performance': self.recent_performance,
+            'overall_accuracy': self.overall_accuracy,
+            'submitted_translations_count': self.submitted_translations_count,
+            'submitted_translation_word_count': (
+                self.submitted_translation_word_count),
+            'accepted_translations_count': self.accepted_translations_count,
+            'accepted_translations_without_reviewer_edits_count': (
+                self.accepted_translations_without_reviewer_edits_count),
+            'accepted_translation_word_count': (
+                self.accepted_translation_word_count),
+            'rejected_translations_count': self.rejected_translations_count,
+            'rejected_translation_word_count': (
+                self.rejected_translation_word_count),
+            'first_contribution_date': (
+                self.first_contribution_date.strftime('%b %d, %Y')),
+            'last_contributed_in_days': utils.get_number_of_days_since_date(
+                self.last_contribution_date)
+        }
+
+
+class TranslationReviewerTotalContributionStatsFrontendDict(TypedDict):
+    """Dictionary representing the TranslationReviewerTotalContributionStats
+    object for frontend.
+    """
+
+    language_code: str
+    contributor_name: str
+    topic_names: List[str]
+    reviewed_translations_count: int
+    accepted_translations_count: int
+    accepted_translations_with_reviewer_edits_count: int
+    accepted_translation_word_count: int
+    rejected_translations_count: int
+    first_contribution_date: str
+    last_contributed_in_days: int
+
+
+class TranslationReviewerTotalContributionStats:
+    """Domain object for the TranslationReviewerTotalContributionStats."""
+
+    def __init__(
+        self,
+        language_code: str,
+        contributor_id: str,
+        topic_ids_with_translation_reviews: List[str],
+        reviewed_translations_count: int,
+        accepted_translations_count: int,
+        accepted_translations_with_reviewer_edits_count: int,
+        accepted_translation_word_count: int,
+        rejected_translations_count: int,
+        first_contribution_date: datetime.date,
+        last_contribution_date: datetime.date
+    ) -> None:
+        self.language_code = language_code
+        self.contributor_id = contributor_id
+        self.topic_ids_with_translation_reviews = (
+            topic_ids_with_translation_reviews)
+        self.reviewed_translations_count = reviewed_translations_count
+        self.accepted_translations_count = accepted_translations_count
+        self.accepted_translations_with_reviewer_edits_count = (
+            accepted_translations_with_reviewer_edits_count
+        )
+        self.accepted_translation_word_count = accepted_translation_word_count
+        self.rejected_translations_count = rejected_translations_count
+        self.first_contribution_date = first_contribution_date
+        self.last_contribution_date = last_contribution_date
+
+    def to_frontend_dict(
+            self) -> TranslationReviewerTotalContributionStatsFrontendDict:
+        """Returns a dict representation of a
+        TranslationReviewerTotalContributionStats domain object for frontend.
+
+        Returns:
+            dict. The dict representation.
+        """
+        topic_summaries = topic_fetchers.get_multi_topic_summaries(
+            self.topic_ids_with_translation_reviews)
+        topic_name_by_topic_id = []
+        for topic_summary in topic_summaries:
+            if topic_summary is not None:
+                topic_name_by_topic_id.append(topic_summary.name)
+        contributor_name = user_services.get_username(self.contributor_id)
+
+        return {
+            'language_code': self.language_code,
+            'contributor_name': contributor_name,
+            'topic_names': topic_name_by_topic_id,
+            'reviewed_translations_count': self.reviewed_translations_count,
+            'accepted_translations_count': self.accepted_translations_count,
+            'accepted_translations_with_reviewer_edits_count': (
+                self.accepted_translations_with_reviewer_edits_count),
+            'accepted_translation_word_count': (
+                self.accepted_translation_word_count),
+            'rejected_translations_count': self.rejected_translations_count,
+            'first_contribution_date': (
+                self.first_contribution_date.strftime('%b %d, %Y')),
+            'last_contributed_in_days': utils.get_number_of_days_since_date(
+                self.last_contribution_date)
+        }
+
+
+class QuestionSubmitterTotalContributionStatsFrontendDict(TypedDict):
+    """Dictionary representing the QuestionSubmitterTotalContributionStats
+    object for frontend.
+    """
+
+    contributor_name: str
+    topic_names: List[str]
+    recent_performance: int
+    overall_accuracy: float
+    submitted_questions_count: int
+    accepted_questions_count: int
+    accepted_questions_without_reviewer_edits_count: int
+    rejected_questions_count: int
+    first_contribution_date: str
+    last_contributed_in_days: int
+
+
+class QuestionSubmitterTotalContributionStats:
+    """Domain object for the QuestionSubmitterTotalContributionStats."""
+
+    def __init__(
+        self,
+        contributor_id: str,
+        topic_ids_with_question_submissions: List[str],
+        recent_review_outcomes: List[str],
+        recent_performance: int,
+        overall_accuracy: float,
+        submitted_questions_count: int,
+        accepted_questions_count: int,
+        accepted_questions_without_reviewer_edits_count: int,
+        rejected_questions_count: int,
+        first_contribution_date: datetime.date,
+        last_contribution_date: datetime.date
+    ) -> None:
+        self.contributor_id = contributor_id
+        self.topic_ids_with_question_submissions = (
+            topic_ids_with_question_submissions)
+        self.recent_review_outcomes = recent_review_outcomes
+        self.recent_performance = recent_performance
+        self.overall_accuracy = overall_accuracy
+        self.submitted_questions_count = submitted_questions_count
+        self.accepted_questions_count = accepted_questions_count
+        self.accepted_questions_without_reviewer_edits_count = (
+            accepted_questions_without_reviewer_edits_count
+        )
+        self.rejected_questions_count = rejected_questions_count
+        self.first_contribution_date = first_contribution_date
+        self.last_contribution_date = last_contribution_date
+
+    def to_frontend_dict(
+            self) -> QuestionSubmitterTotalContributionStatsFrontendDict:
+        """Returns a dict representation of a
+        QuestionSubmitterTotalContributionStats domain object for frontend.
+
+        Returns:
+            dict. The dict representation.
+        """
+        topic_summaries = topic_fetchers.get_multi_topic_summaries(
+            self.topic_ids_with_question_submissions)
+        topic_name_by_topic_id = []
+        for topic_summary in topic_summaries:
+            if topic_summary is not None:
+                topic_name_by_topic_id.append(topic_summary.name)
+        contributor_name = user_services.get_username(self.contributor_id)
+
+        return {
+            'contributor_name': contributor_name,
+            'topic_names': topic_name_by_topic_id,
+            'recent_performance': self.recent_performance,
+            'overall_accuracy': self.overall_accuracy,
+            'submitted_questions_count': self.submitted_questions_count,
+            'accepted_questions_count': self.accepted_questions_count,
+            'accepted_questions_without_reviewer_edits_count': (
+                self.accepted_questions_without_reviewer_edits_count),
+            'rejected_questions_count': self.rejected_questions_count,
+            'first_contribution_date': (
+                self.first_contribution_date.strftime('%b %d, %Y')),
+            'last_contributed_in_days': utils.get_number_of_days_since_date(
+                self.last_contribution_date)
+        }
+
+
+class QuestionReviewerTotalContributionStatsFrontendDict(TypedDict):
+    """Dictionary representing the QuestionReviewerTotalContributionStats
+    object for frontend.
+    """
+
+    contributor_name: str
+    topic_names: List[str]
+    reviewed_questions_count: int
+    accepted_questions_count: int
+    accepted_questions_with_reviewer_edits_count: int
+    rejected_questions_count: int
+    first_contribution_date: str
+    last_contributed_in_days: int
+
+
+class QuestionReviewerTotalContributionStats:
+    """Domain object for the QuestionReviewerTotalContributionStats."""
+
+    def __init__(
+        self,
+        contributor_id: str,
+        topic_ids_with_question_reviews: List[str],
+        reviewed_questions_count: int,
+        accepted_questions_count: int,
+        accepted_questions_with_reviewer_edits_count: int,
+        rejected_questions_count: int,
+        first_contribution_date: datetime.date,
+        last_contribution_date: datetime.date
+    ) -> None:
+        self.contributor_id = contributor_id
+        self.topic_ids_with_question_reviews = (
+            topic_ids_with_question_reviews)
+        self.reviewed_questions_count = reviewed_questions_count
+        self.accepted_questions_count = accepted_questions_count
+        self.accepted_questions_with_reviewer_edits_count = (
+            accepted_questions_with_reviewer_edits_count
+        )
+        self.rejected_questions_count = rejected_questions_count
+        self.first_contribution_date = first_contribution_date
+        self.last_contribution_date = last_contribution_date
+
+    def to_frontend_dict(
+            self) -> QuestionReviewerTotalContributionStatsFrontendDict:
+        """Returns a dict representation of a
+        questionReviewerTotalContributionStats domain object for frontend.
+
+        Returns:
+            dict. The dict representation.
+        """
+        topic_summaries = topic_fetchers.get_multi_topic_summaries(
+            self.topic_ids_with_question_reviews)
+        topic_name_by_topic_id = []
+        for topic_summary in topic_summaries:
+            if topic_summary is not None:
+                topic_name_by_topic_id.append(topic_summary.name)
+        contributor_name = user_services.get_username(self.contributor_id)
+
+        return {
+            'contributor_name': contributor_name,
+            'topic_names': topic_name_by_topic_id,
+            'reviewed_questions_count': self.reviewed_questions_count,
+            'accepted_questions_count': self.accepted_questions_count,
+            'accepted_questions_with_reviewer_edits_count': (
+                self.accepted_questions_with_reviewer_edits_count),
+            'rejected_questions_count': self.rejected_questions_count,
+            'first_contribution_date': (
+                self.first_contribution_date.strftime('%b %d, %Y')),
+            'last_contributed_in_days': utils.get_number_of_days_since_date(
+                self.last_contribution_date)
+        }

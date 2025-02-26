@@ -17,18 +17,16 @@
  * changes to parameters.
  */
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { ExplorationPropertyService } from 'pages/exploration-editor-page/services/exploration-property.service';
-import { AlertsService } from 'services/alerts.service';
-import { ChangeListService } from './change-list.service';
-import { LoggerService } from 'services/contextual/logger.service';
+import {Injectable} from '@angular/core';
+import {ExplorationPropertyService} from 'pages/exploration-editor-page/services/exploration-property.service';
+import {AlertsService} from 'services/alerts.service';
+import {ChangeListService} from './change-list.service';
+import {LoggerService} from 'services/contextual/logger.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
-export class ExplorationParamChangesService extends
-  ExplorationPropertyService {
+export class ExplorationParamChangesService extends ExplorationPropertyService {
   propertyName: string = 'param_changes';
 
   constructor(
@@ -39,6 +37,3 @@ export class ExplorationParamChangesService extends
     super(alertsService, changeListService, loggerService);
   }
 }
-
-angular.module('oppia').factory('ExplorationParamChangesService',
-  downgradeInjectable(ExplorationParamChangesService));

@@ -15,18 +15,16 @@
 /**
  * @fileoverview Service to handle the updating of a blog post.
  */
-import { Injectable } from '@angular/core';
-import { BlogPostData } from 'domain/blog/blog-post.model';
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { ImagesData } from 'services/image-local-storage.service';
+import {Injectable} from '@angular/core';
+import {BlogPostData} from 'domain/blog/blog-post.model';
+import {ImagesData} from 'services/image-local-storage.service';
 
 export interface BlogPostChangeDict {
-  'title'?: string;
-  'thumbnail_filename'?: string;
-  'content'?: string;
-  'tags'?: string[];
+  title?: string;
+  thumbnail_filename?: string;
+  content?: string;
+  tags?: string[];
 }
-
 
 @Injectable({
   providedIn: 'root',
@@ -63,7 +61,3 @@ export class BlogPostUpdateService {
     this.changeDict = {};
   }
 }
-
-angular.module('oppia').factory(
-  'BlogPostUpdateService',
-  downgradeInjectable(BlogPostUpdateService));

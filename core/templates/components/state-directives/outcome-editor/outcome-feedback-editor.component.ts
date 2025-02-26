@@ -16,10 +16,16 @@
  * @fileoverview Component for the outcome feedback editor.
  */
 
-import { ChangeDetectorRef, Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { Outcome } from 'domain/exploration/OutcomeObjectFactory';
-import { ContextService } from 'services/context.service';
+import {
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  Input,
+  OnInit,
+  Output,
+} from '@angular/core';
+import {Outcome} from 'domain/exploration/OutcomeObjectFactory';
+import {ContextService} from 'services/context.service';
 
 @Component({
   selector: 'oppia-outcome-feedback-editor',
@@ -34,15 +40,16 @@ export class OutcomeFeedbackEditorComponent implements OnInit {
   OUTCOME_FEEDBACK_SCHEMA!: object;
   constructor(
     private readonly changeDetectorRef: ChangeDetectorRef,
-    private contextService: ContextService) {}
+    private contextService: ContextService
+  ) {}
 
   ngOnInit(): void {
     this.OUTCOME_FEEDBACK_SCHEMA = {
       type: 'html',
       ui_config: {
-        hide_complex_extensions: (
-          this.contextService.getEntityType() === 'question')
-      }
+        hide_complex_extensions:
+          this.contextService.getEntityType() === 'question',
+      },
     };
   }
 
@@ -54,6 +61,3 @@ export class OutcomeFeedbackEditorComponent implements OnInit {
     }
   }
 }
-angular.module('oppia').directive(
-  'oppiaOutcomeFeedbackEditor', downgradeComponent(
-    {component: OutcomeFeedbackEditorComponent}));

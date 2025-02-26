@@ -19,21 +19,27 @@
 // Every editor directive should implement an alwaysEditable option. There
 // may be additional customization options for the editor that should be passed
 // in via initArgs.
-import { ChangeDetectorRef, Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
+import {
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  Input,
+  OnInit,
+  Output,
+} from '@angular/core';
 
 interface PositiveIntSchema {
   type: string;
   validators: {
     id: string;
-    'min_value'?: number;
+    min_value?: number;
   }[];
 }
 
 @Component({
   selector: 'positive-int-editor',
   templateUrl: './positive-int-editor.component.html',
-  styleUrls: []
+  styleUrls: [],
 })
 export class PositiveIntEditorComponent implements OnInit {
   // These properties are initialized using Angular lifecycle hooks
@@ -44,12 +50,15 @@ export class PositiveIntEditorComponent implements OnInit {
   @Output() valueChanged = new EventEmitter();
   SCHEMA: PositiveIntSchema = {
     type: 'int',
-    validators: [{
-      id: 'is_at_least',
-      min_value: 1
-    }, {
-      id: 'is_integer'
-    }]
+    validators: [
+      {
+        id: 'is_at_least',
+        min_value: 1,
+      },
+      {
+        id: 'is_integer',
+      },
+    ],
   };
 
   constructor(private changeDetectorRef: ChangeDetectorRef) {}
@@ -73,6 +82,3 @@ export class PositiveIntEditorComponent implements OnInit {
     this.changeDetectorRef.detectChanges();
   }
 }
-angular.module('oppia').directive('positiveIntEditor', downgradeComponent({
-  component: PositiveIntEditorComponent
-}) as angular.IDirectiveFactory);

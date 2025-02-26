@@ -220,7 +220,7 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
     """Test the story domain object."""
 
     STORY_ID: Final = 'story_id'
-    NODE_ID_1: Final = story_domain.NODE_ID_PREFIX + '1'
+    NODE_ID_1: Final = '%s1' % story_domain.NODE_ID_PREFIX
     NODE_ID_2: Final = 'node_2'
     SKILL_ID_1: Final = 'skill_id_1'
     SKILL_ID_2: Final = 'skill_id_2'
@@ -237,6 +237,8 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             url_fragment='story-frag')
         self.story.add_node(self.NODE_ID_1, 'Node title')
         self.story.add_node(self.NODE_ID_2, 'Node title 2')
+        self.story.story_contents.nodes[0].exploration_id = 'exp 1'
+        self.story.story_contents.nodes[1].exploration_id = 'exp 2'
         self.story.update_node_destination_node_ids(
             self.NODE_ID_1, [self.NODE_ID_2])
         self.signup('user@example.com', 'user')
@@ -707,6 +709,60 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
         self.story.update_node_title('node_1', 'new title')
         self.assertEqual(self.story.story_contents.nodes[0].title, 'new title')
 
+    def test_story_node_update_status(self) -> None:
+        self.story.story_contents.nodes[0].status = 'Draft'
+        self.story.update_node_status('node_1', 'Published')
+        self.assertEqual(
+            self.story.story_contents.nodes[0].status, 'Published')
+
+    def test_story_node_update_planned_publication_date(self) -> None:
+        self.story.story_contents.nodes[0].planned_publication_date_msecs = None
+        current_time = datetime.datetime.now(datetime.timezone.utc)
+        current_time_msecs = utils.get_time_in_millisecs(current_time)
+        self.story.update_node_planned_publication_date(
+            'node_1', current_time_msecs)
+        self.assertEqual(
+            self.story.story_contents.nodes[0]. planned_publication_date_msecs,
+            current_time_msecs)
+        self.story.story_contents.nodes[0].planned_publication_date_msecs = 10
+        self._assert_validation_error(
+            'Expected planned publication date to be milliseconds, received 10',
+        )
+
+    def test_story_node_update_last_modified(self) -> None:
+        self.story.story_contents.nodes[0].last_modified_msecs = None
+        current_time = datetime.datetime.now(datetime.timezone.utc)
+        current_time_msecs = utils.get_time_in_millisecs(current_time)
+        self.story.update_node_last_modified('node_1', current_time_msecs)
+        self.assertEqual(
+            self.story.story_contents.nodes[0].last_modified_msecs,
+            current_time_msecs)
+        self.story.story_contents.nodes[0].last_modified_msecs = 10
+        self._assert_validation_error(
+            'Expected last modified to be milliseconds, received 10',
+        )
+
+    def test_story_node_update_first_publication_date(self) -> None:
+        self.story.story_contents.nodes[0].first_publication_date_msecs = None
+        current_time = datetime.datetime.now(datetime.timezone.utc)
+        current_time_msecs = utils.get_time_in_millisecs(current_time)
+        self.story.update_node_first_publication_date(
+            'node_1', current_time_msecs)
+        self.assertEqual(
+            self.story.story_contents.nodes[0].first_publication_date_msecs,
+            current_time_msecs)
+        self.story.story_contents.nodes[0].first_publication_date_msecs = 10
+        self._assert_validation_error(
+            'Expected first publication date to be milliseconds, received 10',
+        )
+
+    def test_story_node_update_unpublishing_reason(self) -> None:
+        self.story.story_contents.nodes[0].unpublishing_reason = None
+        self.story.update_node_unpublishing_reason('node_1', 'BAD CONTENT')
+        self.assertEqual(
+            self.story.story_contents.nodes[0].unpublishing_reason,
+            'BAD CONTENT')
+
     def test_node_thumbnail_bg_validation(self) -> None:
         self.story.story_contents.nodes[0].thumbnail_bg_color = '#FFFFFF'
         self._assert_validation_error(
@@ -723,6 +779,16 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
         self.story.story_contents.nodes[0].thumbnail_filename = 'test.svg'
         self._assert_validation_error(
             'Chapter thumbnail background color is not specified.')
+
+    def test_node_status_validation(self) -> None:
+        self.story.story_contents.nodes[0].status = 'Complete'
+        self._assert_validation_error(
+            'Chapter status cannot be Complete')
+
+    def test_node_unpublishing_reason_validation(self) -> None:
+        self.story.story_contents.nodes[0].unpublishing_reason = 'Outdated'
+        self._assert_validation_error(
+            'Chapter unpublishing reason cannot be Outdated')
 
     def test_nodes_validation(self) -> None:
         self.story.story_contents.initial_node_id = 'node_10'
@@ -762,7 +828,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
                 'acquired_skill_ids': [],
                 'outline': 'Outline',
                 'outline_is_finalized': False,
-                'exploration_id': 'exploration_id'
+                'exploration_id': 'exploration_id',
+                'status': None,
+                'planned_publication_date_msecs': None,
+                'last_modified_msecs': None,
+                'first_publication_date_msecs': None,
+                'unpublishing_reason': 'BAD_CONTENT'
             })
         ]
         self._assert_validation_error('Expected all destination nodes to exist')
@@ -828,6 +899,7 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
         self.story.update_node_thumbnail_bg_color('node_1', 'Red')
         self.assertEqual(
             self.story.story_contents.nodes[0].thumbnail_bg_color, 'Red')
+        self.story.update_node_thumbnail_bg_color('node_1', '#F8BF74')
 
         # TODO(#13059): Here we use MyPy ignore because after we fully type the
         # codebase we plan to get rid of the tests that intentionally test wrong
@@ -835,6 +907,65 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
         self.story.story_contents.nodes[0].thumbnail_filename = []  # type: ignore[assignment]
         self._assert_validation_error(
             'Expected thumbnail filename to be a string, received')
+        self.story.story_contents.nodes[0].thumbnail_filename = 'test.svg'
+
+        # TODO(#13059): Here we use MyPy ignore because after we fully type the
+        # codebase we plan to get rid of the tests that intentionally test wrong
+        # inputs that we can normally catch by typing.
+        self.story.story_contents.nodes[0].status = 2  # type: ignore[assignment]
+        self._assert_validation_error(
+            'Expected status to be a string, received 2')
+        self.story.story_contents.nodes[0].status = 'Draft'
+
+    def test_node_is_upcoming(self) -> None:
+        self.story.story_contents.nodes[0].status = (
+            constants.STORY_NODE_STATUS_DRAFT)
+        self.story.story_contents.nodes[0].planned_publication_date_msecs = (
+            int(datetime.datetime(2023, 1, 1).timestamp() * 1000))
+        self.story.story_contents.nodes[1].status = (
+            constants.STORY_NODE_STATUS_READY_TO_PUBLISH)
+        self.story.story_contents.nodes[1].planned_publication_date_msecs = (
+            int(datetime.datetime(2022, 12, 29).timestamp() * 1000))
+        def _mock_get_current_time_in_millisecs() -> int:
+            return 1672483686000
+
+        with self.swap(
+            utils, 'get_current_time_in_millisecs',
+            _mock_get_current_time_in_millisecs):
+            self.assertEqual(
+                self.story.story_contents.nodes[0].is_node_upcoming(), True)
+            self.assertEqual(
+                self.story.story_contents.nodes[1].is_node_upcoming(), False)
+
+    def test_node_is_behind_schedule(self) -> None:
+        self.story.story_contents.nodes[0].status = (
+            constants.STORY_NODE_STATUS_DRAFT)
+        self.story.story_contents.nodes[0].planned_publication_date_msecs = (
+            int(datetime.datetime(2023, 1, 1).timestamp() * 1000))
+        self.story.story_contents.nodes[1].status = (
+            constants.STORY_NODE_STATUS_READY_TO_PUBLISH)
+        self.story.story_contents.nodes[1].planned_publication_date_msecs = (
+            int(datetime.datetime(2022, 12, 29).timestamp() * 1000))
+        def _mock_get_current_time_in_millisecs() -> int:
+            return 1672483686000
+
+        with self.swap(
+            utils, 'get_current_time_in_millisecs',
+            _mock_get_current_time_in_millisecs):
+            self.assertEqual(
+                self.story.story_contents.nodes[0].is_node_behind_schedule(),
+                False)
+            self.assertEqual(
+                self.story.story_contents.nodes[1].is_node_behind_schedule(),
+                True)
+
+    def test_validate_non_string_unpublishing_reason(self) -> None:
+        # TODO(#13059): Here we use MyPy ignore because after we fully type the
+        # codebase we plan to get rid of the tests that intentionally test wrong
+        # inputs that we can normally catch by typing.
+        self.story.story_contents.nodes[0].unpublishing_reason = 1  # type: ignore[assignment]
+        self._assert_validation_error(
+            'Expected unpublishing reason to be string, received 1')
 
     def test_acquired_prerequisite_skill_intersection_validation(self) -> None:
         self.story.story_contents.nodes[0].prerequisite_skill_ids = [
@@ -860,7 +991,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': [],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': None,
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         node_2: story_domain.StoryNodeDict = {
             'id': 'node_2',
@@ -875,7 +1011,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': [],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': None,
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         node_3: story_domain.StoryNodeDict = {
             'id': 'node_3',
@@ -890,7 +1031,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': [],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': None,
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         self.story.story_contents.initial_node_id = 'node_2'
         self.story.story_contents.nodes = [
@@ -914,8 +1060,10 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
         calculated_list = self.story.story_contents.get_ordered_nodes()
         self.assertEqual(calculated_list, [])
 
-    def test_get_all_linked_exp_ids(self) -> None:
-        self.story.story_contents.next_node_id = 'node_5'
+    def test_update_node_exploration_id_changes_node_exploration_id(
+        self
+    ) -> None:
+        self.story.story_contents.next_node_id = 'node_3'
         node_1: story_domain.StoryNodeDict = {
             'id': 'node_1',
             'thumbnail_filename': 'image.svg',
@@ -929,7 +1077,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': [],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': 'exp_1'
+            'exploration_id': 'exp_1',
+            'status': 'Published',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': 100.0,
+            'unpublishing_reason': None
         }
         node_2: story_domain.StoryNodeDict = {
             'id': 'node_2',
@@ -944,7 +1097,285 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': [],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': 'exp_2'
+            'exploration_id': 'exp_2',
+            'status': 'Published',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': 100.0,
+            'unpublishing_reason': None
+        }
+        self.story.story_contents.initial_node_id = 'node_2'
+        self.story.story_contents.nodes = [
+            story_domain.StoryNode.from_dict(node_1),
+            story_domain.StoryNode.from_dict(node_2)
+        ]
+
+        self.story.update_node_exploration_id('node_1', 'exp_3')
+
+        self.assertEqual(
+            self.story.story_contents.get_all_linked_exp_ids(),
+            ['exp_3', 'exp_2'])
+
+    def test_update_node_exploration_id_with_same_exploration_id_does_nothing(
+        self
+    ) -> None:
+        self.story.story_contents.next_node_id = 'node_3'
+        node_1: story_domain.StoryNodeDict = {
+            'id': 'node_1',
+            'thumbnail_filename': 'image.svg',
+            'thumbnail_bg_color': constants.ALLOWED_THUMBNAIL_BG_COLORS[
+                'chapter'][0],
+            'thumbnail_size_in_bytes': 21131,
+            'title': 'Title 1',
+            'description': 'Description 1',
+            'destination_node_ids': ['node_3'],
+            'acquired_skill_ids': [],
+            'prerequisite_skill_ids': [],
+            'outline': '',
+            'outline_is_finalized': False,
+            'exploration_id': 'exp_1',
+            'status': 'Published',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': 100.0,
+            'unpublishing_reason': None
+        }
+        node_2: story_domain.StoryNodeDict = {
+            'id': 'node_2',
+            'thumbnail_filename': 'image.svg',
+            'thumbnail_bg_color': constants.ALLOWED_THUMBNAIL_BG_COLORS[
+                'chapter'][0],
+            'thumbnail_size_in_bytes': 21131,
+            'title': 'Title 2',
+            'description': 'Description 2',
+            'destination_node_ids': ['node_1'],
+            'acquired_skill_ids': [],
+            'prerequisite_skill_ids': [],
+            'outline': '',
+            'outline_is_finalized': False,
+            'exploration_id': 'exp_2',
+            'status': 'Published',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': 100.0,
+            'unpublishing_reason': None
+        }
+        self.story.story_contents.initial_node_id = 'node_2'
+        self.story.story_contents.nodes = [
+            story_domain.StoryNode.from_dict(node_1),
+            story_domain.StoryNode.from_dict(node_2)
+        ]
+
+        self.story.update_node_exploration_id('node_1', 'exp_1')
+
+        self.assertEqual(
+            self.story.story_contents.get_all_linked_exp_ids(),
+            ['exp_1', 'exp_2'])
+
+    def test_update_node_exploration_id_raises_error_when_introducing_duplicate_exploration_id( # pylint: disable=line-too-long
+        self
+    ) -> None:
+        self.story.story_contents.next_node_id = 'node_3'
+        node_1: story_domain.StoryNodeDict = {
+            'id': 'node_1',
+            'thumbnail_filename': 'image.svg',
+            'thumbnail_bg_color': constants.ALLOWED_THUMBNAIL_BG_COLORS[
+                'chapter'][0],
+            'thumbnail_size_in_bytes': 21131,
+            'title': 'Title 1',
+            'description': 'Description 1',
+            'destination_node_ids': ['node_3'],
+            'acquired_skill_ids': [],
+            'prerequisite_skill_ids': [],
+            'outline': '',
+            'outline_is_finalized': False,
+            'exploration_id': 'exp_1',
+            'status': 'Published',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': 100.0,
+            'unpublishing_reason': None
+        }
+        node_2: story_domain.StoryNodeDict = {
+            'id': 'node_2',
+            'thumbnail_filename': 'image.svg',
+            'thumbnail_bg_color': constants.ALLOWED_THUMBNAIL_BG_COLORS[
+                'chapter'][0],
+            'thumbnail_size_in_bytes': 21131,
+            'title': 'Title 2',
+            'description': 'Description 2',
+            'destination_node_ids': ['node_1'],
+            'acquired_skill_ids': [],
+            'prerequisite_skill_ids': [],
+            'outline': '',
+            'outline_is_finalized': False,
+            'exploration_id': 'exp_2',
+            'status': 'Published',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': 100.0,
+            'unpublishing_reason': None
+        }
+        self.story.story_contents.initial_node_id = 'node_2'
+        self.story.story_contents.nodes = [
+            story_domain.StoryNode.from_dict(node_1),
+            story_domain.StoryNode.from_dict(node_2)
+        ]
+
+        with self.assertRaisesRegex(
+            ValueError, 'A node with exploration id exp_2 already exists.'
+        ):
+            self.story.update_node_exploration_id('node_1', 'exp_2')
+
+    def test_get_all_linked_exp_ids_lists_each_exp_id_linked_to_each_story_node(
+        self
+    ) -> None:
+        self.story.story_contents.next_node_id = 'node_3'
+        node_1: story_domain.StoryNodeDict = {
+            'id': 'node_1',
+            'thumbnail_filename': 'image.svg',
+            'thumbnail_bg_color': constants.ALLOWED_THUMBNAIL_BG_COLORS[
+                'chapter'][0],
+            'thumbnail_size_in_bytes': 21131,
+            'title': 'Title 1',
+            'description': 'Description 1',
+            'destination_node_ids': ['node_3'],
+            'acquired_skill_ids': [],
+            'prerequisite_skill_ids': [],
+            'outline': '',
+            'outline_is_finalized': False,
+            'exploration_id': 'exp_1',
+            'status': 'Published',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': 100.0,
+            'unpublishing_reason': None
+        }
+        node_2: story_domain.StoryNodeDict = {
+            'id': 'node_2',
+            'thumbnail_filename': 'image.svg',
+            'thumbnail_bg_color': constants.ALLOWED_THUMBNAIL_BG_COLORS[
+                'chapter'][0],
+            'thumbnail_size_in_bytes': 21131,
+            'title': 'Title 2',
+            'description': 'Description 2',
+            'destination_node_ids': ['node_1'],
+            'acquired_skill_ids': [],
+            'prerequisite_skill_ids': [],
+            'outline': '',
+            'outline_is_finalized': False,
+            'exploration_id': 'exp_2',
+            'status': 'Published',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': 100.0,
+            'unpublishing_reason': None
+        }
+        self.story.story_contents.initial_node_id = 'node_2'
+        self.story.story_contents.nodes = [
+            story_domain.StoryNode.from_dict(node_1),
+            story_domain.StoryNode.from_dict(node_2)
+        ]
+
+        linked_exp_ids = self.story.story_contents.get_all_linked_exp_ids()
+
+        self.assertEqual(linked_exp_ids, ['exp_1', 'exp_2'])
+
+    def test_get_all_linked_exp_ids_ignores_nodes_without_linked_exp_id(
+        self
+    ) -> None:
+        self.story.story_contents.next_node_id = 'node_3'
+        node_1: story_domain.StoryNodeDict = {
+            'id': 'node_1',
+            'thumbnail_filename': 'image.svg',
+            'thumbnail_bg_color': constants.ALLOWED_THUMBNAIL_BG_COLORS[
+                'chapter'][0],
+            'thumbnail_size_in_bytes': 21131,
+            'title': 'Title 1',
+            'description': 'Description 1',
+            'destination_node_ids': ['node_3'],
+            'acquired_skill_ids': [],
+            'prerequisite_skill_ids': [],
+            'outline': '',
+            'outline_is_finalized': False,
+            'exploration_id': None,
+            'status': 'Published',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': 100.0,
+            'unpublishing_reason': None
+        }
+        node_2: story_domain.StoryNodeDict = {
+            'id': 'node_2',
+            'thumbnail_filename': 'image.svg',
+            'thumbnail_bg_color': constants.ALLOWED_THUMBNAIL_BG_COLORS[
+                'chapter'][0],
+            'thumbnail_size_in_bytes': 21131,
+            'title': 'Title 2',
+            'description': 'Description 2',
+            'destination_node_ids': ['node_1'],
+            'acquired_skill_ids': [],
+            'prerequisite_skill_ids': [],
+            'outline': '',
+            'outline_is_finalized': False,
+            'exploration_id': 'exp_2',
+            'status': 'Published',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': 100.0,
+            'unpublishing_reason': None
+        }
+        self.story.story_contents.initial_node_id = 'node_2'
+        self.story.story_contents.nodes = [
+            story_domain.StoryNode.from_dict(node_1),
+            story_domain.StoryNode.from_dict(node_2)
+        ]
+
+        linked_exp_ids = self.story.story_contents.get_all_linked_exp_ids()
+
+        self.assertEqual(linked_exp_ids, ['exp_2'])
+
+    def test_get_linked_exp_ids_of_published_nodes(self) -> None:
+        self.story.story_contents.next_node_id = 'node_4'
+        node_1: story_domain.StoryNodeDict = {
+            'id': 'node_1',
+            'thumbnail_filename': 'image.svg',
+            'thumbnail_bg_color': constants.ALLOWED_THUMBNAIL_BG_COLORS[
+                'chapter'][0],
+            'thumbnail_size_in_bytes': 21131,
+            'title': 'Title 1',
+            'description': 'Description 1',
+            'destination_node_ids': ['node_2'],
+            'acquired_skill_ids': [],
+            'prerequisite_skill_ids': [],
+            'outline': 'a',
+            'outline_is_finalized': False,
+            'exploration_id': 'exp_1',
+            'status': 'Published',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
+        }
+        node_2: story_domain.StoryNodeDict = {
+            'id': 'node_2',
+            'thumbnail_filename': 'image.svg',
+            'thumbnail_bg_color': constants.ALLOWED_THUMBNAIL_BG_COLORS[
+                'chapter'][0],
+            'thumbnail_size_in_bytes': 21131,
+            'title': 'Title 1',
+            'description': 'Description 1',
+            'destination_node_ids': ['node_3'],
+            'acquired_skill_ids': [],
+            'prerequisite_skill_ids': [],
+            'outline': 'a',
+            'outline_is_finalized': False,
+            'exploration_id': 'exp_2',
+            'status': 'Published',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         node_3: story_domain.StoryNodeDict = {
             'id': 'node_3',
@@ -952,63 +1383,159 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'thumbnail_bg_color': constants.ALLOWED_THUMBNAIL_BG_COLORS[
                 'chapter'][0],
             'thumbnail_size_in_bytes': 21131,
-            'title': 'Title 3',
-            'description': 'Description 3',
-            'destination_node_ids': [],
+            'title': 'Title 1',
+            'description': 'Description 1',
+            'destination_node_ids': ['node_4'],
             'acquired_skill_ids': [],
             'prerequisite_skill_ids': [],
-            'outline': '',
+            'outline': 'a',
             'outline_is_finalized': False,
-            'exploration_id': 'exp_3'
+            'exploration_id': 'exp_3',
+            'status': 'Ready to Publish',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
-        node_4: story_domain.StoryNodeDict = {
-            'id': 'node_4',
+        self.story.story_contents.nodes = [
+            story_domain.StoryNode.from_dict(node_1),
+            story_domain.StoryNode.from_dict(node_2),
+            story_domain.StoryNode.from_dict(node_3)
+        ]
+
+        exp_ids = (
+            self.story.story_contents.get_linked_exp_ids_of_published_nodes())
+
+        self.assertEqual(exp_ids, ['exp_1', 'exp_2'])
+
+    def test_get_published_node_count_counts_all_nodes_when_all_nodes_published( # pylint: disable=line-too-long
+        self
+    ) -> None:
+        self.story.story_contents.next_node_id = 'node_3'
+        node_1: story_domain.StoryNodeDict = {
+            'id': 'node_1',
             'thumbnail_filename': 'image.svg',
             'thumbnail_bg_color': constants.ALLOWED_THUMBNAIL_BG_COLORS[
                 'chapter'][0],
             'thumbnail_size_in_bytes': 21131,
-            'title': 'Title 3',
-            'description': 'Description 3',
-            'destination_node_ids': [],
+            'title': 'Title 1',
+            'description': 'Description 1',
+            'destination_node_ids': ['node_2'],
             'acquired_skill_ids': [],
             'prerequisite_skill_ids': [],
-            'outline': '',
+            'outline': 'a',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': 'exp_1',
+            'status': 'Published',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
-        self.story.story_contents.initial_node_id = 'node_2'
+        node_2: story_domain.StoryNodeDict = {
+            'id': 'node_2',
+            'thumbnail_filename': 'image.svg',
+            'thumbnail_bg_color': constants.ALLOWED_THUMBNAIL_BG_COLORS[
+                'chapter'][0],
+            'thumbnail_size_in_bytes': 21131,
+            'title': 'Title 1',
+            'description': 'Description 1',
+            'destination_node_ids': ['node_3'],
+            'acquired_skill_ids': [],
+            'prerequisite_skill_ids': [],
+            'outline': 'a',
+            'outline_is_finalized': False,
+            'exploration_id': 'exp_2',
+            'status': 'Published',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
+        }
+        self.story.story_contents.nodes = [
+            story_domain.StoryNode.from_dict(node_1),
+            story_domain.StoryNode.from_dict(node_2)
+        ]
+
+        published_node_count = (
+            self.story.story_contents.get_published_node_count())
+
+        self.assertEqual(published_node_count, 2)
+
+    def test_get_published_node_count_counts_only_published_nodes(
+        self
+    ) -> None:
+        self.story.story_contents.next_node_id = 'node_4'
+        node_1: story_domain.StoryNodeDict = {
+            'id': 'node_1',
+            'thumbnail_filename': 'image.svg',
+            'thumbnail_bg_color': constants.ALLOWED_THUMBNAIL_BG_COLORS[
+                'chapter'][0],
+            'thumbnail_size_in_bytes': 21131,
+            'title': 'Title 1',
+            'description': 'Description 1',
+            'destination_node_ids': ['node_2'],
+            'acquired_skill_ids': [],
+            'prerequisite_skill_ids': [],
+            'outline': 'a',
+            'outline_is_finalized': False,
+            'exploration_id': 'exp_1',
+            'status': 'Published',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
+        }
+        node_2: story_domain.StoryNodeDict = {
+            'id': 'node_2',
+            'thumbnail_filename': 'image.svg',
+            'thumbnail_bg_color': constants.ALLOWED_THUMBNAIL_BG_COLORS[
+                'chapter'][0],
+            'thumbnail_size_in_bytes': 21131,
+            'title': 'Title 1',
+            'description': 'Description 1',
+            'destination_node_ids': ['node_3'],
+            'acquired_skill_ids': [],
+            'prerequisite_skill_ids': [],
+            'outline': 'a',
+            'outline_is_finalized': False,
+            'exploration_id': 'exp_2',
+            'status': 'Published',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
+        }
+        node_3: story_domain.StoryNodeDict = {
+            'id': 'node_3',
+            'thumbnail_filename': 'image.svg',
+            'thumbnail_bg_color': constants.ALLOWED_THUMBNAIL_BG_COLORS[
+                'chapter'][0],
+            'thumbnail_size_in_bytes': 21131,
+            'title': 'Title 1',
+            'description': 'Description 1',
+            'destination_node_ids': ['node_4'],
+            'acquired_skill_ids': [],
+            'prerequisite_skill_ids': [],
+            'outline': 'a',
+            'outline_is_finalized': False,
+            'exploration_id': 'exp_3',
+            'status': 'Ready to Publish',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
+        }
         self.story.story_contents.nodes = [
             story_domain.StoryNode.from_dict(node_1),
             story_domain.StoryNode.from_dict(node_2),
+            story_domain.StoryNode.from_dict(node_3)
         ]
-        self.assertEqual(
-            self.story.story_contents.get_all_linked_exp_ids(),
-            ['exp_1', 'exp_2'])
-        self.story.story_contents.nodes = [
-            story_domain.StoryNode.from_dict(node_1),
-            story_domain.StoryNode.from_dict(node_2),
-            story_domain.StoryNode.from_dict(node_4),
-        ]
-        self.assertEqual(
-            self.story.story_contents.get_all_linked_exp_ids(),
-            ['exp_1', 'exp_2'])
-        self.story.story_contents.nodes.append(
-            story_domain.StoryNode.from_dict(node_3))
-        self.assertEqual(
-            self.story.story_contents.get_all_linked_exp_ids(),
-            ['exp_1', 'exp_2', 'exp_3'])
-        with self.assertRaisesRegex(
-            ValueError, 'A node with exploration id exp_3 already exists.'
-        ):
-            self.story.update_node_exploration_id('node_4', 'exp_3')
-        self.story.update_node_exploration_id('node_3', 'exp_3')
-        self.assertEqual(
-            self.story.story_contents.get_all_linked_exp_ids(),
-            ['exp_1', 'exp_2', 'exp_3'])
-        self.story.update_node_exploration_id('node_3', 'exp_4')
-        self.assertEqual(
-            self.story.story_contents.get_all_linked_exp_ids(),
-            ['exp_1', 'exp_2', 'exp_4'])
+
+        published_node_count = (
+            self.story.story_contents.get_published_node_count())
+
+        self.assertEqual(published_node_count, 2)
 
     def test_update_story_contents_from_model_with_all_versions(self) -> None:
         node_1: story_domain.StoryNodeDict = {
@@ -1024,7 +1551,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': [],
             'outline': 'a',
             'outline_is_finalized': False,
-            'exploration_id': 'exp_1'
+            'exploration_id': 'exp_1',
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         story_contents_dict_1: story_domain.StoryContentsDict = {
             'nodes': [node_1],
@@ -1112,7 +1644,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': [],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': 'exp_1'
+            'exploration_id': 'exp_1',
+            'status': None,
+            'planned_publication_date_msecs': None,
+            'last_modified_msecs': None,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         self.story.story_contents.initial_node_id = 'node_1'
         self.story.story_contents.nodes = [
@@ -1142,7 +1679,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': [],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': 'exp_1'
+            'exploration_id': 'exp_1',
+            'status': 'Published',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': 100.0,
+            'unpublishing_reason': None
         }
         self.story.story_contents.initial_node_id = 'node_1'
         self.story.story_contents.nodes = [
@@ -1170,7 +1712,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_1'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': 'exp_1',
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         node_2: story_domain.StoryNodeDict = {
             'id': 'node_2',
@@ -1185,7 +1732,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_2'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': 'exp_2',
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         node_3: story_domain.StoryNodeDict = {
             'id': 'node_3',
@@ -1200,7 +1752,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_3'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': 'exp_3',
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         self.story.story_contents.nodes = [
             story_domain.StoryNode.from_dict(node_1),
@@ -1222,7 +1779,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_1'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': 'exp_1',
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         node_2 = {
             'id': 'node_2',
@@ -1237,7 +1799,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_2'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': 'exp_2',
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         node_3 = {
             'id': 'node_2',
@@ -1252,7 +1819,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_3'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': 'exp_3',
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         self.story.story_contents.nodes = [
             story_domain.StoryNode.from_dict(node_1),
@@ -1275,7 +1847,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_1'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': 'exp_1',
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         node_2 = {
             'id': 'node_2',
@@ -1290,7 +1867,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_2'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': 'exp_2',
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         node_3 = {
             'id': 'node_3',
@@ -1305,7 +1887,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_3'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': 'exp_3',
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         self.story.story_contents.nodes = [
             story_domain.StoryNode.from_dict(node_1),
@@ -1330,7 +1917,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_1', 'skill_0'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': 'exp_1',
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         node_2 = {
             'id': 'node_2',
@@ -1345,7 +1937,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_2'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': 'exp_2',
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         node_3 = {
             'id': 'node_3',
@@ -1360,7 +1957,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_4'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': 'exp_3',
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         node_4: story_domain.StoryNodeDict = {
             'id': 'node_4',
@@ -1375,7 +1977,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_2'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': 'exp_4',
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         self.story.story_contents.nodes = [
             story_domain.StoryNode.from_dict(node_1),
@@ -1439,7 +2046,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_1', 'skill_0'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': None,
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         node_2: story_domain.StoryNodeDict = {
             'id': 'node_2',
@@ -1454,7 +2066,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_2'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': None,
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         self.story.story_contents.nodes = [
             story_domain.StoryNode.from_dict(node_1),
@@ -1503,7 +2120,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_1', 'skill_0'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': None,
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         node_2: story_domain.StoryNodeDict = {
             'id': 'node_2',
@@ -1518,7 +2140,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_2'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': None,
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         node_3: story_domain.StoryNodeDict = {
             'id': 'node_3',
@@ -1533,7 +2160,12 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': ['skill_4'],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': None
+            'exploration_id': None,
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         self.story.story_contents.nodes = [
             story_domain.StoryNode.from_dict(node_1),
@@ -1570,7 +2202,7 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
             self.NODE_ID_1, 'Title', 'Description', None,
             constants.ALLOWED_THUMBNAIL_BG_COLORS['chapter'][0], None,
             [self.NODE_ID_2], [self.SKILL_ID_1], [self.SKILL_ID_2],
-            'Outline', False, self.EXP_ID)
+            'Outline', False, self.EXP_ID, 'Draft', None, None, None, None)
         story_contents = story_domain.StoryContents(
             [story_node], self.NODE_ID_1, '2')
         story_contents_dict = story_contents.to_dict()
@@ -1587,10 +2219,15 @@ class StoryDomainUnitTests(test_utils.GenericTestBase):
         self._assert_validation_error(
             'Expected exploration ID to be a string')
 
-    def test_validate_empty_exploration_id(self) -> None:
+    def test_validate_empty_str_exploration_id(self) -> None:
         self.story.story_contents.nodes[0].exploration_id = ''
         self._assert_validation_error(
             'Expected exploration ID to not be an empty string')
+
+    def test_validate_exploration_id_whose_value_is_none(self) -> None:
+        self.story.story_contents.nodes[0].exploration_id = None
+        self._assert_validation_error(
+            'Expected exploration ID to not be None')
 
     # TODO(#13059): Here we use MyPy ignore because after we fully type the
     # codebase we plan to get rid of the tests that intentionally test wrong
@@ -1836,3 +2473,18 @@ class StorySummaryTests(test_utils.GenericTestBase):
         with self.assertRaisesRegex(
             utils.ValidationError, 'Invalid language code: invalid'):
             self.story_summary.validate()
+
+
+class StoryPublicationTimelinessTest(test_utils.GenericTestBase):
+    """Test the story publication timeliness domain object."""
+
+    def test_story_publication_timeliness_gets_created(self) -> None:
+        story_publication_timeliness = story_domain.StoryPublicationTimeliness(
+            'story_id', 'Story', 'Topic', ['Chapter 1'], ['Chapter 2'])
+        self.assertEqual(story_publication_timeliness.id, 'story_id')
+        self.assertEqual(story_publication_timeliness.story_name, 'Story')
+        self.assertEqual(story_publication_timeliness.topic_name, 'Topic')
+        self.assertEqual(
+            story_publication_timeliness.overdue_chapters, ['Chapter 1'])
+        self.assertEqual(
+            story_publication_timeliness.upcoming_chapters, ['Chapter 2'])

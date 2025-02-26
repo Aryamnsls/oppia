@@ -17,17 +17,16 @@
  */
 
 export interface FeedbackMessageSummaryBackendDict {
-  'message_id': number;
-  'text': string;
+  message_id: number;
+  text: string;
   // Below properties are only non-null when entered by the
   // user for a newly created message and null otherwise.
-  'updated_status': string | null;
-  'suggestion_html': string | null;
-  'current_content_html': string | null;
-  'description': string | null;
-  'author_username': string;
-  'author_picture_data_url': string;
-  'created_on_msecs': number;
+  updated_status: string | null;
+  suggestion_html: string | null;
+  current_content_html: string | null;
+  description: string | null;
+  author_username: string;
+  created_on_msecs: number;
 }
 
 export class FeedbackMessageSummary {
@@ -41,14 +40,18 @@ export class FeedbackMessageSummary {
   currentContentHtml: string | null;
   description: string | null;
   authorUsername: string;
-  authorPictureDataUrl: string;
   createdOnMsecs: number;
 
   constructor(
-      messageId: number, text: string, updatedStatus: string | null,
-      suggestionHtml: string | null, currentContentHtml: string | null,
-      description: string | null, authorUsername: string,
-      authorPictureDataUrl: string, createdOnMsecs: number) {
+    messageId: number,
+    text: string,
+    updatedStatus: string | null,
+    suggestionHtml: string | null,
+    currentContentHtml: string | null,
+    description: string | null,
+    authorUsername: string,
+    createdOnMsecs: number
+  ) {
     this.messageId = messageId;
     this.text = text;
     this.updatedStatus = updatedStatus;
@@ -56,23 +59,31 @@ export class FeedbackMessageSummary {
     this.currentContentHtml = currentContentHtml;
     this.description = description;
     this.authorUsername = authorUsername;
-    this.authorPictureDataUrl = authorPictureDataUrl;
     this.createdOnMsecs = createdOnMsecs;
   }
 
   static createNewMessage(
-      newMessageId: number, newMessageText: string, authorUsername: string,
-      authorPictureDataUrl: string): FeedbackMessageSummary {
+    newMessageId: number,
+    newMessageText: string,
+    authorUsername: string
+  ): FeedbackMessageSummary {
     // Date.now() returns number of milliseconds since 1970-01-01 UTC.
     let createdOnMsecs: number = new Date().getTime();
     return new FeedbackMessageSummary(
-      newMessageId, newMessageText, null, null, null, null, authorUsername,
-      authorPictureDataUrl, createdOnMsecs);
+      newMessageId,
+      newMessageText,
+      null,
+      null,
+      null,
+      null,
+      authorUsername,
+      createdOnMsecs
+    );
   }
 
   static createFromBackendDict(
-      feedbackMessageSummaryBackendDict: FeedbackMessageSummaryBackendDict):
-      FeedbackMessageSummary {
+    feedbackMessageSummaryBackendDict: FeedbackMessageSummaryBackendDict
+  ): FeedbackMessageSummary {
     return new FeedbackMessageSummary(
       feedbackMessageSummaryBackendDict.message_id,
       feedbackMessageSummaryBackendDict.text,
@@ -81,7 +92,7 @@ export class FeedbackMessageSummary {
       feedbackMessageSummaryBackendDict.current_content_html,
       feedbackMessageSummaryBackendDict.description,
       feedbackMessageSummaryBackendDict.author_username,
-      feedbackMessageSummaryBackendDict.author_picture_data_url,
-      feedbackMessageSummaryBackendDict.created_on_msecs);
+      feedbackMessageSummaryBackendDict.created_on_msecs
+    );
   }
 }

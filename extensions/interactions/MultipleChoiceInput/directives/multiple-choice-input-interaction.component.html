@@ -11,10 +11,13 @@
       <div class="multiple-choice-content-container">
         <span>
           <oppia-rte-output-display class="e2e-test-multiple-choice-option"
-                                    [rteString]="choice.value">
+                                    [rteString]="choice.choice.html">
           </oppia-rte-output-display>
         </span>
       </div>
     </button>
+  </div>
+  <div *ngIf="errorMessageI18nKey" class="oppia-form-error-container">
+    {{errorMessageI18nKey | translate}}
   </div>
 </form>

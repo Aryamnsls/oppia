@@ -20,9 +20,8 @@
  * followed by the name of the arg.
  */
 
-import { Component, Input, OnInit } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { HtmlEscaperService } from 'services/html-escaper.service';
+import {Component, Input, OnInit} from '@angular/core';
+import {HtmlEscaperService} from 'services/html-escaper.service';
 
 interface Answer {
   code: string;
@@ -30,25 +29,20 @@ interface Answer {
 
 @Component({
   selector: 'oppia-short-response-pencil-code-editor',
-  templateUrl: './pencil-code-editor-short-response.component.html'
+  templateUrl: './pencil-code-editor-short-response.component.html',
 })
 export class ShortResponePencilCodeEditor implements OnInit {
-  @Input() answer: Answer;
-  answerCode: string;
+  // These properties are initialized using Angular lifecycle hooks
+  // and we need to do non-null assertion. For more information, see
+  // https://github.com/oppia/oppia/wiki/Guide-on-defining-types#ts-7-1
+  @Input() answer!: string;
+  answerCode!: string;
 
-  constructor(
-    private htmlEscaperService: HtmlEscaperService
-  ) {}
+  constructor(private htmlEscaperService: HtmlEscaperService) {}
 
-  // TODO(#13015): Remove use of unknown as a type.
   ngOnInit(): void {
     this.answerCode = (
-      (this.htmlEscaperService.escapedJsonToObj(
-        (this.answer) as unknown as string) as Answer).code);
+      this.htmlEscaperService.escapedJsonToObj(this.answer) as Answer
+    ).code;
   }
 }
-
-angular.module('oppia').directive(
-  'oppiaShortResponsePencilCodeEditor', downgradeComponent(
-    {component: ShortResponePencilCodeEditor}
-  ) as angular.IDirectiveFactory);
