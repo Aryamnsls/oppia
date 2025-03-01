@@ -16,37 +16,45 @@
  * @fileoverview Directive for translatable set of unicode string editor.
  */
 
-import { ChangeDetectorRef, Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
+import {
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  Input,
+  OnInit,
+  Output,
+} from '@angular/core';
 
-import { TranslatableSetOfStringSchema } from './translatable-set-of-normalized-string-editor.component';
+import {TranslatableSetOfStringSchema} from './translatable-set-of-normalized-string-editor.component';
 
 @Component({
   selector: 'translatable-set-of-unicode-string-editor',
-  templateUrl: './translatable-set-of-unicode-string-editor.component.html'
+  templateUrl: './translatable-set-of-unicode-string-editor.component.html',
 })
 export class TranslatableSetOfUnicodeStringEditorComponent implements OnInit {
   // This property is initialized using Angular lifecycle hooks
   // and we need to do non-null assertion. For more information, see
   // https://github.com/oppia/oppia/wiki/Guide-on-defining-types#ts-7-1
-  @Input() value!: { unicodeStrSet: string };
+  @Input() value!: {unicodeStrSet: string};
   @Output() valueChanged = new EventEmitter();
   schema: TranslatableSetOfStringSchema = {
     type: 'list',
     items: {
-      type: 'unicode'
+      type: 'unicode',
     },
-    validators: [{
-      id: 'is_uniquified'
-    }]
+    validators: [
+      {
+        id: 'is_uniquified',
+      },
+    ],
   };
 
-  constructor(private changeDetectorRef: ChangeDetectorRef) { }
+  constructor(private changeDetectorRef: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     if (this.value === undefined) {
       this.value = {
-        unicodeStrSet: ''
+        unicodeStrSet: '',
       };
     }
   }
@@ -64,9 +72,3 @@ export class TranslatableSetOfUnicodeStringEditorComponent implements OnInit {
     return this.schema;
   }
 }
-
-angular.module('oppia').directive(
-  'translatableSetOfUnicodeStringEditor',
-  downgradeComponent({
-    component: TranslatableSetOfUnicodeStringEditorComponent
-  }) as angular.IDirectiveFactory);

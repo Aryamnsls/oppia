@@ -16,24 +16,46 @@
  * @fileoverview Tests that the user service is working as expected.
  */
 
-import { HttpClientTestingModule, HttpTestingController } from
-  '@angular/common/http/testing';
-import { fakeAsync, flushMicrotasks, TestBed, tick } from '@angular/core/testing';
+import {
+  HttpClientTestingModule,
+  HttpTestingController,
+} from '@angular/common/http/testing';
+import {fakeAsync, flushMicrotasks, TestBed, tick} from '@angular/core/testing';
 
-import { UserInfo } from 'domain/user/user-info.model';
-import { UrlInterpolationService } from
-  'domain/utilities/url-interpolation.service';
-import { WindowRef } from 'services/contextual/window-ref.service';
-import { CsrfTokenService } from 'services/csrf-token.service';
-import { UserService } from 'services/user.service';
-import { UrlService } from './contextual/url.service';
-import { PreferencesBackendDict, UserBackendApiService } from './user-backend-api.service';
+import {AppConstants} from 'app.constants';
+import {UserInfo} from 'domain/user/user-info.model';
+import {UrlInterpolationService} from 'domain/utilities/url-interpolation.service';
+import {WindowRef} from 'services/contextual/window-ref.service';
+import {CsrfTokenService} from 'services/csrf-token.service';
+import {UserService} from 'services/user.service';
+import {UrlService} from './contextual/url.service';
+import {
+  PreferencesBackendDict,
+  UserBackendApiService,
+} from './user-backend-api.service';
+import {ImageLocalStorageService} from 'services/image-local-storage.service';
+import {AssetsBackendApiService} from 'services/assets-backend-api.service';
 
 class MockWindowRef {
+  imageData: Record<string, string> = {};
   _window = {
     location: {
-      pathname: 'home'
-    }
+      pathname: 'home',
+    },
+    sessionStorage: {
+      removeItem: (name: string) => {
+        this.imageData = {};
+      },
+      setItem: (filename: string, rawImage: string) => {
+        this.imageData[filename] = rawImage;
+      },
+      getItem: (filename: string) => {
+        if (this.imageData[filename] === undefined) {
+          return null;
+        }
+        return this.imageData[filename];
+      },
+    },
   };
 
   get nativeWindow() {
@@ -42,225 +64,104 @@ class MockWindowRef {
 }
 
 describe('User Api Service', () => {
-  let userService: UserService;
-  let urlInterpolationService: UrlInterpolationService;
-  let urlService: UrlService;
-  let httpTestingController: HttpTestingController;
-  let csrfService: CsrfTokenService;
-  let windowRef: MockWindowRef;
-  let userBackendApiService: UserBackendApiService;
+  describe('on dev mode', () => {
+    let userService: UserService;
+    let urlInterpolationService: UrlInterpolationService;
+    let urlService: UrlService;
+    let httpTestingController: HttpTestingController;
+    let csrfService: CsrfTokenService;
+    let windowRef: MockWindowRef;
+    let userBackendApiService: UserBackendApiService;
+    let imageLocalStorageService: ImageLocalStorageService;
 
-  beforeEach(() => {
-    windowRef = new MockWindowRef();
-    TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
-      providers: [{ provide: WindowRef, useValue: windowRef }]
-    });
-    httpTestingController = TestBed.get(HttpTestingController);
-    userService = TestBed.get(UserService);
-    urlInterpolationService = TestBed.get(UrlInterpolationService);
-    urlService = TestBed.get(UrlService);
-    csrfService = TestBed.get(CsrfTokenService);
-    userBackendApiService = TestBed.inject(UserBackendApiService);
+    beforeEach(() => {
+      windowRef = new MockWindowRef();
+      TestBed.configureTestingModule({
+        imports: [HttpClientTestingModule],
+        providers: [{provide: WindowRef, useValue: windowRef}],
+      });
+      httpTestingController = TestBed.get(HttpTestingController);
+      userService = TestBed.get(UserService);
+      urlInterpolationService = TestBed.get(UrlInterpolationService);
+      urlService = TestBed.get(UrlService);
+      csrfService = TestBed.get(CsrfTokenService);
+      userBackendApiService = TestBed.inject(UserBackendApiService);
+      imageLocalStorageService = TestBed.inject(ImageLocalStorageService);
 
-    spyOn(csrfService, 'getTokenAsync').and.callFake(
-      async() => {
+      spyOn(csrfService, 'getTokenAsync').and.callFake(async () => {
         return new Promise((resolve, reject) => {
           resolve('sample-csrf-token');
         });
       });
-  });
-
-  afterEach(() => {
-    httpTestingController.verify();
-  });
-
-  it('should return userInfo data', fakeAsync(() => {
-    // Creating a test user for checking profile picture of user.
-    const sampleUserInfoBackendObject = {
-      roles: ['USER_ROLE'],
-      is_moderator: false,
-      is_curriculum_admin: false,
-      is_super_admin: false,
-      is_topic_manager: false,
-      can_create_collections: true,
-      preferred_site_language_code: null,
-      username: 'tester',
-      email: 'test@test.com',
-      user_is_logged_in: true
-    };
-    const sampleUserInfo = UserInfo.createFromBackendDict(
-      sampleUserInfoBackendObject);
-
-    userService.getUserInfoAsync().then((userInfo) => {
-      expect(userInfo.isCurriculumAdmin()).toBe(
-        sampleUserInfo.isCurriculumAdmin());
-      expect(userInfo.isSuperAdmin()).toBe(sampleUserInfo.isSuperAdmin());
-      expect(userInfo.isModerator()).toBe(sampleUserInfo.isModerator());
-      expect(userInfo.isTopicManager()).toBe(sampleUserInfo.isTopicManager());
-      expect(userInfo.isLoggedIn()).toBe(
-        sampleUserInfo.isLoggedIn());
-      expect(userInfo.canCreateCollections()).toBe(
-        sampleUserInfo.canCreateCollections());
-      expect(userInfo.getUsername()).toBe(sampleUserInfo.getUsername());
-      expect(userInfo.getEmail()).toBe(sampleUserInfo.getEmail());
-      expect(userInfo.getPreferredSiteLanguageCode()).toBe(
-        sampleUserInfo.getPreferredSiteLanguageCode());
     });
 
-    const req = httpTestingController.expectOne('/userinfohandler');
-    expect(req.request.method).toEqual('GET');
-    req.flush(sampleUserInfoBackendObject);
+    afterEach(() => {
+      httpTestingController.verify();
+    });
 
-    flushMicrotasks();
-  }));
+    it('should return userInfo data', fakeAsync(() => {
+      const sampleUserInfoBackendObject = {
+        roles: ['USER_ROLE'],
+        is_moderator: false,
+        is_curriculum_admin: false,
+        is_super_admin: false,
+        is_topic_manager: false,
+        can_create_collections: true,
+        preferred_site_language_code: null,
+        username: 'tester',
+        email: 'test@test.com',
+        user_is_logged_in: true,
+      };
+      const sampleUserInfo = UserInfo.createFromBackendDict(
+        sampleUserInfoBackendObject
+      );
 
-  it('should return new userInfo data when url path is signup',
-    fakeAsync(() => {
+      userService.getUserInfoAsync().then(userInfo => {
+        expect(userInfo.isCurriculumAdmin()).toBe(
+          sampleUserInfo.isCurriculumAdmin()
+        );
+        expect(userInfo.isSuperAdmin()).toBe(sampleUserInfo.isSuperAdmin());
+        expect(userInfo.isModerator()).toBe(sampleUserInfo.isModerator());
+        expect(userInfo.isTopicManager()).toBe(sampleUserInfo.isTopicManager());
+        expect(userInfo.isLoggedIn()).toBe(sampleUserInfo.isLoggedIn());
+        expect(userInfo.canCreateCollections()).toBe(
+          sampleUserInfo.canCreateCollections()
+        );
+        expect(userInfo.getUsername()).toBe(sampleUserInfo.getUsername());
+        expect(userInfo.getEmail()).toBe(sampleUserInfo.getEmail());
+        expect(userInfo.getPreferredSiteLanguageCode()).toBe(
+          sampleUserInfo.getPreferredSiteLanguageCode()
+        );
+      });
+
+      const req = httpTestingController.expectOne('/userinfohandler');
+      expect(req.request.method).toEqual('GET');
+      req.flush(sampleUserInfoBackendObject);
+
+      flushMicrotasks();
+    }));
+
+    it('should return new userInfo data when url path is signup', fakeAsync(() => {
       spyOn(urlService, 'getPathname').and.returnValue('/signup');
       const sampleUserInfo = UserInfo.createDefault();
 
-      userService.getUserInfoAsync().then((userInfo) => {
+      userService.getUserInfoAsync().then(userInfo => {
         expect(userInfo).toEqual(sampleUserInfo);
       });
     }));
 
-  it('should return new userInfo data when url path is logout',
-    fakeAsync(() => {
+    it('should return new userInfo data when url path is logout', fakeAsync(() => {
       spyOn(urlService, 'getPathname').and.returnValue('/logout');
       const sampleUserInfo = UserInfo.createDefault();
 
-      userService.getUserInfoAsync().then((userInfo) => {
+      userService.getUserInfoAsync().then(userInfo => {
         expect(userInfo).toEqual(sampleUserInfo);
       });
     }));
 
-  it('should not fetch userInfo if it is was fetched before', fakeAsync(() => {
-    // Creating a test user for checking profile picture of user.
-    const sampleUserInfoBackendObject = {
-      roles: ['USER_ROLE'],
-      is_moderator: false,
-      is_curriculum_admin: false,
-      is_super_admin: false,
-      is_topic_manager: false,
-      can_create_collections: true,
-      preferred_site_language_code: null,
-      username: 'tester',
-      email: 'test@test.com',
-      user_is_logged_in: true
-    };
-    const sampleUserInfo = UserInfo.createFromBackendDict(
-      sampleUserInfoBackendObject);
-
-    userService.getUserInfoAsync().then((userInfo) => {
-      expect(userInfo).toEqual(sampleUserInfo);
-      // Fetch userInfo again.
-      userService.getUserInfoAsync().then((sameUserInfo) => {
-        expect(sameUserInfo).toEqual(userInfo);
-      });
-    });
-    const req = httpTestingController.expectOne('/userinfohandler');
-    expect(req.request.method).toEqual('GET');
-    req.flush(sampleUserInfoBackendObject);
-
-    flushMicrotasks();
-  }));
-
-  it('should return new userInfo data if user is not logged', fakeAsync(() => {
-    // Creating a test user for checking profile picture of user.
-    const sampleUserInfoBackendObject = {
-      role: 'USER_ROLE',
-      is_moderator: false,
-      is_curriculum_admin: false,
-      is_super_admin: false,
-      is_topic_manager: false,
-      can_create_collections: true,
-      preferred_site_language_code: null,
-      username: 'tester',
-      email: 'test@test.com',
-      user_is_logged_in: false
-    };
-    const sampleUserInfo = UserInfo.createDefault();
-
-    userService.getUserInfoAsync().then((userInfo) => {
-      expect(userInfo).toEqual(sampleUserInfo);
-    });
-    const req = httpTestingController.expectOne('/userinfohandler');
-    expect(req.request.method).toEqual('GET');
-    req.flush(sampleUserInfoBackendObject);
-
-    flushMicrotasks();
-  }));
-
-  it('should return image data', fakeAsync(() => {
-    var requestUrl = '/preferenceshandler/profile_picture';
-    // Creating a test user for checking profile picture of user.
-    var sampleUserInfoBackendObject = {
-      is_moderator: false,
-      is_curriculum_admin: false,
-      is_super_admin: false,
-      is_topic_manager: false,
-      can_create_collections: true,
-      preferred_site_language_code: null,
-      username: 'tester',
-      email: 'test@test.com',
-      user_is_logged_in: true
-    };
-
-    userService.getProfileImageDataUrlAsync().then((dataUrl) => {
-      expect(dataUrl).toBe('image data');
-    });
-
-    const req1 = httpTestingController.expectOne('/userinfohandler');
-    expect(req1.request.method).toEqual('GET');
-    req1.flush(sampleUserInfoBackendObject);
-
-    flushMicrotasks();
-
-    const req2 = httpTestingController.expectOne(requestUrl);
-    expect(req2.request.method).toEqual('GET');
-    req2.flush({profile_picture_data_url: 'image data'});
-
-    flushMicrotasks();
-  }));
-
-  it('should return image data when second GET request returns 404',
-    fakeAsync(() => {
-      var requestUrl = '/preferenceshandler/profile_picture';
-      // Creating a test user for checking profile picture of user.
-      var sampleUserInfoBackendObject = {
-        is_moderator: false,
-        is_curriculum_admin: false,
-        is_super_admin: false,
-        is_topic_manager: false,
-        can_create_collections: true,
-        preferred_site_language_code: null,
-        username: 'tester',
-        email: 'test@test.com',
-        user_is_logged_in: true
-      };
-
-      userService.getProfileImageDataUrlAsync().then((dataUrl) => {
-        expect(dataUrl).toBe(urlInterpolationService.getStaticImageUrl(
-          '/avatar/user_blue_72px.webp'));
-      });
-      const req1 = httpTestingController.expectOne('/userinfohandler');
-      expect(req1.request.method).toEqual('GET');
-      req1.flush(sampleUserInfoBackendObject);
-
-      flushMicrotasks();
-
-      const req2 = httpTestingController.expectOne(requestUrl);
-      expect(req2.request.method).toEqual('GET');
-      req2.flush(404);
-
-      flushMicrotasks();
-    }));
-
-  it('should return the default profile image path when user is not logged',
-    fakeAsync(() => {
-      // Creating a test user for checking profile picture of user.
+    it('should not fetch userInfo if it was fetched before', fakeAsync(() => {
       const sampleUserInfoBackendObject = {
+        roles: ['USER_ROLE'],
         is_moderator: false,
         is_curriculum_admin: false,
         is_super_admin: false,
@@ -269,12 +170,18 @@ describe('User Api Service', () => {
         preferred_site_language_code: null,
         username: 'tester',
         email: 'test@test.com',
-        user_is_logged_in: false
+        user_is_logged_in: true,
       };
+      const sampleUserInfo = UserInfo.createFromBackendDict(
+        sampleUserInfoBackendObject
+      );
 
-      userService.getProfileImageDataUrlAsync().then((dataUrl) => {
-        expect(dataUrl).toBe(urlInterpolationService.getStaticImageUrl(
-          '/avatar/user_blue_72px.webp'));
+      userService.getUserInfoAsync().then(userInfo => {
+        expect(userInfo).toEqual(sampleUserInfo);
+        // Fetch userInfo again.
+        userService.getUserInfoAsync().then(sameUserInfo => {
+          expect(sameUserInfo).toEqual(userInfo);
+        });
       });
       const req = httpTestingController.expectOne('/userinfohandler');
       expect(req.request.method).toEqual('GET');
@@ -283,52 +190,106 @@ describe('User Api Service', () => {
       flushMicrotasks();
     }));
 
-  it('should return the login url', fakeAsync(() => {
-    const loginUrl = '/login';
-    const currentUrl = 'home';
+    it('should return new userInfo data if user is not logged', fakeAsync(() => {
+      const sampleUserInfoBackendObject = {
+        role: 'USER_ROLE',
+        is_moderator: false,
+        is_curriculum_admin: false,
+        is_super_admin: false,
+        is_topic_manager: false,
+        can_create_collections: true,
+        preferred_site_language_code: null,
+        username: 'tester',
+        email: 'test@test.com',
+        user_is_logged_in: false,
+      };
+      const sampleUserInfo = UserInfo.createDefault();
 
-    userService.getLoginUrlAsync().then((dataUrl) => {
-      expect(dataUrl).toBe(loginUrl);
-    });
-    const req = httpTestingController.expectOne(
-      '/url_handler?current_url=' + currentUrl);
-    expect(req.request.method).toEqual('GET');
-    req.flush({login_url: loginUrl});
+      userService.getUserInfoAsync().then(userInfo => {
+        expect(userInfo).toEqual(sampleUserInfo);
+      });
+      const req = httpTestingController.expectOne('/userinfohandler');
+      expect(req.request.method).toEqual('GET');
+      req.flush(sampleUserInfoBackendObject);
 
-    flushMicrotasks();
-  }));
+      flushMicrotasks();
+    }));
 
-  it('should return the login url with the correct return url',
-    fakeAsync(() => {
+    it('should return image stored in session storage while in emulator mode', fakeAsync(() => {
+      let filename = 'tester_profile_picture.png';
+      const imageData = 'data:image/png;base64,JUMzJTg3JTJD';
+      imageLocalStorageService.saveImage(filename, imageData);
+      let [profileImagePng, profileImageWebp] =
+        userService.getProfileImageDataUrl('tester');
+      expect(profileImagePng).toEqual(imageData);
+      expect(profileImageWebp).toEqual(imageData);
+      imageLocalStorageService.deleteImage(filename);
+
+      flushMicrotasks();
+    }));
+
+    it('should return the default profile image path when in emulator mode', fakeAsync(() => {
+      let defaultUrlWebp = urlInterpolationService.getStaticImageUrl(
+        AppConstants.DEFAULT_PROFILE_IMAGE_WEBP_PATH
+      );
+      let defaultUrlPng = urlInterpolationService.getStaticImageUrl(
+        AppConstants.DEFAULT_PROFILE_IMAGE_PNG_PATH
+      );
+      let [profileImagePng, profileImageWebp] =
+        userService.getProfileImageDataUrl('tester');
+      let prformanceTime = profileImagePng.split('?')[1];
+      expect(profileImagePng).toEqual(defaultUrlPng + '?' + prformanceTime);
+      expect(profileImageWebp).toEqual(defaultUrlWebp + '?' + prformanceTime);
+
+      flushMicrotasks();
+    }));
+
+    it('should return the login url', fakeAsync(() => {
       const loginUrl = '/login';
-      const returnUrl = 'home';
+      const currentUrl = 'home';
 
-      userService.setReturnUrl(returnUrl);
-      userService.getLoginUrlAsync().then(function(dataUrl) {
+      userService.getLoginUrlAsync().then(dataUrl => {
         expect(dataUrl).toBe(loginUrl);
       });
       const req = httpTestingController.expectOne(
-        '/url_handler?current_url=' + returnUrl);
+        '/url_handler?current_url=' + currentUrl
+      );
       expect(req.request.method).toEqual('GET');
       req.flush({login_url: loginUrl});
 
       flushMicrotasks();
     }));
 
-  it('should set a profile image data url', fakeAsync(() => {
-    const newProfileImageDataurl = '/avatar/x.png';
-    userService.setProfileImageDataUrlAsync(newProfileImageDataurl);
-    const req = httpTestingController.expectOne('/preferenceshandler/data');
-    expect(req.request.method).toEqual('PUT');
-    req.flush({profile_picture_data_url: newProfileImageDataurl});
+    it('should return the login url with the correct return url', fakeAsync(() => {
+      const loginUrl = '/login';
+      const returnUrl = 'home';
 
-    flushMicrotasks();
-  }));
+      userService.setReturnUrl(returnUrl);
+      userService.getLoginUrlAsync().then(function (dataUrl) {
+        expect(dataUrl).toBe(loginUrl);
+      });
+      const req = httpTestingController.expectOne(
+        '/url_handler?current_url=' + returnUrl
+      );
+      expect(req.request.method).toEqual('GET');
+      req.flush({login_url: loginUrl});
 
-  it('should handle when set profile image data url is reject',
-    fakeAsync(() => {
+      flushMicrotasks();
+    }));
+
+    it('should set a profile image data url', fakeAsync(() => {
       const newProfileImageDataurl = '/avatar/x.png';
-      const errorMessage = 'It\'s not possible to set a new profile image data';
+      userService.setProfileImageDataUrlAsync(newProfileImageDataurl);
+      const req = httpTestingController.expectOne('/preferenceshandler/data');
+      expect(req.request.method).toEqual('PUT');
+      req.flush({profile_picture_data_url: newProfileImageDataurl});
+
+      flushMicrotasks();
+    }));
+
+    it('should handle when set profile image data url is reject', fakeAsync(() => {
+      const newProfileImageDataurl = '/avatar/x.png';
+      const errorMessage = "It's not possible to set a new profile image data";
       userService.setProfileImageDataUrlAsync(newProfileImageDataurl);
       const req = httpTestingController.expectOne('/preferenceshandler/data');
       expect(req.request.method).toEqual('PUT');
@@ -337,67 +298,74 @@ describe('User Api Service', () => {
       flushMicrotasks();
     }));
 
-  it('should return user contribution rights data', fakeAsync(() => {
-    const sampleUserContributionRightsDict = {
-      translation: ['hi'],
-      voiceover: [],
-      question: true
-    };
-
-    userService.getUserContributionRightsDataAsync().then(
-      (userContributionRights) => {
-        expect(userContributionRights).
-          toEqual(sampleUserContributionRightsDict);
-      });
-    const req = httpTestingController.expectOne(
-      '/usercontributionrightsdatahandler');
-    expect(req.request.method).toEqual('GET');
-    req.flush(sampleUserContributionRightsDict);
-
-    flushMicrotasks();
-  }));
-
-  it('should not fetch user contribution rights if it is was fetched before',
-    fakeAsync(() => {
+    it('should return user contribution rights data', fakeAsync(() => {
       const sampleUserContributionRightsDict = {
         translation: ['hi'],
         voiceover: [],
-        question: true
+        question: true,
       };
 
-      userService.getUserContributionRightsDataAsync().then(
-        (userContributionRights) => {
-          expect(userContributionRights)
-            .toEqual(sampleUserContributionRightsDict);
-          // Fetch userCommunityRightsInfo again.
-          userService.getUserContributionRightsDataAsync().then((
-              sameUserContributionRights) => {
-            expect(sameUserContributionRights).toEqual(
-              sampleUserContributionRightsDict);
-          });
+      userService
+        .getUserContributionRightsDataAsync()
+        .then(userContributionRights => {
+          expect(userContributionRights).toEqual(
+            sampleUserContributionRightsDict
+          );
         });
       const req = httpTestingController.expectOne(
-        '/usercontributionrightsdatahandler');
+        '/usercontributionrightsdatahandler'
+      );
       expect(req.request.method).toEqual('GET');
       req.flush(sampleUserContributionRightsDict);
 
       flushMicrotasks();
     }));
 
-  it('should get user preferred dashboard', fakeAsync(() => {
-    let defaultDashboard = 'learner';
-    spyOn(userBackendApiService, 'getPreferencesAsync').and.returnValue(
-      Promise.resolve({
-        default_dashboard: defaultDashboard
-      } as PreferencesBackendDict));
-    userService.getUserPreferredDashboardAsync().then(preferredDashboard => {
-      expect(preferredDashboard).toEqual(defaultDashboard);
-    });
-    tick();
-  }));
+    it('should not fetch user contribution rights if it is was fetched before', fakeAsync(() => {
+      const sampleUserContributionRightsDict = {
+        translation: ['hi'],
+        voiceover: [],
+        question: true,
+      };
 
-  it('should get whether the user can access topics and skills dashboard',
-    fakeAsync(() => {
+      userService
+        .getUserContributionRightsDataAsync()
+        .then(userContributionRights => {
+          expect(userContributionRights).toEqual(
+            sampleUserContributionRightsDict
+          );
+          // Fetch userCommunityRightsInfo again.
+          userService
+            .getUserContributionRightsDataAsync()
+            .then(sameUserContributionRights => {
+              expect(sameUserContributionRights).toEqual(
+                sampleUserContributionRightsDict
+              );
+            });
+        });
+      const req = httpTestingController.expectOne(
+        '/usercontributionrightsdatahandler'
+      );
+      expect(req.request.method).toEqual('GET');
+      req.flush(sampleUserContributionRightsDict);
+
+      flushMicrotasks();
+    }));
+
+    it('should get user preferred dashboard', fakeAsync(() => {
+      let defaultDashboard = 'learner';
+      spyOn(userBackendApiService, 'getPreferencesAsync').and.returnValue(
+        Promise.resolve({
+          default_dashboard: defaultDashboard,
+        } as PreferencesBackendDict)
+      );
+      userService.getUserPreferredDashboardAsync().then(preferredDashboard => {
+        expect(preferredDashboard).toEqual(defaultDashboard);
+      });
+      tick();
+    }));
+
+    it('should get whether the user can access topics and skills dashboard', fakeAsync(() => {
       const userInfo = UserInfo.createFromBackendDict({
         roles: ['USER_ROLE'],
         is_moderator: true,
@@ -408,20 +376,20 @@ describe('User Api Service', () => {
         preferred_site_language_code: 'en',
         username: 'tester',
         email: 'tester@example.org',
-        user_is_logged_in: true
+        user_is_logged_in: true,
       });
-      spyOn(
-        userService, 'getUserInfoAsync'
-      ).and.returnValue(Promise.resolve(userInfo));
+      spyOn(userService, 'getUserInfoAsync').and.returnValue(
+        Promise.resolve(userInfo)
+      );
 
-      userService.canUserAccessTopicsAndSkillsDashboard()
-        .then((canUserAccessTopicsAndSkillsDashboard) => {
+      userService
+        .canUserAccessTopicsAndSkillsDashboard()
+        .then(canUserAccessTopicsAndSkillsDashboard => {
           expect(canUserAccessTopicsAndSkillsDashboard).toBeTrue();
         });
     }));
 
-  it('should get whether the user can edit blog posts if user is blog admin',
-    fakeAsync(() => {
+    it('should get whether the user can edit blog posts if user is blog admin', fakeAsync(() => {
       const userInfo = UserInfo.createFromBackendDict({
         roles: ['USER_ROLE', 'BLOG_ADMIN'],
         is_moderator: true,
@@ -432,14 +400,56 @@ describe('User Api Service', () => {
         preferred_site_language_code: 'en',
         username: 'tester',
         email: 'tester@example.org',
-        user_is_logged_in: true
+        user_is_logged_in: true,
       });
-      spyOn(
-        userService, 'getUserInfoAsync'
-      ).and.returnValue(Promise.resolve(userInfo));
+      spyOn(userService, 'getUserInfoAsync').and.returnValue(
+        Promise.resolve(userInfo)
+      );
 
-      userService.canUserEditBlogPosts().then((val) => {
+      userService.canUserEditBlogPosts().then(val => {
         expect(val).toBeTrue();
       });
     }));
+  });
+
+  describe('on production mode', () => {
+    let httpTestingController: HttpTestingController;
+    let userService: UserService;
+
+    beforeEach(() => {
+      spyOnProperty(
+        AssetsBackendApiService,
+        'EMULATOR_MODE',
+        'get'
+      ).and.returnValue(false);
+      TestBed.configureTestingModule({
+        imports: [HttpClientTestingModule],
+        providers: [AssetsBackendApiService],
+      });
+      userService = TestBed.inject(UserService);
+      httpTestingController = TestBed.inject(HttpTestingController);
+    });
+
+    it('should return image path when in production mode', fakeAsync(() => {
+      let expectedPngImage =
+        'https://storage.googleapis.com/app_default_bucket/user/' +
+        'tester/assets/profile_picture.png';
+      let expectedWebpImage =
+        'https://storage.googleapis.com/app_default_bucket/user/' +
+        'tester/assets/profile_picture.webp';
+      let [profileImagePng, profileImageWebp] =
+        userService.getProfileImageDataUrl('tester');
+      let prformanceTime = profileImagePng.split('?')[1];
+      expect(profileImagePng).toEqual(expectedPngImage + '?' + prformanceTime);
+      expect(profileImageWebp).toEqual(
+        expectedWebpImage + '?' + prformanceTime
+      );
+
+      flushMicrotasks();
+    }));
+
+    afterEach(() => {
+      httpTestingController.verify();
+    });
+  });
 });

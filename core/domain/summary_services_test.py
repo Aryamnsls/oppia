@@ -52,8 +52,6 @@ class ExplorationDisplayableSummariesTest(
     USER_C_EMAIL: Final = 'c@example.com'
     USER_D_EMAIL: Final = 'd@example.com'
 
-    USER_C_PROFILE_PICTURE: Final = 'c_profile_picture'
-
     EXP_ID_1: Final = 'eid1'
     EXP_ID_2: Final = 'eid2'
     EXP_ID_3: Final = 'eid3'
@@ -137,7 +135,7 @@ class ExplorationDisplayableSummariesTest(
         self.user_c_id = self.get_user_id_from_email(self.USER_C_EMAIL)
         self.user_d_id = self.get_user_id_from_email(self.USER_D_EMAIL)
         user_services.update_profile_picture_data_url(
-            self.user_c_id, self.USER_C_PROFILE_PICTURE)
+            self.USER_C_NAME, user_services.DEFAULT_IDENTICON_DATA_URL)
 
         self.save_new_valid_exploration(self.EXP_ID_4, self.user_c_id)
         exp_services.update_exploration(
@@ -203,18 +201,18 @@ class ExplorationDisplayableSummariesTest(
             summary_services.get_displayable_exp_summary_dicts_matching_ids(
                 [self.EXP_ID_1, self.EXP_ID_2, self.EXP_ID_3, self.EXP_ID_5]))
         expected_summary = {
-            'category': u'Algebra',
+            'category': 'Algebra',
             'community_owned': False,
             'id': self.EXP_ID_2,
             'language_code': constants.DEFAULT_LANGUAGE_CODE,
             'num_views': 0,
-            'objective': u'An objective',
+            'objective': 'An objective',
             'ratings': feconf.get_empty_ratings(),
             'status': 'public',
             'tags': [],
-            'thumbnail_bg_color': '#cd672b',
+            'thumbnail_bg_color': '#cc4b00',
             'thumbnail_icon_url': '/subjects/Algebra.svg',
-            'title': u'Exploration 2 Albert title',
+            'title': 'Exploration 2 Albert title',
         }
         self.assertIn('last_updated_msec', displayable_summaries[0])
         self.assertDictContainsSubset(
@@ -298,14 +296,14 @@ class LibraryGroupsTest(exp_services_test.ExplorationServicesUnitTests):
             'id': '3',
             'title': 'Root Linear Coefficient Theorem',
             'activity_type': 'exploration',
-            'category': u'Algebra',
+            'category': 'Algebra',
             'objective': 'discover the Root Linear Coefficient Theorem',
             'language_code': 'en',
             'human_readable_contributors_summary': {},
             'status': 'public',
             'ratings': {'1': 0, '2': 0, '3': 0, '4': 0, '5': 0},
             'thumbnail_icon_url': '/subjects/Algebra.svg',
-            'thumbnail_bg_color': '#cd672b',
+            'thumbnail_bg_color': '#cc4b00',
             'num_views': 0
         }
         expected_group = {
@@ -384,7 +382,7 @@ class FeaturedExplorationDisplayableSummariesTest(
         self.assertEqual(len(featured_activity_summaries), 1)
         self.assertDictContainsSubset({
             'status': 'public',
-            'thumbnail_bg_color': '#cd672b',
+            'thumbnail_bg_color': '#cc4b00',
             'community_owned': False,
             'tags': [],
             'thumbnail_icon_url': '/subjects/Algebra.svg',
@@ -469,7 +467,7 @@ class CollectionLearnerDictTests(test_utils.GenericTestBase):
     def test_get_displayable_collection_summary_dicts_matching_ids(
         self
     ) -> None:
-        collection_id_1 = self.COLLECTION_ID + '_1'
+        collection_id_1 = '%s_1' % self.COLLECTION_ID
         self.save_new_valid_collection(self.COLLECTION_ID, self.owner_id)
         self.save_new_valid_collection(collection_id_1, self.owner_id)
         rights_manager.publish_collection(self.owner, self.COLLECTION_ID)
@@ -720,18 +718,18 @@ class TopRatedExplorationDisplayableSummariesTest(
                 [constants.DEFAULT_LANGUAGE_CODE],
                 feconf.NUMBER_OF_TOP_RATED_EXPLORATIONS_FOR_LIBRARY_PAGE))
         expected_summary = {
-            'status': u'public',
-            'thumbnail_bg_color': '#cd672b',
+            'status': 'public',
+            'thumbnail_bg_color': '#cc4b00',
             'community_owned': False,
             'tags': [],
             'language_code': constants.DEFAULT_LANGUAGE_CODE,
             'thumbnail_icon_url': '/subjects/Algebra.svg',
             'id': self.EXP_ID_3,
-            'category': u'Algebra',
-            'ratings': {u'1': 0, u'3': 0, u'2': 0, u'5': 1, u'4': 1},
-            'title': u'A title',
+            'category': 'Algebra',
+            'ratings': {'1': 0, '3': 0, '2': 0, '5': 1, '4': 1},
+            'title': 'A title',
             'num_views': 0,
-            'objective': u'An objective'
+            'objective': 'An objective'
         }
 
         self.assertDictContainsSubset(
@@ -758,18 +756,18 @@ class TopRatedExplorationDisplayableSummariesTest(
                 feconf.NUMBER_OF_TOP_RATED_EXPLORATIONS_FOR_LIBRARY_PAGE))
 
         expected_summary = {
-            'status': u'public',
-            'thumbnail_bg_color': '#cd672b',
+            'status': 'public',
+            'thumbnail_bg_color': '#cc4b00',
             'community_owned': False,
             'tags': [],
             'thumbnail_icon_url': '/subjects/Algebra.svg',
             'language_code': constants.DEFAULT_LANGUAGE_CODE,
             'id': self.EXP_ID_2,
-            'category': u'Algebra',
-            'ratings': {u'1': 0, u'3': 0, u'2': 0, u'5': 1, u'4': 0},
-            'title': u'A title',
+            'category': 'Algebra',
+            'ratings': {'1': 0, '3': 0, '2': 0, '5': 1, '4': 0},
+            'title': 'A title',
             'num_views': 0,
-            'objective': u'An objective'
+            'objective': 'An objective'
         }
         self.assertDictContainsSubset(
             expected_summary, top_rated_exploration_summaries[0])
@@ -841,45 +839,45 @@ class RecentlyPublishedExplorationDisplayableSummariesTest(
                 feconf.RECENTLY_PUBLISHED_QUERY_LIMIT_FOR_LIBRARY_PAGE))
         test_summary_1 = {
             'status': 'public',
-            'thumbnail_bg_color': '#cd672b',
+            'thumbnail_bg_color': '#cc4b00',
             'community_owned': False,
             'tags': [],
             'thumbnail_icon_url': '/subjects/Algebra.svg',
             'language_code': constants.DEFAULT_LANGUAGE_CODE,
             'id': self.EXP_ID_1,
-            'category': u'Algebra',
+            'category': 'Algebra',
             'ratings': feconf.get_empty_ratings(),
-            'title': u'A title',
+            'title': 'A title',
             'num_views': 0,
-            'objective': u'An objective'
+            'objective': 'An objective'
         }
         test_summary_2 = {
             'status': 'public',
-            'thumbnail_bg_color': '#cd672b',
+            'thumbnail_bg_color': '#cc4b00',
             'community_owned': False,
             'tags': [],
             'thumbnail_icon_url': '/subjects/Algebra.svg',
             'language_code': constants.DEFAULT_LANGUAGE_CODE,
             'id': self.EXP_ID_2,
-            'category': u'Algebra',
+            'category': 'Algebra',
             'ratings': feconf.get_empty_ratings(),
-            'title': u'A title',
+            'title': 'A title',
             'num_views': 0,
-            'objective': u'An objective'
+            'objective': 'An objective'
         }
         test_summary_3 = {
             'status': 'public',
-            'thumbnail_bg_color': '#cd672b',
+            'thumbnail_bg_color': '#cc4b00',
             'community_owned': False,
             'tags': [],
             'thumbnail_icon_url': '/subjects/Algebra.svg',
             'language_code': constants.DEFAULT_LANGUAGE_CODE,
             'id': self.EXP_ID_3,
-            'category': u'Algebra',
+            'category': 'Algebra',
             'ratings': feconf.get_empty_ratings(),
-            'title': u'A title',
+            'title': 'A title',
             'num_views': 0,
-            'objective': u'An objective'
+            'objective': 'An objective'
         }
 
         self.assertDictContainsSubset(
@@ -1034,16 +1032,16 @@ class CollectionNodeMetadataDictsTest(
 
         expected_metadata_dicts = [{
             'id': self.EXP_ID1,
-            'objective': u'An objective 1',
-            'title': u'Exploration 1 Albert title',
+            'objective': 'An objective 1',
+            'title': 'Exploration 1 Albert title',
         }, {
             'id': self.EXP_ID2,
-            'objective': u'An objective 2',
-            'title': u'Exploration 2 Albert title',
+            'objective': 'An objective 2',
+            'title': 'Exploration 2 Albert title',
         }, {
             'id': self.EXP_ID3,
-            'objective': u'An objective 3',
-            'title': u'Exploration 3 Albert title',
+            'objective': 'An objective 3',
+            'title': 'Exploration 3 Albert title',
         }]
         self.assertEqual(expected_metadata_dicts, metadata_dicts)
 
@@ -1061,8 +1059,8 @@ class CollectionNodeMetadataDictsTest(
 
         expected_metadata_dicts = [{
             'id': self.EXP_ID4,
-            'objective': u'An objective 4',
-            'title': u'Exploration 4 Bob title',
+            'objective': 'An objective 4',
+            'title': 'Exploration 4 Bob title',
         }]
         self.assertEqual(expected_metadata_dicts, metadata_dicts)
 
@@ -1072,16 +1070,16 @@ class CollectionNodeMetadataDictsTest(
 
         expected_metadata_dicts = [{
             'id': self.EXP_ID2,
-            'objective': u'An objective 2',
-            'title': u'Exploration 2 Albert title',
+            'objective': 'An objective 2',
+            'title': 'Exploration 2 Albert title',
         }, {
             'id': self.EXP_ID3,
-            'objective': u'An objective 3',
-            'title': u'Exploration 3 Albert title',
+            'objective': 'An objective 3',
+            'title': 'Exploration 3 Albert title',
         }, {
             'id': self.EXP_ID4,
-            'objective': u'An objective 4',
-            'title': u'Exploration 4 Bob title',
+            'objective': 'An objective 4',
+            'title': 'Exploration 4 Bob title',
         }]
         self.assertEqual(expected_metadata_dicts, metadata_dicts)
 
@@ -1093,12 +1091,12 @@ class CollectionNodeMetadataDictsTest(
 
         expected_metadata_dicts = [{
             'id': self.EXP_ID3,
-            'objective': u'An objective 3',
-            'title': u'Exploration 3 Albert title',
+            'objective': 'An objective 3',
+            'title': 'Exploration 3 Albert title',
         }, {
             'id': self.EXP_ID4,
-            'objective': u'An objective 4',
-            'title': u'Exploration 4 Bob title',
+            'objective': 'An objective 4',
+            'title': 'Exploration 4 Bob title',
         }]
         self.assertEqual(expected_metadata_dicts, metadata_dicts)
 
@@ -1109,8 +1107,8 @@ class CollectionNodeMetadataDictsTest(
 
         expected_metadata_dicts = [{
             'id': self.EXP_ID1,
-            'objective': u'An objective 1',
-            'title': u'Exploration 1 Albert title',
+            'objective': 'An objective 1',
+            'title': 'Exploration 1 Albert title',
         }]
         self.assertEqual(expected_metadata_dicts, metadata_dicts)
 
@@ -1120,8 +1118,8 @@ class CollectionNodeMetadataDictsTest(
 
         expected_metadata_dicts = [{
             'id': self.EXP_ID3,
-            'objective': u'An objective 3',
-            'title': u'Exploration 3 Albert title',
+            'objective': 'An objective 3',
+            'title': 'Exploration 3 Albert title',
         }]
         self.assertEqual(expected_metadata_dicts, metadata_dicts)
 
@@ -1132,12 +1130,12 @@ class CollectionNodeMetadataDictsTest(
 
         expected_metadata_dicts = [{
             'id': self.EXP_ID3,
-            'objective': u'An objective 3',
-            'title': u'Exploration 3 Albert title',
+            'objective': 'An objective 3',
+            'title': 'Exploration 3 Albert title',
         }, {
             'id': self.EXP_ID4,
-            'objective': u'An objective 4',
-            'title': u'Exploration 4 Bob title',
+            'objective': 'An objective 4',
+            'title': 'Exploration 4 Bob title',
         }]
 
         self.assertEqual(metadata_dicts, expected_metadata_dicts)

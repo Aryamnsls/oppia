@@ -16,15 +16,14 @@
  * @fileoverview Service for the rating functionality in the learner view.
  */
 
-import { EventEmitter } from '@angular/core';
+import {EventEmitter} from '@angular/core';
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { ExplorationEngineService } from './exploration-engine.service';
-import { LearnerViewRatingBackendApiService } from './learner-view-rating-backend-api.service';
+import {Injectable} from '@angular/core';
+import {ExplorationEngineService} from './exploration-engine.service';
+import {LearnerViewRatingBackendApiService} from './learner-view-rating-backend-api.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class LearnerViewRatingService {
   // This property is initialized using int method and we need to do
@@ -35,20 +34,21 @@ export class LearnerViewRatingService {
 
   constructor(
     private explorationEngineService: ExplorationEngineService,
-    private learnerViewRatingBackendApiService:
-    LearnerViewRatingBackendApiService
+    private learnerViewRatingBackendApiService: LearnerViewRatingBackendApiService
   ) {}
 
   init(successCallback: (usrRating: number) => void): void {
-    this.learnerViewRatingBackendApiService.getUserRatingAsync()
-      .then((response) => {
+    this.learnerViewRatingBackendApiService
+      .getUserRatingAsync()
+      .then(response => {
         successCallback(response.user_rating);
         this.userRating = response.user_rating;
       });
   }
 
   submitUserRating(ratingValue: number): void {
-    this.learnerViewRatingBackendApiService.submitUserRatingAsync(ratingValue)
+    this.learnerViewRatingBackendApiService
+      .submitUserRatingAsync(ratingValue)
       .then(() => {
         this.userRating = ratingValue;
         this._ratingUpdatedEventEmitter.emit();
@@ -63,6 +63,3 @@ export class LearnerViewRatingService {
     return this._ratingUpdatedEventEmitter;
   }
 }
-
-angular.module('oppia').factory('LearnerViewRatingService',
-  downgradeInjectable(LearnerViewRatingService));

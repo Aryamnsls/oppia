@@ -17,42 +17,44 @@
  * in exploration player.
  */
 
-import { Component } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { QuestionPlayerStateService } from 'components/question-directives/question-player/services/question-player-state.service';
-import { EditableExplorationBackendApiService } from 'domain/exploration/editable-exploration-backend-api.service';
-import { FetchExplorationBackendResponse, ReadOnlyExplorationBackendApiService } from 'domain/exploration/read-only-exploration-backend-api.service';
-import { StateObjectsBackendDict } from 'domain/exploration/StatesObjectFactory';
-import { ExplorationSummaryBackendApiService } from 'domain/summary/exploration-summary-backend-api.service';
-import { LearnerExplorationSummaryBackendDict } from 'domain/summary/learner-exploration-summary.model';
-import { Subscription } from 'rxjs';
-import { ContextService } from 'services/context.service';
-import { LoggerService } from 'services/contextual/logger.service';
-import { UrlService } from 'services/contextual/url.service';
-import { WindowDimensionsService } from 'services/contextual/window-dimensions.service';
-import { I18nLanguageCodeService } from 'services/i18n-language-code.service';
-import { UserService } from 'services/user.service';
-import { ExplorationEngineService } from '../services/exploration-engine.service';
-import { LearnerViewInfoBackendApiService } from '../services/learner-view-info-backend-api.service';
-import { PlayerPositionService } from '../services/player-position.service';
-import { PlayerTranscriptService } from '../services/player-transcript.service';
-import { LessonInformationCardModalComponent } from 'pages/exploration-player-page/templates/lesson-information-card-modal.component';
-import { UrlInterpolationService } from 'domain/utilities/url-interpolation.service';
-import { ProgressReminderModalComponent } from 'pages/exploration-player-page/templates/progress-reminder-modal.component';
-import { WindowRef } from 'services/contextual/window-ref.service';
-import { CheckpointCelebrationUtilityService } from 'pages/exploration-player-page/services/checkpoint-celebration-utility.service';
+import {Component, ElementRef, ViewChild} from '@angular/core';
+import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
+import {QuestionPlayerStateService} from 'components/question-directives/question-player/services/question-player-state.service';
+import {EditableExplorationBackendApiService} from 'domain/exploration/editable-exploration-backend-api.service';
+import {
+  FetchExplorationBackendResponse,
+  ReadOnlyExplorationBackendApiService,
+} from 'domain/exploration/read-only-exploration-backend-api.service';
+import {StateObjectsBackendDict} from 'domain/exploration/StatesObjectFactory';
+import {ExplorationSummaryBackendApiService} from 'domain/summary/exploration-summary-backend-api.service';
+import {LearnerExplorationSummaryBackendDict} from 'domain/summary/learner-exploration-summary.model';
+import {Subscription} from 'rxjs';
+import {ContextService} from 'services/context.service';
+import {LoggerService} from 'services/contextual/logger.service';
+import {UrlService} from 'services/contextual/url.service';
+import {WindowDimensionsService} from 'services/contextual/window-dimensions.service';
+import {I18nLanguageCodeService} from 'services/i18n-language-code.service';
+import {UserService} from 'services/user.service';
+import {ExplorationEngineService} from '../services/exploration-engine.service';
+import {ExplorationPlayerStateService} from '../services/exploration-player-state.service';
+import {LearnerViewInfoBackendApiService} from '../services/learner-view-info-backend-api.service';
+import {PlayerPositionService} from '../services/player-position.service';
+import {PlayerTranscriptService} from '../services/player-transcript.service';
+import {LessonInformationCardModalComponent} from 'pages/exploration-player-page/templates/lesson-information-card-modal.component';
+import {UrlInterpolationService} from 'domain/utilities/url-interpolation.service';
+import {ProgressReminderModalComponent} from 'pages/exploration-player-page/templates/progress-reminder-modal.component';
+import {WindowRef} from 'services/contextual/window-ref.service';
+import {CheckpointCelebrationUtilityService} from 'pages/exploration-player-page/services/checkpoint-celebration-utility.service';
 
 import './exploration-footer.component.css';
-import { OppiaNoninteractiveSkillreviewConceptCardModalComponent } from 'rich_text_components/Skillreview/directives/oppia-noninteractive-skillreview-concept-card-modal.component';
-import { ConceptCardManagerService } from '../services/concept-card-manager.service';
-import { StateCard } from 'domain/state_card/state-card.model';
-
+import {OppiaNoninteractiveSkillreviewConceptCardModalComponent} from 'rich_text_components/Skillreview/directives/oppia-noninteractive-skillreview-concept-card-modal.component';
+import {ConceptCardManagerService} from '../services/concept-card-manager.service';
+import {StateCard} from 'domain/state_card/state-card.model';
 
 @Component({
   selector: 'oppia-exploration-footer',
   templateUrl: './exploration-footer.component.html',
-  styleUrls: ['./exploration-footer.component.css']
+  styleUrls: ['./exploration-footer.component.css'],
 })
 export class ExplorationFooterComponent {
   directiveSubscriptions = new Subscription();
@@ -61,7 +63,6 @@ export class ExplorationFooterComponent {
   // https://github.com/oppia/oppia/wiki/Guide-on-defining-types#ts-7-1
   explorationId!: string;
   iframed!: boolean;
-  windowIsNarrow!: boolean;
   contributorNames: string[] = [];
   hintsAndSolutionsAreSupported: boolean = true;
   isVisible: boolean = true;
@@ -79,34 +80,31 @@ export class ExplorationFooterComponent {
   learnerHasViewedLessonInfoTooltip: boolean = false;
   userIsLoggedIn: boolean = false;
   footerIsInQuestionPlayerMode: boolean = false;
-  CHECKPOINTS_FEATURE_IS_ENABLED = false;
 
   conceptCardForStateExists: boolean = true;
   linkedSkillId: string | null = null;
+  @ViewChild('lessonInfoButton') lessonInfoButton!: ElementRef;
 
   constructor(
     private contextService: ContextService,
-    private explorationSummaryBackendApiService:
-    ExplorationSummaryBackendApiService,
+    private explorationSummaryBackendApiService: ExplorationSummaryBackendApiService,
     private i18nLanguageCodeService: I18nLanguageCodeService,
     private ngbModal: NgbModal,
     private urlService: UrlService,
     private windowDimensionsService: WindowDimensionsService,
     private questionPlayerStateService: QuestionPlayerStateService,
-    private readOnlyExplorationBackendApiService:
-      ReadOnlyExplorationBackendApiService,
+    private readOnlyExplorationBackendApiService: ReadOnlyExplorationBackendApiService,
     private learnerViewInfoBackendApiService: LearnerViewInfoBackendApiService,
     private loggerService: LoggerService,
     private playerTranscriptService: PlayerTranscriptService,
     private playerPositionService: PlayerPositionService,
     private explorationEngineService: ExplorationEngineService,
+    private explorationPlayerStateService: ExplorationPlayerStateService,
     private userService: UserService,
-    private editableExplorationBackendApiService:
-      EditableExplorationBackendApiService,
+    private editableExplorationBackendApiService: EditableExplorationBackendApiService,
     private urlInterpolationService: UrlInterpolationService,
     private windowRef: WindowRef,
-    private checkpointCelebrationUtilityService:
-      CheckpointCelebrationUtilityService,
+    private checkpointCelebrationUtilityService: CheckpointCelebrationUtilityService,
     private conceptCardManagerService: ConceptCardManagerService
   ) {}
 
@@ -122,80 +120,68 @@ export class ExplorationFooterComponent {
     try {
       this.explorationId = this.contextService.getExplorationId();
       this.iframed = this.urlService.isIframed();
-      this.userService.getUserInfoAsync().then((userInfo) => {
+      this.userService.getUserInfoAsync().then(userInfo => {
         this.userIsLoggedIn = userInfo.isLoggedIn();
       });
-      this.windowIsNarrow = this.windowDimensionsService.isWindowNarrow();
-      this.directiveSubscriptions.add(
-        this.windowDimensionsService.getResizeEvent().subscribe(evt => {
-          this.windowIsNarrow = this.windowDimensionsService.isWindowNarrow();
-        })
-      );
-      if (!this.contextService.isInQuestionPlayerMode() ||
-          this.contextService.getQuestionPlayerIsManuallySet()) {
+      if (
+        !this.contextService.isInQuestionPlayerMode() ||
+        this.contextService.getQuestionPlayerIsManuallySet()
+      ) {
         this.explorationSummaryBackendApiService
           .loadPublicAndPrivateExplorationSummariesAsync([this.explorationId])
-          .then((responseObject) => {
+          .then(responseObject => {
             let summaries = responseObject.summaries;
             if (summaries.length > 0) {
-              let contributorSummary = (
-                summaries[0].human_readable_contributors_summary);
+              let contributorSummary =
+                summaries[0].human_readable_contributors_summary;
               this.contributorNames = Object.keys(contributorSummary).sort(
                 (contributorUsername1, contributorUsername2) => {
-                  let commitsOfContributor1 = contributorSummary[
-                    contributorUsername1].num_commits;
-                  let commitsOfContributor2 = contributorSummary[
-                    contributorUsername2].num_commits;
+                  let commitsOfContributor1 =
+                    contributorSummary[contributorUsername1].num_commits;
+                  let commitsOfContributor2 =
+                    contributorSummary[contributorUsername2].num_commits;
                   return commitsOfContributor2 - commitsOfContributor1;
                 }
               );
             }
           });
       }
-    } catch (err) { }
+    } catch (err) {}
 
     if (this.contextService.isInQuestionPlayerMode()) {
-      this.questionPlayerStateService.resultsPageIsLoadedEventEmitter
-        .subscribe((resultsLoaded: boolean) => {
+      this.questionPlayerStateService.resultsPageIsLoadedEventEmitter.subscribe(
+        (resultsLoaded: boolean) => {
           this.hintsAndSolutionsAreSupported = !resultsLoaded;
-        });
+        }
+      );
       this.footerIsInQuestionPlayerMode = true;
     } else if (this.explorationId) {
-      this.readOnlyExplorationBackendApiService
-        .fetchCheckpointsFeatureIsEnabledStatus().then(
-          (checkpointsFeatureIsEnabled) => {
-            this.CHECKPOINTS_FEATURE_IS_ENABLED = checkpointsFeatureIsEnabled;
-            if (this.CHECKPOINTS_FEATURE_IS_ENABLED) {
-              // Fetching the number of checkpoints.
-              this.getCheckpointCount();
-              this.setLearnerHasViewedLessonInfoTooltip();
-            }
-          }
-        );
+      // Fetching the number of checkpoints.
+      this.getCheckpointCount();
+      this.setLearnerHasViewedLessonInfoTooltip();
     }
     this.directiveSubscriptions.add(
       this.playerPositionService.onLoadedMostRecentCheckpoint.subscribe(() => {
-        if (this.CHECKPOINTS_FEATURE_IS_ENABLED) {
-          if (this.checkpointCount) {
+        if (this.checkpointCount) {
+          this.showProgressReminderModal();
+        } else {
+          this.getCheckpointCount().then(() => {
             this.showProgressReminderModal();
-          } else {
-            this.getCheckpointCount().then(() => {
-              this.showProgressReminderModal();
-            });
-          }
+          });
         }
       })
     );
     this.directiveSubscriptions.add(
       this.checkpointCelebrationUtilityService
-        .getOpenLessonInformationModalEmitter().subscribe(() => {
+        .getOpenLessonInformationModalEmitter()
+        .subscribe(() => {
           this.showInformationCard();
         })
     );
     this.directiveSubscriptions.add(
       this.playerPositionService.onNewCardOpened.subscribe(
         (newCard: StateCard) => {
-          this.conceptCardManagerService.reset();
+          this.conceptCardManagerService.reset(newCard);
         }
       )
     );
@@ -206,34 +192,36 @@ export class ExplorationFooterComponent {
   }
 
   showProgressReminderModal(): void {
-    const mostRecentlyReachedCheckpointIndex = (
-      this.getMostRecentlyReachedCheckpointIndex()
-    );
+    const mostRecentlyReachedCheckpointIndex =
+      this.getMostRecentlyReachedCheckpointIndex();
 
     this.completedCheckpointsCount = mostRecentlyReachedCheckpointIndex - 1;
 
     if (this.completedCheckpointsCount === 0) {
+      this.explorationPlayerStateService.onShowProgressModal.emit();
       return;
     }
 
     if (this.expInfo) {
       this.openProgressReminderModal();
     } else {
-      let stringifiedExpIds = JSON.stringify(
-        [this.explorationId]);
+      let stringifiedExpIds = JSON.stringify([this.explorationId]);
       let includePrivateExplorations = JSON.stringify(true);
 
-      this.learnerViewInfoBackendApiService.fetchLearnerInfoAsync(
-        stringifiedExpIds,
-        includePrivateExplorations
-      ).then((response) => {
-        this.expInfo = response.summaries[0];
-        this.openProgressReminderModal();
-      }, () => {
-        this.loggerService.error(
-          'Information card failed to load for exploration ' +
-          this.explorationId);
-      });
+      this.learnerViewInfoBackendApiService
+        .fetchLearnerInfoAsync(stringifiedExpIds, includePrivateExplorations)
+        .then(
+          response => {
+            this.expInfo = response.summaries[0];
+            this.openProgressReminderModal();
+          },
+          () => {
+            this.loggerService.error(
+              'Information card failed to load for exploration ' +
+                this.explorationId
+            );
+          }
+        );
     }
   }
 
@@ -243,59 +231,61 @@ export class ExplorationFooterComponent {
 
   openProgressReminderModal(): void {
     let modalRef = this.ngbModal.open(ProgressReminderModalComponent, {
-      windowClass: 'oppia-progress-reminder-modal'
+      windowClass: 'oppia-progress-reminder-modal',
     });
+    this.explorationPlayerStateService.onShowProgressModal.emit();
 
-    let displayedCardIndex = (
-      this.playerPositionService.getDisplayedCardIndex()
-    );
+    let displayedCardIndex = this.playerPositionService.getDisplayedCardIndex();
     if (displayedCardIndex > 0) {
       let state = this.explorationEngineService.getState();
       let stateCard = this.explorationEngineService.getStateCardByName(
-        state.name);
+        state.name
+      );
       if (stateCard.isTerminal()) {
         this.completedCheckpointsCount += 1;
       }
     }
 
     modalRef.componentInstance.checkpointCount = this.checkpointCount;
-    modalRef.componentInstance.completedCheckpointsCount = (
-      this.completedCheckpointsCount);
+    modalRef.componentInstance.completedCheckpointsCount =
+      this.completedCheckpointsCount;
     modalRef.componentInstance.explorationTitle = this.expInfo.title;
 
-    modalRef.result.then(() => {
-      // This callback is used for when the learner chooses to restart
-      // the exploration.
-      this.editableExplorationBackendApiService.resetExplorationProgressAsync(
-        this.explorationId).then(() => {
-        this.windowRef.nativeWindow.location.reload();
-      });
-    }, () => {
-      // This callback is used for when the learner chooses to resume
-      // the exploration.
-    });
+    modalRef.result.then(
+      () => {
+        // This callback is used for when the learner chooses to restart
+        // the exploration.
+        this.editableExplorationBackendApiService
+          .resetExplorationProgressAsync(this.explorationId)
+          .then(() => {
+            this.windowRef.nativeWindow.location.reload();
+          });
+      },
+      () => {
+        // This callback is used for when the learner chooses to resume
+        // the exploration.
+      }
+    );
   }
 
   openInformationCardModal(): void {
     let modalRef = this.ngbModal.open(LessonInformationCardModalComponent, {
-      windowClass: 'oppia-modal-lesson-information-card'
+      windowClass: 'oppia-modal-lesson-information-card',
     });
 
     modalRef.componentInstance.checkpointCount = this.checkpointCount;
 
-    let mostRecentlyReachedCheckpointIndex = (
-      this.getMostRecentlyReachedCheckpointIndex()
-    );
+    let mostRecentlyReachedCheckpointIndex =
+      this.getMostRecentlyReachedCheckpointIndex();
 
     this.completedCheckpointsCount = mostRecentlyReachedCheckpointIndex - 1;
 
-    let displayedCardIndex = (
-      this.playerPositionService.getDisplayedCardIndex()
-    );
+    let displayedCardIndex = this.playerPositionService.getDisplayedCardIndex();
     if (displayedCardIndex > 0) {
       let state = this.explorationEngineService.getState();
       let stateCard = this.explorationEngineService.getStateCardByName(
-        state.name);
+        state.name
+      );
       if (stateCard.isTerminal()) {
         this.completedCheckpointsCount += 1;
       }
@@ -309,17 +299,20 @@ export class ExplorationFooterComponent {
       this.completedCheckpointsCount = this.checkpointCount;
     }
 
-    modalRef.componentInstance.completedCheckpointsCount = (
-      this.completedCheckpointsCount);
+    modalRef.componentInstance.completedCheckpointsCount =
+      this.completedCheckpointsCount;
     modalRef.componentInstance.contributorNames = this.contributorNames;
     modalRef.componentInstance.expInfo = this.expInfo;
     modalRef.componentInstance.userIsLoggedIn = this.userIsLoggedIn;
 
-    modalRef.result.then(() => {}, () => {
-      // Note to developers:
-      // This callback is triggered when the Cancel button is clicked.
-      // No further action is needed.
-    });
+    modalRef.result.then(
+      () => {},
+      () => {
+        // Note to developers:
+        // This callback is triggered when the Cancel button is clicked.
+        // No further action is needed.
+      }
+    );
   }
 
   openConceptCardModal(): void {
@@ -332,8 +325,7 @@ export class ExplorationFooterComponent {
   }
 
   showInformationCard(): void {
-    let stringifiedExpIds = JSON.stringify(
-      [this.explorationId]);
+    let stringifiedExpIds = JSON.stringify([this.explorationId]);
     let includePrivateExplorations = JSON.stringify(true);
     if (this.expInfo) {
       this.openInformationCardModal();
@@ -344,17 +336,20 @@ export class ExplorationFooterComponent {
         this.learnerHasViewedLessonInfo();
       }
     } else {
-      this.learnerViewInfoBackendApiService.fetchLearnerInfoAsync(
-        stringifiedExpIds,
-        includePrivateExplorations
-      ).then((response) => {
-        this.expInfo = response.summaries[0];
-        this.openInformationCardModal();
-      }, () => {
-        this.loggerService.error(
-          'Information card failed to load for exploration ' +
-          this.explorationId);
-      });
+      this.learnerViewInfoBackendApiService
+        .fetchLearnerInfoAsync(stringifiedExpIds, includePrivateExplorations)
+        .then(
+          response => {
+            this.expInfo = response.summaries[0];
+            this.openInformationCardModal();
+          },
+          () => {
+            this.loggerService.error(
+              'Information card failed to load for exploration ' +
+                this.explorationId
+            );
+          }
+        );
     }
   }
 
@@ -379,8 +374,8 @@ export class ExplorationFooterComponent {
     let numberOfCards = this.playerTranscriptService.getNumCards();
     for (let i = 0; i < numberOfCards; i++) {
       let stateName = this.playerTranscriptService.getCard(i).getStateName();
-      let correspondingState = this.explorationEngineService.
-        getStateFromStateName(stateName);
+      let correspondingState =
+        this.explorationEngineService.getStateFromStateName(stateName);
       if (correspondingState.cardIsCheckpoint) {
         checkpointIndex++;
       }
@@ -390,17 +385,17 @@ export class ExplorationFooterComponent {
 
   async getCheckpointCount(): Promise<void> {
     return this.readOnlyExplorationBackendApiService
-      .fetchExplorationAsync(this.explorationId, null).then(
-        (response: FetchExplorationBackendResponse) => {
-          this.expStates = response.exploration.states;
-          let count = 0;
-          for (let [, value] of Object.entries(this.expStates)) {
-            if (value.card_is_checkpoint) {
-              count++;
-            }
+      .fetchExplorationAsync(this.explorationId, null)
+      .then((response: FetchExplorationBackendResponse) => {
+        this.expStates = response.exploration.states;
+        let count = 0;
+        for (let [, value] of Object.entries(this.expStates)) {
+          if (value.card_is_checkpoint) {
+            count++;
           }
-          this.checkpointCount = count;
-        });
+        }
+        this.checkpointCount = count;
+      });
   }
 
   isLanguageRTL(): boolean {
@@ -409,18 +404,29 @@ export class ExplorationFooterComponent {
 
   async setLearnerHasViewedLessonInfoTooltip(): Promise<void> {
     return this.readOnlyExplorationBackendApiService
-      .fetchExplorationAsync(this.explorationId, null).then(
-        (response: FetchExplorationBackendResponse) => {
-          this.learnerHasViewedLessonInfoTooltip = (
-            response.has_viewed_lesson_info_modal_once);
-        });
+      .fetchExplorationAsync(this.explorationId, null)
+      .then((response: FetchExplorationBackendResponse) => {
+        this.learnerHasViewedLessonInfoTooltip =
+          response.has_viewed_lesson_info_modal_once;
+      });
+  }
+
+  shouldRenderLessonInfoTooltip(): boolean {
+    const lessonInfoTooltipShouldBeShown =
+      !this.footerIsInQuestionPlayerMode &&
+      !this.hasLearnerHasViewedLessonInfoTooltip() &&
+      this.getMostRecentlyReachedCheckpointIndex() === 2;
+
+    if (lessonInfoTooltipShouldBeShown) {
+      this.lessonInfoButton.nativeElement.focus();
+    }
+    return lessonInfoTooltipShouldBeShown;
   }
 
   learnerHasViewedLessonInfo(): void {
     this.learnerHasViewedLessonInfoTooltip = true;
     if (this.userIsLoggedIn) {
-      this.editableExplorationBackendApiService
-        .recordLearnerHasViewedLessonInfoModalOnce();
+      this.editableExplorationBackendApiService.recordLearnerHasViewedLessonInfoModalOnce();
     }
   }
 
@@ -428,6 +434,3 @@ export class ExplorationFooterComponent {
     return this.learnerHasViewedLessonInfoTooltip;
   }
 }
-
-angular.module('oppia').directive('oppiaExplorationFooter',
-  downgradeComponent({ component: ExplorationFooterComponent }));

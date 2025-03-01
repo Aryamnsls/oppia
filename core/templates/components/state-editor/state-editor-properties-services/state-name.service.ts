@@ -15,11 +15,10 @@
 /**
  * @fileoverview A data service that stores the current state name.
  */
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { Injectable } from '@angular/core';
+import {Injectable} from '@angular/core';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class StateNameService {
   private stateNameEditorIsShown: boolean = false;
@@ -55,9 +54,5 @@ export class StateNameService {
 
   init(): void {
     this.setStateNameSavedMemento(null);
-    this.setStateNameEditorVisibility(false);
   }
 }
-
-angular.module('oppia').factory(
-  'StateNameService', downgradeInjectable(StateNameService));

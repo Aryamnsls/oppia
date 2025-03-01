@@ -17,25 +17,21 @@
  * of a user for a particular exploration.
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { EventEmitter } from '@angular/core';
-import { Injectable } from '@angular/core';
+import {EventEmitter} from '@angular/core';
+import {Injectable} from '@angular/core';
 
-import { ExplorationPermissionsBackendApiService } from
-  'domain/exploration/exploration-permissions-backend-api.service';
-import { ExplorationPermissions } from
-  'domain/exploration/exploration-permissions.model';
+import {ExplorationPermissionsBackendApiService} from 'domain/exploration/exploration-permissions-backend-api.service';
+import {ExplorationPermissions} from 'domain/exploration/exploration-permissions.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class UserExplorationPermissionsService {
   private userExplorationPermissionsFetched = new EventEmitter<void>();
 
   constructor(
-    private explorationPermissionsBackendApiService:
-    ExplorationPermissionsBackendApiService) {
-  }
+    private explorationPermissionsBackendApiService: ExplorationPermissionsBackendApiService
+  ) {}
 
   // 'permissionsPromise' will be null until populated by async function
   // getPermissionsAsync().
@@ -43,24 +39,21 @@ export class UserExplorationPermissionsService {
 
   async getPermissionsAsync(): Promise<ExplorationPermissions> {
     if (!UserExplorationPermissionsService.permissionsPromise) {
-      UserExplorationPermissionsService.permissionsPromise = (
-        this.fetchPermissionsAsync());
+      UserExplorationPermissionsService.permissionsPromise =
+        this.fetchPermissionsAsync();
     }
     return UserExplorationPermissionsService.permissionsPromise;
   }
 
   async fetchPermissionsAsync(): Promise<ExplorationPermissions> {
-    let permissionPromise = (
-      this.explorationPermissionsBackendApiService.getPermissionsAsync());
+    let permissionPromise =
+      this.explorationPermissionsBackendApiService.getPermissionsAsync();
     UserExplorationPermissionsService.permissionsPromise = permissionPromise;
     return new Promise((resolve, reject) => {
-      permissionPromise.then(
-        (response) => {
-          this.userExplorationPermissionsFetched.emit();
-          resolve(response);
-        },
-        reject,
-      );
+      permissionPromise.then(response => {
+        this.userExplorationPermissionsFetched.emit();
+        resolve(response);
+      }, reject);
     });
   }
 
@@ -68,6 +61,3 @@ export class UserExplorationPermissionsService {
     return this.userExplorationPermissionsFetched;
   }
 }
-
-angular.module('oppia').factory('UserExplorationPermissionsService',
-  downgradeInjectable(UserExplorationPermissionsService));

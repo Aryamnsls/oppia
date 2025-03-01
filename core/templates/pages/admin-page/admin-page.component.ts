@@ -16,16 +16,14 @@
  * @fileoverview Data and component for the Oppia admin page.
  */
 
-import { ChangeDetectorRef, Component, EventEmitter } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { AppConstants } from 'app.constants';
-import { WindowRef } from 'services/contextual/window-ref.service';
-import { PlatformFeatureService } from 'services/platform-feature.service';
-import { AdminRouterService } from './services/admin-router.service';
+import {ChangeDetectorRef, Component, EventEmitter} from '@angular/core';
+import {AppConstants} from 'app.constants';
+import {WindowRef} from 'services/contextual/window-ref.service';
+import {AdminRouterService} from './services/admin-router.service';
 
 @Component({
   selector: 'oppia-admin-page',
-  templateUrl: './admin-page.component.html'
+  templateUrl: './admin-page.component.html',
 })
 export class AdminPageComponent {
   statusMessage = '';
@@ -35,16 +33,15 @@ export class AdminPageComponent {
   constructor(
     private adminRouterService: AdminRouterService,
     private changeDetectorRef: ChangeDetectorRef,
-    private platformFeatureService: PlatformFeatureService,
     private windowRef: WindowRef
   ) {}
 
   ngOnInit(): void {
-    this.adminRouterService.showTab(
-      this.windowRef.nativeWindow.location.hash);
+    this.adminRouterService.showTab(this.windowRef.nativeWindow.location.hash);
     this.windowRef.nativeWindow.onhashchange = () => {
       this.adminRouterService.showTab(
-        this.windowRef.nativeWindow.location.hash);
+        this.windowRef.nativeWindow.location.hash
+      );
     };
   }
 
@@ -52,12 +49,8 @@ export class AdminPageComponent {
     return this.adminRouterService.isActivitiesTabOpen();
   }
 
-  isConfigTabOpen(): boolean {
-    return this.adminRouterService.isConfigTabOpen();
-  }
-
-  isFeaturesTabOpen(): boolean {
-    return this.adminRouterService.isFeaturesTabOpen();
+  isPlatformParamsTabOpen(): boolean {
+    return this.adminRouterService.isPlatformParamsTabOpen();
   }
 
   isRolesTabOpen(): boolean {
@@ -72,13 +65,4 @@ export class AdminPageComponent {
     this.statusMessage = statusMessage;
     this.changeDetectorRef.detectChanges();
   }
-
-  isDummyFeatureEnabled(): boolean {
-    return this.platformFeatureService.status.DummyFeature.isEnabled;
-  }
 }
-
-angular.module('oppia').directive('oppiaAdminPage',
-  downgradeComponent({
-    component: AdminPageComponent
-  }) as angular.IDirectiveFactory);

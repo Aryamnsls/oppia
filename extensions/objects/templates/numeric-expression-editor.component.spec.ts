@@ -16,11 +16,14 @@
  * @fileoverview Unit tests for the numeric expression editor.
  */
 
-import { DeviceInfoService } from 'services/contextual/device-info.service';
-import { GuppyInitializationService, GuppyObject } from 'services/guppy-initialization.service';
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
-import { NumericExpressionEditorComponent } from './numeric-expression-editor.component';
-import { NO_ERRORS_SCHEMA } from '@angular/core';
+import {DeviceInfoService} from 'services/contextual/device-info.service';
+import {
+  GuppyInitializationService,
+  GuppyObject,
+} from 'services/guppy-initialization.service';
+import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
+import {NumericExpressionEditorComponent} from './numeric-expression-editor.component';
+import {NO_ERRORS_SCHEMA} from '@angular/core';
 
 describe('NumericExpressionEditor', () => {
   let fixture: ComponentFixture<NumericExpressionEditorComponent>;
@@ -31,8 +34,8 @@ describe('NumericExpressionEditor', () => {
     guppyInstance: {
       asciimath: () => {
         return 'Dummy value';
-      }
-    }
+      },
+    },
   };
   let guppyInitializationService: GuppyInitializationService;
   let deviceInfoService: DeviceInfoService;
@@ -51,31 +54,22 @@ describe('NumericExpressionEditor', () => {
     }
 
     static configure(name: string, val: Object): void {}
-    static 'remove_global_symbol'(symbol: string): void {}
-    static 'add_global_symbol'(name: string, symbol: Object): void {}
+    static remove_global_symbol(symbol: string): void {}
+    static add_global_symbol(name: string, symbol: Object): void {}
   }
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       declarations: [NumericExpressionEditorComponent],
-      schemas: [NO_ERRORS_SCHEMA]
+      schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents;
   }));
-  beforeEach((waitForAsync(() => {
+  beforeEach(waitForAsync(() => {
     fixture = TestBed.createComponent(NumericExpressionEditorComponent);
     component = fixture.componentInstance;
     guppyInitializationService = TestBed.inject(GuppyInitializationService);
     deviceInfoService = TestBed.inject(DeviceInfoService);
-    // TODO(#16734): Introduce the "as unknown as X" convention for testing
-    // and remove comments that explain it.
-    // We need to mock guppy for the test. The mock guppy only has partial
-    // functionality when compared to the Guppy. This is because we only use
-    // certain methods or data from the Guppy in the test we are testing.
-    // Mocking the full object is a waste of time and effort. However,
-    // the typescript strict checks will complain about this assignment. In
-    // order to get around this, we typecast the Mock to unknown and then
-    // to the type which we are mocking.
     window.Guppy = MockGuppy as unknown as Guppy;
-  })));
+  }));
 
   afterEach(() => {
     window.Guppy = originalGuppy;
@@ -83,7 +77,8 @@ describe('NumericExpressionEditor', () => {
 
   it('should add the change handler to guppy', () => {
     spyOn(guppyInitializationService, 'findActiveGuppyObject').and.returnValue(
-      mockGuppyObject as GuppyObject);
+      mockGuppyObject as GuppyObject
+    );
     component.ngOnInit();
     expect(guppyInitializationService.findActiveGuppyObject).toHaveBeenCalled();
   });
@@ -96,7 +91,8 @@ describe('NumericExpressionEditor', () => {
     // @ts-ignore
     component.currentValue = undefined;
     spyOn(guppyInitializationService, 'findActiveGuppyObject').and.returnValue(
-      mockGuppyObject as GuppyObject);
+      mockGuppyObject as GuppyObject
+    );
     component.warningText = '';
     component.isCurrentAnswerValid();
     expect(component.warningText).toBe('');
@@ -104,9 +100,12 @@ describe('NumericExpressionEditor', () => {
 
   it('should initialize component.value with an empty string', () => {
     spyOn(guppyInitializationService, 'findActiveGuppyObject').and.returnValue(
-      mockGuppyObject as GuppyObject);
+      mockGuppyObject as GuppyObject
+    );
     // This throws "Type 'null' is not assignable to type 'string'".
     // We need to suppress this error because we are testing validations here.
+    // Validation here refers to the 'if' checks defined in ngOnInit() which
+    // replaces 'value' with empty strings if null or undefined.
     // @ts-ignore
     component.value = null;
     MockGuppy.focused = false;
@@ -122,8 +121,9 @@ describe('NumericExpressionEditor', () => {
     component.hasBeenTouched = true;
     // This should be validated as false if the editor has been touched.
     expect(component.isCurrentAnswerValid()).toBeFalse();
-    expect(
-      component.warningText).toBe('Please enter an answer before submitting.');
+    expect(component.warningText).toBe(
+      'Please enter an answer before submitting.'
+    );
 
     component.currentValue = '45/2';
     expect(component.isCurrentAnswerValid()).toBeTrue();
@@ -138,7 +138,8 @@ describe('NumericExpressionEditor', () => {
     component.showOSK();
     expect(guppyInitializationService.getShowOSK()).toBeTrue();
     spyOn(guppyInitializationService, 'findActiveGuppyObject').and.returnValue(
-      mockGuppyObject as GuppyObject);
+      mockGuppyObject as GuppyObject
+    );
     MockGuppy.focused = false;
     component.ngOnInit();
   });

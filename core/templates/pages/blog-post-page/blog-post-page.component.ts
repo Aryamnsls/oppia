@@ -16,23 +16,24 @@
  * @fileoverview Data and component for the blog post page.
  */
 
-import { Component, OnInit, Input } from '@angular/core';
-import { BlogPostPageData } from 'domain/blog/blog-homepage-backend-api.service';
-import { BlogPostSummary } from 'domain/blog/blog-post-summary.model';
-import { BlogPostData } from 'domain/blog/blog-post.model';
-import { WindowDimensionsService } from 'services/contextual/window-dimensions.service';
-import { UrlService } from 'services/contextual/url.service';
-import { BlogPostPageConstants } from './blog-post-page.constants';
-import { UrlInterpolationService } from 'domain/utilities/url-interpolation.service';
-import { WindowRef } from 'services/contextual/window-ref.service';
-import { BlogPostPageService } from './services/blog-post-page.service';
+import {Component, OnInit, Input} from '@angular/core';
+import {BlogPostPageData} from 'domain/blog/blog-homepage-backend-api.service';
+import {BlogPostSummary} from 'domain/blog/blog-post-summary.model';
+import {BlogPostData} from 'domain/blog/blog-post.model';
+import {WindowDimensionsService} from 'services/contextual/window-dimensions.service';
+import {UrlService} from 'services/contextual/url.service';
+import {BlogPostPageConstants} from './blog-post-page.constants';
+import {UrlInterpolationService} from 'domain/utilities/url-interpolation.service';
+import {WindowRef} from 'services/contextual/window-ref.service';
+import {BlogPostPageService} from './services/blog-post-page.service';
+import {UserService} from 'services/user.service';
 import dayjs from 'dayjs';
 
 import './blog-post-page.component.css';
 
 @Component({
   selector: 'oppia-blog-post-page',
-  templateUrl: './blog-post-page.component.html'
+  templateUrl: './blog-post-page.component.html',
 })
 export class BlogPostPageComponent implements OnInit {
   @Input() blogPostPageData!: BlogPostPageData;
@@ -44,9 +45,9 @@ export class BlogPostPageComponent implements OnInit {
   blogPostUrlFragment!: string;
   blogPost!: BlogPostData;
   publishedDateString: string = '';
-  authorProfilePicUrl!: string;
+  authorProfilePicPngUrl!: string;
+  authorProfilePicWebpUrl!: string;
   authorUsername!: string;
-  DEFAULT_PROFILE_PICTURE_URL!: string;
   postsToRecommend: BlogPostSummary[] = [];
   blogPostLinkCopied: boolean = false;
 
@@ -56,22 +57,23 @@ export class BlogPostPageComponent implements OnInit {
     private urlInterpolationService: UrlInterpolationService,
     private windowRef: WindowRef,
     private blogPostPageService: BlogPostPageService,
+    private userService: UserService
   ) {}
 
   ngOnInit(): void {
-    this.MAX_POSTS_TO_RECOMMEND_AT_END_OF_BLOG_POST = (
-      BlogPostPageConstants.MAX_POSTS_TO_RECOMMEND_AT_END_OF_BLOG_POST);
+    this.MAX_POSTS_TO_RECOMMEND_AT_END_OF_BLOG_POST =
+      BlogPostPageConstants.MAX_POSTS_TO_RECOMMEND_AT_END_OF_BLOG_POST;
     this.blogPostUrlFragment = this.urlService.getBlogPostUrlFromUrl();
     this.authorUsername = this.blogPostPageData.authorUsername;
     this.blogPost = this.blogPostPageData.blogPostDict;
     this.blogPostPageService.blogPostId = this.blogPostPageData.blogPostDict.id;
     this.postsToRecommend = this.blogPostPageData.summaryDicts;
-    this.decodeAuthorProfilePicUrl(
-      this.blogPostPageData.profilePictureDataUrl
-    );
+    [this.authorProfilePicPngUrl, this.authorProfilePicWebpUrl] =
+      this.userService.getProfileImageDataUrl(this.authorUsername);
     if (this.blogPost.publishedOn) {
       this.publishedDateString = this.getDateStringInWords(
-        this.blogPost.publishedOn);
+        this.blogPost.publishedOn
+      );
     }
   }
 
@@ -93,16 +95,8 @@ export class BlogPostPageComponent implements OnInit {
     selection?.removeAllRanges();
   }
 
-  decodeAuthorProfilePicUrl(url: string): void {
-    this.DEFAULT_PROFILE_PICTURE_URL = this.urlInterpolationService
-      .getStaticImageUrl('/general/no_profile_picture.png');
-    this.authorProfilePicUrl = decodeURIComponent((
-      url || this.DEFAULT_PROFILE_PICTURE_URL));
-  }
-
   getDateStringInWords(naiveDate: string): string {
-    return dayjs(
-      naiveDate.split(',')[0], 'MM-DD-YYYY').format('MMMM D, YYYY');
+    return dayjs(naiveDate.split(',')[0], 'MM-DD-YYYY').format('MMMM D, YYYY');
   }
 
   isSmallScreenViewActive(): boolean {
@@ -110,11 +104,10 @@ export class BlogPostPageComponent implements OnInit {
   }
 
   navigateToAuthorProfilePage(): void {
-    this.windowRef.nativeWindow.location.href = (
+    this.windowRef.nativeWindow.location.href =
       this.urlInterpolationService.interpolateUrl(
         BlogPostPageConstants.BLOG_AUTHOR_PROFILE_PAGE_URL_TEMPLATE,
-        { author_username: this.authorUsername }
-      )
-    );
+        {author_username: this.authorUsername}
+      );
   }
 }

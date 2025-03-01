@@ -16,55 +16,56 @@
  * @fileoverview Validator service for the interaction.
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { Injectable } from '@angular/core';
+import {Injectable} from '@angular/core';
 
-import { AnswerGroup } from
-  'domain/exploration/AnswerGroupObjectFactory';
-import { Warning, baseInteractionValidationService } from
-  'interactions/base-interaction-validation.service';
-import { EndExplorationCustomizationArgs } from
-  'interactions/customization-args-defs';
-import { Outcome } from
-  'domain/exploration/OutcomeObjectFactory';
+import {AnswerGroup} from 'domain/exploration/AnswerGroupObjectFactory';
+import {
+  Warning,
+  baseInteractionValidationService,
+} from 'interactions/base-interaction-validation.service';
+import {EndExplorationCustomizationArgs} from 'interactions/customization-args-defs';
+import {Outcome} from 'domain/exploration/OutcomeObjectFactory';
 
-import { AppConstants } from 'app.constants';
+import {AppConstants} from 'app.constants';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class EndExplorationValidationService {
   constructor(
-      private baseInteractionValidationServiceInstance:
-        baseInteractionValidationService) {}
+    private baseInteractionValidationServiceInstance: baseInteractionValidationService
+  ) {}
 
   getCustomizationArgsWarnings(
-      customizationArgs: EndExplorationCustomizationArgs): Warning[] {
+    customizationArgs: EndExplorationCustomizationArgs
+  ): Warning[] {
     var warningsList = [];
     this.baseInteractionValidationServiceInstance.requireCustomizationArguments(
-      customizationArgs, ['recommendedExplorationIds']);
+      customizationArgs,
+      ['recommendedExplorationIds']
+    );
 
-    var recommendedExplorationIds = (
-      customizationArgs.recommendedExplorationIds.value);
+    var recommendedExplorationIds =
+      customizationArgs.recommendedExplorationIds.value;
 
     if (!Array.isArray(recommendedExplorationIds)) {
       warningsList.push({
         type: AppConstants.WARNING_TYPES.ERROR,
-        message: 'Set of recommended exploration IDs must be list.'
+        message: 'Set of recommended exploration IDs must be list.',
       });
     }
     for (var i = 0; i < recommendedExplorationIds.length; i++) {
       if (!(typeof recommendedExplorationIds[i] === 'string')) {
         warningsList.push({
           type: AppConstants.WARNING_TYPES.ERROR,
-          message: 'Recommended exploration ID must be a string.'
+          message: 'Recommended exploration ID must be a string.',
         });
         break;
       }
       if (recommendedExplorationIds[i].trim().length === 0) {
         warningsList.push({
           type: AppConstants.WARNING_TYPES.ERROR,
-          message: 'Recommended exploration ID must be non-empty.'
+          message: 'Recommended exploration ID must be non-empty.',
         });
         break;
       }
@@ -74,32 +75,34 @@ export class EndExplorationValidationService {
   }
 
   getAllWarnings(
-      stateName: string, customizationArgs: EndExplorationCustomizationArgs,
-      answerGroups: AnswerGroup[], defaultOutcome: Outcome | null): Warning[] {
+    stateName: string,
+    customizationArgs: EndExplorationCustomizationArgs,
+    answerGroups: AnswerGroup[],
+    defaultOutcome: Outcome | null
+  ): Warning[] {
     var warningsList: Warning[] = [];
 
     warningsList = warningsList.concat(
-      this.getCustomizationArgsWarnings(customizationArgs));
+      this.getCustomizationArgsWarnings(customizationArgs)
+    );
 
     if (answerGroups.length !== 0) {
       warningsList.push({
         type: AppConstants.WARNING_TYPES.ERROR,
-        message: 'Please make sure end exploration interactions do not ' +
-          'have any answer groups.'
+        message:
+          'Please make sure end exploration interactions do not ' +
+          'have any Oppia responses.',
       });
     }
     if (defaultOutcome) {
       warningsList.push({
         type: AppConstants.WARNING_TYPES.ERROR,
-        message: 'Please make sure end exploration interactions do not ' +
-        'have a default outcome.'
+        message:
+          'Please make sure end exploration interactions do not ' +
+          'have a default outcome.',
       });
     }
 
     return warningsList;
   }
 }
-
-angular.module('oppia').factory(
-  'EndExplorationValidationService',
-  downgradeInjectable(EndExplorationValidationService));

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { LearnerGroupUserInfo } from './learner-group-user-info.model';
+import {LearnerGroupUserInfo} from './learner-group-user-info.model';
 
 /**
  * @fileoverview Tests for learner group user info model.
@@ -22,18 +22,15 @@ describe('Learner Group User Info', () => {
   it('should correctly convert backend dict to object', () => {
     const sampleLearnerGroupUserInfoDict = {
       username: 'user1',
-      profile_picture_data_url: 'profile_picture',
-      error: 'some error message'
+      error: 'some error message',
     };
 
-    const sampleLearnerGroupUserInfo = (
+    const sampleLearnerGroupUserInfo =
       LearnerGroupUserInfo.createFromBackendDict(
-        sampleLearnerGroupUserInfoDict)
-    );
+        sampleLearnerGroupUserInfoDict
+      );
 
     expect(sampleLearnerGroupUserInfo.username).toEqual('user1');
-    expect(sampleLearnerGroupUserInfo.userProfilePictureUrl).toEqual(
-      'profile_picture');
     expect(sampleLearnerGroupUserInfo.error).toEqual('some error message');
   });
 });

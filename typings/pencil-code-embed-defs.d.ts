@@ -3,8 +3,8 @@
 // only class exported by the library.
 
 interface SetupCode {
-  code: string,
-  type: string
+  code: string;
+  type: string;
 }
 
 declare class PencilCodeEmbed {
@@ -18,7 +18,10 @@ declare class PencilCodeEmbed {
 
   // Send messages to the remote iframe.
   invokeRemote: (
-    method: string, args: Object[], callback: Function) => PencilCodeEmbed;
+    method: string,
+    args: Object[],
+    callback: Function
+  ) => PencilCodeEmbed;
 
   beginLoad: (code: string) => PencilCodeEmbed;
 
