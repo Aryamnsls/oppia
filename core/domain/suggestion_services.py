@@ -25,8 +25,8 @@ import re
 
 from core import feconf
 from core.constants import constants
+from core.domain import contribution_stats_services
 from core.domain import email_manager
-from core.domain import exp_domain
 from core.domain import exp_fetchers
 from core.domain import feedback_services
 from core.domain import html_cleaner
@@ -37,14 +37,14 @@ from core.domain import skill_services
 from core.domain import state_domain
 from core.domain import suggestion_registry
 from core.domain import taskqueue_services
+from core.domain import translation_domain
 from core.domain import user_domain
 from core.domain import user_services
 from core.platform import models
 
 from typing import (
-    Callable, Dict, Final, List, Literal, Mapping, Match, Optional, Sequence,
-    Set, Tuple, Union, cast, overload
-)
+    Callable, Dict, Final, List, Literal, Mapping, Match,
+    Optional, Sequence, Set, Tuple, Union, cast, overload)
 
 MYPY = False
 if MYPY:  # pragma: no cover
@@ -78,11 +78,11 @@ MAX_NUMBER_OF_SUGGESTIONS_TO_EMAIL_REVIEWER: Final = 5
 
 SUGGESTION_TRANSLATE_CONTENT_HTML: Callable[
     [suggestion_registry.SuggestionTranslateContent], str
-] = lambda suggestion: suggestion.change.translation_html
+] = lambda suggestion: suggestion.change_cmd.translation_html
 
 SUGGESTION_ADD_QUESTION_HTML: Callable[
     [suggestion_registry.SuggestionAddQuestion], str
-] = lambda suggestion: suggestion.change.question_dict[
+] = lambda suggestion: suggestion.change_cmd.question_dict[
     'question_state_data']['content']['html']
 
 # A dictionary that maps the suggestion type to a lambda function, which is
@@ -97,6 +97,8 @@ SUGGESTION_EMPHASIZED_TEXT_GETTER_FUNCTIONS: Dict[str, Callable[..., str]] = {
     feconf.SUGGESTION_TYPE_ADD_QUESTION: SUGGESTION_ADD_QUESTION_HTML
 }
 
+RECENT_REVIEW_OUTCOMES_LIMIT: Final = 100
+
 
 @overload
 def create_suggestion(
@@ -105,7 +107,7 @@ def create_suggestion(
     target_id: str,
     target_version_at_submission: int,
     author_id: str,
-    change: Mapping[str, change_domain.AcceptableChangeDictTypes],
+    change_cmd: Mapping[str, change_domain.AcceptableChangeDictTypes],
     description: Optional[str]
 ) -> suggestion_registry.SuggestionAddQuestion: ...
 
@@ -117,7 +119,7 @@ def create_suggestion(
     target_id: str,
     target_version_at_submission: int,
     author_id: str,
-    change: Mapping[str, change_domain.AcceptableChangeDictTypes],
+    change_cmd: Mapping[str, change_domain.AcceptableChangeDictTypes],
     description: Optional[str]
 ) -> suggestion_registry.SuggestionTranslateContent: ...
 
@@ -129,7 +131,7 @@ def create_suggestion(
     target_id: str,
     target_version_at_submission: int,
     author_id: str,
-    change: Mapping[str, change_domain.AcceptableChangeDictTypes],
+    change_cmd: Mapping[str, change_domain.AcceptableChangeDictTypes],
     description: Optional[str]
 ) -> suggestion_registry.SuggestionEditStateContent: ...
 
@@ -141,7 +143,7 @@ def create_suggestion(
     target_id: str,
     target_version_at_submission: int,
     author_id: str,
-    change: Mapping[str, change_domain.AcceptableChangeDictTypes],
+    change_cmd: Mapping[str, change_domain.AcceptableChangeDictTypes],
     description: Optional[str]
 ) -> suggestion_registry.BaseSuggestion: ...
 
@@ -152,7 +154,7 @@ def create_suggestion(
     target_id: str,
     target_version_at_submission: int,
     author_id: str,
-    change: Mapping[str, change_domain.AcceptableChangeDictTypes],
+    change_cmd: Mapping[str, change_domain.AcceptableChangeDictTypes],
     description: Optional[str]
 ) -> suggestion_registry.BaseSuggestion:
     """Creates a new SuggestionModel and the corresponding FeedbackThread.
@@ -166,7 +168,7 @@ def create_suggestion(
         target_version_at_submission: int. The version number of the target
             entity at the time of creation of the suggestion.
         author_id: str. The ID of the user who submitted the suggestion.
-        change: dict. The details of the suggestion.
+        change_cmd: dict. The details of the suggestion.
         description: str|None. The description of the changes provided by the
             author or None, if no description is provided.
 
@@ -187,51 +189,56 @@ def create_suggestion(
     if target_type == feconf.ENTITY_TYPE_EXPLORATION:
         exploration = exp_fetchers.get_exploration_by_id(target_id)
     if suggestion_type == feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT:
-        score_category = (
-            suggestion_models.SCORE_TYPE_CONTENT +
-            suggestion_models.SCORE_CATEGORY_DELIMITER + exploration.category)
+        score_category = ('%s%s%s' % (
+            suggestion_models.SCORE_TYPE_CONTENT,
+            suggestion_models.SCORE_CATEGORY_DELIMITER, exploration.category
+            ))
         # Suggestions of this type do not have an associated language code,
         # since they are not queryable by language.
         language_code = None
         suggestion: AllowedSuggestionClasses = (
             suggestion_registry.SuggestionEditStateContent(
                 thread_id, target_id, target_version_at_submission, status,
-                author_id, None, change, score_category, language_code, False
+                author_id, None, change_cmd, score_category, language_code,
+                False, datetime.datetime.utcnow(),
+                datetime.datetime.utcnow()
             )
         )
     elif suggestion_type == feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT:
-        score_category = (
-            suggestion_models.SCORE_TYPE_TRANSLATION +
-            suggestion_models.SCORE_CATEGORY_DELIMITER + exploration.category)
+        score_category = ('%s%s%s' % (
+            suggestion_models.SCORE_TYPE_TRANSLATION,
+            suggestion_models.SCORE_CATEGORY_DELIMITER, exploration.category)
+        )
         # The language code of the translation, used for querying purposes.
         # Ruling out the possibility of any other type for mypy type checking.
-        assert isinstance(change['language_code'], str)
-        language_code = change['language_code']
+        assert isinstance(change_cmd['language_code'], str)
+        language_code = change_cmd['language_code']
         # Ruling out the possibility of any other type for mypy type checking.
-        assert isinstance(change['state_name'], str)
-        assert isinstance(change['content_id'], str)
+        assert isinstance(change_cmd['state_name'], str)
+        assert isinstance(change_cmd['content_id'], str)
         content_html = exploration.get_content_html(
-            change['state_name'], change['content_id'])
-        if content_html != change['content_html']:
+            change_cmd['state_name'], change_cmd['content_id'])
+        if content_html != change_cmd['content_html']:
             raise Exception(
                 'The Exploration content has changed since this translation '
                 'was submitted.')
         suggestion = suggestion_registry.SuggestionTranslateContent(
             thread_id, target_id, target_version_at_submission, status,
-            author_id, None, change, score_category, language_code, False
-        )
+            author_id, None, change_cmd, score_category, language_code, False,
+            datetime.datetime.utcnow(), datetime.datetime.utcnow())
     elif suggestion_type == feconf.SUGGESTION_TYPE_ADD_QUESTION:
-        score_category = (
-            suggestion_models.SCORE_TYPE_QUESTION +
-            suggestion_models.SCORE_CATEGORY_DELIMITER + target_id)
+        score_category = ('%s%s%s' % (
+            suggestion_models.SCORE_TYPE_QUESTION,
+            suggestion_models.SCORE_CATEGORY_DELIMITER, target_id)
+        )
         # Ruling out the possibility of any other type for mypy type checking.
-        assert isinstance(change['question_dict'], dict)
+        assert isinstance(change_cmd['question_dict'], dict)
         # Here we use cast because we are narrowing down the type from
         # various Dict types that are present in AcceptableChangeDictTypes
         # to QuestionDict type.
         question_dict = cast(
             question_domain.QuestionDict,
-            change['question_dict']
+            change_cmd['question_dict']
         )
         question_dict['language_code'] = (
             constants.DEFAULT_LANGUAGE_CODE)
@@ -241,8 +248,9 @@ def create_suggestion(
         add_question_language_code = constants.DEFAULT_LANGUAGE_CODE
         suggestion = suggestion_registry.SuggestionAddQuestion(
             thread_id, target_id, target_version_at_submission, status,
-            author_id, None, change, score_category, add_question_language_code,
-            False
+            author_id, None, change_cmd, score_category,
+            add_question_language_code, False,
+            datetime.datetime.utcnow(), datetime.datetime.utcnow()
         )
     else:
         raise Exception('Invalid suggestion type %s' % suggestion_type)
@@ -251,7 +259,7 @@ def create_suggestion(
     suggestion_models.GeneralSuggestionModel.create(
         suggestion_type, target_type, target_id,
         target_version_at_submission, status, author_id,
-        None, change, score_category, thread_id, suggestion.language_code)
+        None, change_cmd, score_category, thread_id, suggestion.language_code)
 
     # Update the community contribution stats so that the number of suggestions
     # of this type that are in review increases by one.
@@ -281,7 +289,8 @@ def get_suggestion_from_model(
         suggestion_model.status, suggestion_model.author_id,
         suggestion_model.final_reviewer_id, suggestion_model.change_cmd,
         suggestion_model.score_category, suggestion_model.language_code,
-        suggestion_model.edited_by_reviewer, suggestion_model.last_updated)
+        suggestion_model.edited_by_reviewer, suggestion_model.last_updated,
+        suggestion_model.created_on)
 
 
 @overload
@@ -617,19 +626,23 @@ def get_all_stale_suggestion_ids() -> List[str]:
 
 
 def _update_suggestion(
-    suggestion: suggestion_registry.BaseSuggestion
+    suggestion: suggestion_registry.BaseSuggestion,
+    validate_suggestion: bool = True
 ) -> None:
     """Updates the given suggestion.
 
     Args:
         suggestion: Suggestion. The suggestion to be updated.
+        validate_suggestion: bool. Whether to validate the suggestion before
+            saving it.
     """
-    _update_suggestions([suggestion])
+    _update_suggestions([suggestion], validate_suggestion=validate_suggestion)
 
 
 def _update_suggestions(
     suggestions: List[suggestion_registry.BaseSuggestion],
-    update_last_updated_time: bool = True
+    update_last_updated_time: bool = True,
+    validate_suggestion: bool = True
 ) -> None:
     """Updates the given suggestions.
 
@@ -637,12 +650,19 @@ def _update_suggestions(
         suggestions: list(Suggestion). The suggestions to be updated.
         update_last_updated_time: bool. Whether to update the last_updated
             field of the suggestions.
+        validate_suggestion: bool. Whether to validate the suggestions before
+            saving them.
     """
     suggestion_ids = []
 
-    for suggestion in suggestions:
-        suggestion.validate()
-        suggestion_ids.append(suggestion.suggestion_id)
+    if validate_suggestion:
+        for suggestion in suggestions:
+            suggestion.validate()
+            suggestion_ids.append(suggestion.suggestion_id)
+    else:
+        suggestion_ids = [
+            suggestion.suggestion_id for suggestion in suggestions
+        ]
 
     suggestion_models_to_update_with_none = (
         suggestion_models.GeneralSuggestionModel.get_multi(suggestion_ids)
@@ -658,7 +678,7 @@ def _update_suggestions(
         suggestion_models_to_update.append(suggestion_model)
         suggestion_model.status = suggestion.status
         suggestion_model.final_reviewer_id = suggestion.final_reviewer_id
-        suggestion_model.change_cmd = suggestion.change.to_dict()
+        suggestion_model.change_cmd = suggestion.change_cmd.to_dict()
         suggestion_model.score_category = suggestion.score_category
         suggestion_model.language_code = suggestion.language_code
         suggestion_model.edited_by_reviewer = suggestion.edited_by_reviewer
@@ -843,7 +863,7 @@ def reject_suggestions(
         suggestion.set_suggestion_status_to_rejected()
         suggestion.set_final_reviewer_id(reviewer_id)
 
-    _update_suggestions(suggestions)
+    _update_suggestions(suggestions, validate_suggestion=False)
 
     # Update the community contribution stats so that the number of suggestions
     # that are in review decreases, since these suggestions are no longer in
@@ -902,11 +922,34 @@ def auto_reject_translation_suggestions_for_exp_ids(exp_ids: List[str]) -> None:
         suggestion_models.INVALID_STORY_REJECT_TRANSLATION_SUGGESTIONS_MSG)
 
 
+def auto_reject_translation_suggestions_for_content_ids(
+    exp_id: str,
+    content_ids: Set[str]
+) -> None:
+    """Rejects all translation suggestions with target ID matching the supplied
+    exploration ID and change_cmd content ID matching one of the supplied
+    content IDs. These suggestions are being rejected because their
+    corresponding exploration content was deleted. Reviewer ID is set to
+    SUGGESTION_BOT_USER_ID.
+
+    Args:
+        exp_id: str. The exploration ID.
+        content_ids: list(str). The list of exploration content IDs.
+    """
+    obsolete_suggestion_ids = [
+        suggestion.suggestion_id
+        for suggestion in get_translation_suggestions_in_review(exp_id)
+        if suggestion.change_cmd.content_id in content_ids]
+    reject_suggestions(
+        obsolete_suggestion_ids, feconf.SUGGESTION_BOT_USER_ID,
+        constants.OBSOLETE_TRANSLATION_SUGGESTION_REVIEW_MSG)
+
+
 def resubmit_rejected_suggestion(
     suggestion_id: str,
     summary_message: str,
     author_id: str,
-    change: change_domain.BaseChange
+    change_cmd: change_domain.BaseChange
 ) -> None:
     """Resubmit a rejected suggestion with the given suggestion_id.
 
@@ -915,7 +958,7 @@ def resubmit_rejected_suggestion(
         summary_message: str. The message provided by the author to
             summarize new suggestion.
         author_id: str. The ID of the author creating the suggestion.
-        change: BaseChange. The new change to apply to the suggestion.
+        change_cmd: BaseChange. The new change to apply to the suggestion.
 
     Raises:
         Exception. The summary message is empty.
@@ -935,8 +978,8 @@ def resubmit_rejected_suggestion(
             'Only rejected suggestions can be resubmitted.' % (suggestion_id)
         )
 
-    suggestion.pre_update_validate(change)
-    suggestion.change = change
+    suggestion.pre_update_validate(change_cmd)
+    suggestion.change_cmd = change_cmd
     suggestion.set_suggestion_status_to_in_review()
     _update_suggestion(suggestion)
 
@@ -1063,11 +1106,110 @@ def get_reviewable_translation_suggestions_by_offset(
     return translation_suggestions, next_offset
 
 
+def get_reviewable_translation_suggestion_target_ids(
+    user_id: str,
+    language_code: Optional[str] = None
+) -> List[str]:
+    """Returns a list of translation suggestions matching the
+    passed opportunity IDs which the user can review.
+
+    Args:
+        user_id: str. The ID of the user.
+        language_code: str|None. ISO 639-1 language code for which to filter.
+            If it is None, all available languages will be returned.
+
+    Returns:
+        list(str). A list of translation suggestion target ids
+        which the supplied user is permitted to review.
+    """
+    contribution_rights = user_services.get_user_contribution_rights(
+        user_id
+    )
+    allowed_language_codes_for_review = (
+        contribution_rights.can_review_translation_for_language_codes
+    )
+
+    filtering_by_language_code = language_code is not None
+    language_codes = (
+        allowed_language_codes_for_review if not filtering_by_language_code
+        else [language_code]
+        if language_code in allowed_language_codes_for_review
+        else []
+    )
+
+    user_can_review_translations = len(language_codes) != 0
+    if not user_can_review_translations:
+        return []
+
+    return (
+        suggestion_models.GeneralSuggestionModel
+        .get_in_review_translation_suggestion_target_ids(
+            user_id,
+            language_codes
+        )
+    )
+
+
+def get_reviewable_translation_suggestions_for_single_exp(
+    user_id: str,
+    opportunity_summary_exp_id: str,
+    language_code: str
+) -> Tuple[List[suggestion_registry.SuggestionTranslateContent], int]:
+    """Returns a list of translation suggestions matching the
+     passed opportunity ID which the user can review.
+
+    Args:
+        user_id: str. The ID of the user.
+        opportunity_summary_exp_id: str.
+            The exploration ID for which suggestions
+            are fetched. If exp id is empty, no suggestions are
+            fetched.
+        language_code: str. The language code to get results for.
+
+    Returns:
+        Tuple of (results, next_offset). where:
+            results: list(Suggestion). A list of translation suggestions
+            which the supplied user is permitted to review.
+            next_offset: int. The input offset + the number of results returned
+                by the current query.
+    """
+    contribution_rights = user_services.get_user_contribution_rights(
+        user_id)
+    language_codes = (
+        contribution_rights.can_review_translation_for_language_codes)
+
+    # The user doesn't have rights to review in any languages, or the user
+    # doesn't have right to review in the chosen language so return early.
+    if language_codes is None or (
+        language_code not in language_codes):
+        return [], 0
+
+    in_review_translation_suggestions, next_offset = (
+        suggestion_models.GeneralSuggestionModel
+        .get_reviewable_translation_suggestions(
+            user_id,
+            language_code,
+            opportunity_summary_exp_id))
+
+    translation_suggestions = []
+    for suggestion_model in in_review_translation_suggestions:
+        suggestion = get_suggestion_from_model(suggestion_model)
+        # Here, we are narrowing down the type from BaseSuggestion to
+        # SuggestionTranslateContent.
+        assert isinstance(
+            suggestion, suggestion_registry.SuggestionTranslateContent
+        )
+        translation_suggestions.append(suggestion)
+
+    return translation_suggestions, next_offset
+
+
 def get_reviewable_question_suggestions_by_offset(
     user_id: str,
     limit: int,
     offset: int,
-    sort_key: Optional[str]
+    sort_key: Optional[str],
+    skill_ids: Optional[List[str]],
 ) -> Tuple[List[suggestion_registry.SuggestionAddQuestion], int]:
     """Returns a list of question suggestions which the user
        can review.
@@ -1078,6 +1220,8 @@ def get_reviewable_question_suggestions_by_offset(
         offset: int. The number of results to skip from the beginning of all
             results matching the query.
         sort_key: str|None. The key to sort the suggestions by.
+        skill_ids: List[str]|None. The skills for which to return question
+            suggestions. None for returning all suggestions.
 
     Returns:
         Tuple of (results, next_offset). Where:
@@ -1089,7 +1233,7 @@ def get_reviewable_question_suggestions_by_offset(
     suggestions, next_offset = (
         suggestion_models.GeneralSuggestionModel
         .get_in_review_question_suggestions_by_offset(
-            limit, offset, user_id, sort_key))
+            limit, offset, user_id, sort_key, skill_ids))
 
     question_suggestions = []
     for suggestion_model in suggestions:
@@ -1162,6 +1306,29 @@ def get_translation_suggestions_waiting_longest_for_review(
     return translation_suggestions
 
 
+def get_translation_suggestions_in_review(
+    exp_id: str
+) -> List[suggestion_registry.BaseSuggestion]:
+    """Returns translation suggestions in-review by exploration ID.
+
+    Args:
+        exp_id: str. Exploration ID.
+
+    Returns:
+        list(Suggestion). A list of translation suggestions in-review with
+        target_id == exp_id.
+    """
+    suggestion_models_in_review = (
+        suggestion_models.GeneralSuggestionModel
+        .get_in_review_translation_suggestions_by_exp_id(
+            exp_id)
+    )
+    return [
+        get_suggestion_from_model(model)
+        for model in suggestion_models_in_review
+    ]
+
+
 def get_translation_suggestions_in_review_by_exploration(
     exp_id: str, language_code: str
 ) -> List[suggestion_registry.BaseSuggestion]:
@@ -1214,14 +1381,11 @@ def get_translation_suggestions_in_review_by_exp_ids(
     ]
 
 
-def get_suggestions_with_translatable_explorations(
+def get_suggestions_with_editable_explorations(
     suggestions: Sequence[suggestion_registry.SuggestionTranslateContent]
 ) -> Sequence[suggestion_registry.SuggestionTranslateContent]:
     """Filters the supplied suggestions for those suggestions that have
-    translatable exploration content. That is, the following are true:
-    - The suggestion's change content corresponds to an existing exploration
-    content card.
-    - The suggestion's corresponding exploration allows edits.
+    explorations that allow edits.
 
     Args:
         suggestions: list(Suggestion). List of translation suggestions to
@@ -1230,44 +1394,13 @@ def get_suggestions_with_translatable_explorations(
     Returns:
         list(Suggestion). List of filtered translation suggestions.
     """
-
-    def _has_translatable_exploration(
-        suggestion: suggestion_registry.SuggestionTranslateContent,
-        suggestion_exp_id_to_exp: Dict[str, exp_domain.Exploration]
-    ) -> bool:
-        """Returns whether the supplied suggestion corresponds to a translatable
-        exploration content card.
-
-        Args:
-            suggestion: Suggestion. Translation suggestion domain object to
-                check.
-            suggestion_exp_id_to_exp: dict(str, Exploration). Dictionary mapping
-                suggestion target exploration IDs to their corresponding
-                Exploration domain objects.
-
-        Returns:
-            bool. Whether the supplied suggestion corresponds to a translatable
-            exploration content card.
-        """
-        exploration = suggestion_exp_id_to_exp[suggestion.target_id]
-        content_id_exists = False
-
-        # Checks whether the suggestion's change content still exists in the
-        # corresponding exploration.
-        # For more details, see https://github.com/oppia/oppia/issues/14339.
-        if suggestion.change.state_name in exploration.states:
-            content_id_exists = exploration.states[
-                suggestion.change.state_name].has_content_id(
-                    suggestion.change.content_id)
-        return content_id_exists and exploration.edits_allowed
-
     suggestion_exp_ids = {
         suggestion.target_id for suggestion in suggestions}
     suggestion_exp_id_to_exp = exp_fetchers.get_multiple_explorations_by_id(
         list(suggestion_exp_ids))
     return list(filter(
-        lambda suggestion: _has_translatable_exploration(
-            suggestion, suggestion_exp_id_to_exp),
+        lambda suggestion: suggestion_exp_id_to_exp[
+            suggestion.target_id].edits_allowed,
         suggestions))
 
 
@@ -1621,6 +1754,33 @@ def get_info_about_suggestions_waiting_too_long_for_review() -> List[
     ]
 
 
+def get_new_suggestions_for_reviewer_notifications() -> List[
+    suggestion_registry.ReviewableSuggestionEmailInfo
+]:
+    """Retrieves and organizes new suggestions for reviewer email notifications.
+
+    Returns:
+        list[ReviewableSuggestionEmailInfo]. A list of email content info
+        objects for new suggestions.
+    """
+    new_suggestions = [
+        get_suggestion_from_model(suggestion_model) for suggestion_model in (
+            suggestion_models.GeneralSuggestionModel
+            .get_new_suggestions_waiting_for_review()
+        )
+    ]
+
+    email_content_info = []
+
+    for suggestion in new_suggestions:
+        suggestion_info = (
+            create_reviewable_suggestion_email_info_from_suggestion(
+                suggestion
+        ))
+        email_content_info.append(suggestion_info)
+    return email_content_info
+
+
 def get_user_proficiency_from_model(
     user_proficiency_model: user_models.UserContributionProficiencyModel
 ) -> user_domain.UserContributionProficiency:
@@ -1885,7 +2045,7 @@ def get_suggestion_types_that_need_reviewers() -> Dict[str, Set[str]]:
     """Uses the community contribution stats to determine which suggestion
     types need more reviewers. Suggestion types need more reviewers if the
     number of suggestions in that type divided by the number of reviewers is
-    greater than config_domain.MAX_NUMBER_OF_SUGGESTIONS_PER_REVIEWER.
+    greater than ParamName.MAX_NUMBER_OF_SUGGESTIONS_PER_REVIEWER.
 
     Returns:
         dict. A dictionary that uses the presence of its keys to indicate which
@@ -2004,20 +2164,21 @@ def update_translation_suggestion(
             'Expected SuggestionTranslateContent suggestion but found: %s.'
             % type(suggestion).__name__
         )
-    suggestion.change.translation_html = (
+    suggestion.change_cmd.translation_html = (
         html_cleaner.clean(translation_html)
         if isinstance(translation_html, str)
         else translation_html
     )
     suggestion.edited_by_reviewer = True
-    suggestion.pre_update_validate(suggestion.change)
+    suggestion.pre_update_validate(suggestion.change_cmd)
     _update_suggestion(suggestion)
 
 
 def update_question_suggestion(
     suggestion_id: str,
     skill_difficulty: float,
-    question_state_data: state_domain.StateDict
+    question_state_data: state_domain.StateDict,
+    next_content_id_index: int
 ) -> Optional[suggestion_registry.BaseSuggestion]:
     """Updates skill_difficulty and question_state_data of a suggestion with
     the given suggestion_id.
@@ -2026,6 +2187,8 @@ def update_question_suggestion(
         suggestion_id: str. The id of the suggestion to be updated.
         skill_difficulty: double. The difficulty level of the question.
         question_state_data: obj. Details of the question.
+        next_content_id_index: int. The next content Id index for the question's
+            content.
 
     Returns:
         Suggestion|None. The corresponding suggestion, or None if no suggestion
@@ -2043,11 +2206,11 @@ def update_question_suggestion(
             'Expected SuggestionAddQuestion suggestion but found: %s.'
             % type(suggestion).__name__
         )
-    question_dict = suggestion.change.question_dict
+    question_dict = suggestion.change_cmd.question_dict
     new_change_obj = (
         question_domain.CreateNewFullySpecifiedQuestionSuggestionCmd(
             {
-                'cmd': suggestion.change.cmd,
+                'cmd': suggestion.change_cmd.cmd,
                 'question_dict': {
                     'question_state_data': question_state_data,
                     'language_code': question_dict['language_code'],
@@ -2056,17 +2219,18 @@ def update_question_suggestion(
                             'question_state_data_schema_version']),
                     'linked_skill_ids': question_dict['linked_skill_ids'],
                     'inapplicable_skill_misconception_ids': (
-                        question_dict[
-                            'inapplicable_skill_misconception_ids'])
+                        suggestion.change_cmd.question_dict[
+                            'inapplicable_skill_misconception_ids']),
+                    'next_content_id_index': next_content_id_index
                 },
-                'skill_id': suggestion.change.skill_id,
+                'skill_id': suggestion.change_cmd.skill_id,
                 'skill_difficulty': skill_difficulty
             }
         )
     )
     suggestion.pre_update_validate(new_change_obj)
     suggestion.edited_by_reviewer = True
-    suggestion.change = new_change_obj
+    suggestion.change_cmd = new_change_obj
 
     _update_suggestion(suggestion)
 
@@ -2273,20 +2437,9 @@ def _update_translation_contribution_stats_models(
     Args:
         translation_contribution_stats: list(TranslationContributionStats).
             A list of TranslationContributionStats domain objects.
-
-    Raises:
-        Exception. Language is None.
-        Exception. Contributor user ID is None.
-        Exception. Topic ID is None.
     """
     stats_dict = {}
     for stat in translation_contribution_stats:
-        if stat.language_code is None:
-            raise Exception('Language code should not be None.')
-        if stat.contributor_user_id is None:
-            raise Exception('Contributor user ID should not be None.')
-        if stat.topic_id is None:
-            raise Exception('Topic ID should not be None.')
         stat_id = (
             suggestion_models.TranslationContributionStatsModel.construct_id(
                 stat.language_code,
@@ -2316,7 +2469,7 @@ def _update_translation_contribution_stats_models(
             stat.rejected_translations_count)
         stats_model.rejected_translation_word_count = (
             stat.rejected_translation_word_count)
-        stats_model.contribution_dates = stat.contribution_dates
+        stats_model.contribution_dates = sorted(stat.contribution_dates)
         stats_models_to_update.append(stats_model)
 
     suggestion_models.TranslationContributionStatsModel.update_timestamps_multi(
@@ -2458,10 +2611,197 @@ def _update_question_review_stats_models(
         stats_models_to_update)
 
 
+def _update_translation_submitter_total_stats_model(
+    translation_submitter_total_stats:
+        suggestion_registry.TranslationSubmitterTotalContributionStats
+) -> None:
+    """Updates TranslationSubmitterTotalContributionStats
+    model for given translation submitter stats.
+
+    Args:
+        translation_submitter_total_stats:
+            TranslationSubmitterTotalContributionStats.
+            TranslationSubmitterTotalContributionStats domain object.
+
+    Raises:
+        Exception. Language is None.
+        Exception. Contributor user ID is None.
+    """
+
+    stats_model = suggestion_models.TranslationSubmitterTotalContributionStatsModel.get( # pylint: disable=line-too-long
+            translation_submitter_total_stats.language_code,
+            translation_submitter_total_stats.contributor_id)
+
+    # We assert here because we are calling this method only when the model
+    # exists. If model doesn't exist we create a new model in
+    # update_translation_contribution_stats_at_submission or
+    # update_translation_contribution_stats_at_review.
+    assert stats_model is not None
+    stats_model.topic_ids_with_translation_submissions = (
+        translation_submitter_total_stats
+        .topic_ids_with_translation_submissions)
+    stats_model.recent_review_outcomes = (
+        translation_submitter_total_stats.recent_review_outcomes)
+    stats_model.recent_performance = (
+        translation_submitter_total_stats.recent_performance)
+    stats_model.overall_accuracy = (
+        translation_submitter_total_stats.overall_accuracy)
+    stats_model.submitted_translations_count = (
+        translation_submitter_total_stats.submitted_translations_count)
+    stats_model.submitted_translation_word_count = (
+        translation_submitter_total_stats.submitted_translation_word_count)
+    stats_model.accepted_translations_count = (
+        translation_submitter_total_stats.accepted_translations_count)
+    stats_model.accepted_translations_without_reviewer_edits_count = (
+        translation_submitter_total_stats
+        .accepted_translations_without_reviewer_edits_count)
+    stats_model.accepted_translation_word_count = (
+        translation_submitter_total_stats.accepted_translation_word_count)
+    stats_model.rejected_translations_count = (
+        translation_submitter_total_stats.rejected_translations_count)
+    stats_model.rejected_translation_word_count = (
+        translation_submitter_total_stats.rejected_translation_word_count)
+    stats_model.first_contribution_date = (
+        translation_submitter_total_stats.first_contribution_date)
+    stats_model.last_contribution_date = (
+        translation_submitter_total_stats.last_contribution_date)
+
+    suggestion_models.TranslationSubmitterTotalContributionStatsModel.update_timestamps( # pylint: disable=line-too-long
+        stats_model,
+        update_last_updated_time=True)
+    suggestion_models.TranslationSubmitterTotalContributionStatsModel.put(
+        stats_model)
+
+
+def _update_translation_reviewer_total_stats_models(
+    translation_reviewer_total_stat:
+        suggestion_registry.TranslationReviewerTotalContributionStats
+) -> None:
+    """Updates TranslationReviewerTotalContributionStats
+    models for given translation review stats.
+
+    Args:
+        translation_reviewer_total_stat:
+            TranslationReviewerTotalContributionStats.
+            TranslationReviewerTotalContributionStats domain object.
+    """
+
+    stats_model = suggestion_models.TranslationReviewerTotalContributionStatsModel.get( # pylint: disable=line-too-long
+        translation_reviewer_total_stat.language_code,
+        translation_reviewer_total_stat.contributor_id)
+
+    # We assert here because we are calling this method only when the model
+    # exists. If model doesn't exist we create a new model in
+    # update_translation_review_stats.
+    assert stats_model is not None
+    stats_model.topic_ids_with_translation_reviews = (
+        translation_reviewer_total_stat.topic_ids_with_translation_reviews)
+    stats_model.reviewed_translations_count = (
+        translation_reviewer_total_stat.reviewed_translations_count)
+    stats_model.accepted_translations_count = (
+        translation_reviewer_total_stat.accepted_translations_count)
+    stats_model.accepted_translations_with_reviewer_edits_count = (
+        translation_reviewer_total_stat
+        .accepted_translations_with_reviewer_edits_count)
+    stats_model.accepted_translation_word_count = (
+        translation_reviewer_total_stat.accepted_translation_word_count)
+    stats_model.rejected_translations_count = (
+        translation_reviewer_total_stat.rejected_translations_count)
+    stats_model.first_contribution_date = (
+        translation_reviewer_total_stat.first_contribution_date)
+    stats_model.last_contribution_date = (
+        translation_reviewer_total_stat.last_contribution_date)
+
+    suggestion_models.TranslationReviewerTotalContributionStatsModel.update_timestamps( # pylint: disable=line-too-long
+        stats_model,
+        update_last_updated_time=True)
+    suggestion_models.TranslationReviewerTotalContributionStatsModel.put(
+        stats_model)
+
+
+def _update_question_submitter_total_stats_models(
+    question_submitter_total_stats:
+        suggestion_registry.QuestionSubmitterTotalContributionStats
+) -> None:
+    """Updates QuestionSubmitterTotalContributionStatsModel for given question
+    contribution stats.
+
+    Args:
+        question_submitter_total_stats: QuestionSubmitterTotalContributionStats.
+            A QuestionSubmitterTotalContributionStats domain object.
+    """
+    stats_model = suggestion_models.QuestionSubmitterTotalContributionStatsModel.get( # pylint: disable=line-too-long
+            question_submitter_total_stats.contributor_id)
+    stats_model.topic_ids_with_question_submissions = (
+        question_submitter_total_stats.topic_ids_with_question_submissions)
+    stats_model.recent_review_outcomes = (
+        question_submitter_total_stats.recent_review_outcomes)
+    stats_model.recent_performance = (
+        question_submitter_total_stats.recent_performance)
+    stats_model.overall_accuracy = (
+        question_submitter_total_stats.overall_accuracy)
+    stats_model.submitted_questions_count = (
+        question_submitter_total_stats.submitted_questions_count)
+    stats_model.accepted_questions_count = (
+        question_submitter_total_stats.accepted_questions_count)
+    stats_model.accepted_questions_without_reviewer_edits_count = (
+        question_submitter_total_stats
+        .accepted_questions_without_reviewer_edits_count)
+    stats_model.rejected_questions_count = (
+        question_submitter_total_stats.rejected_questions_count)
+    stats_model.first_contribution_date = (
+        question_submitter_total_stats.first_contribution_date)
+    stats_model.last_contribution_date = (
+        question_submitter_total_stats.last_contribution_date)
+
+    suggestion_models.QuestionSubmitterTotalContributionStatsModel.update_timestamps( # pylint: disable=line-too-long
+        stats_model,
+        update_last_updated_time=True)
+    suggestion_models.QuestionSubmitterTotalContributionStatsModel.put(
+        stats_model)
+
+
+def _update_question_reviewer_total_stats_models(
+    question_reviewer_total_stats:
+        suggestion_registry.QuestionReviewerTotalContributionStats
+) -> None:
+    """Updates QuestionReviewerTotalContributionStatsModel for given question
+    contribution stats.
+
+    Args:
+        question_reviewer_total_stats: QuestionReviewerTotalContributionStats.
+            A QuestionreviewerTotalContributionStats domain object.
+    """
+    stats_model = suggestion_models.QuestionReviewerTotalContributionStatsModel.get( # pylint: disable=line-too-long
+            question_reviewer_total_stats.contributor_id)
+    stats_model.topic_ids_with_question_reviews = (
+        question_reviewer_total_stats.topic_ids_with_question_reviews)
+    stats_model.reviewed_questions_count = (
+        question_reviewer_total_stats.reviewed_questions_count)
+    stats_model.accepted_questions_count = (
+        question_reviewer_total_stats.accepted_questions_count)
+    stats_model.accepted_questions_with_reviewer_edits_count = (
+        question_reviewer_total_stats
+        .accepted_questions_with_reviewer_edits_count)
+    stats_model.rejected_questions_count = (
+        question_reviewer_total_stats.rejected_questions_count)
+    stats_model.first_contribution_date = (
+        question_reviewer_total_stats.first_contribution_date)
+    stats_model.last_contribution_date = (
+        question_reviewer_total_stats.last_contribution_date)
+
+    suggestion_models.QuestionReviewerTotalContributionStatsModel.update_timestamps( # pylint: disable=line-too-long
+        stats_model,
+        update_last_updated_time=True)
+    suggestion_models.QuestionReviewerTotalContributionStatsModel.put(
+        stats_model)
+
+
 def update_translation_contribution_stats_at_submission(
     suggestion: suggestion_registry.BaseSuggestion
 ) -> None:
-    """Creates/updates TranslationContributionStatsModel model for
+    """Creates/updates TranslationContributionStatsModel and
+    TranslationSubmitterTotalContributionStatsModel model for
     given translation submitter when a translation is submitted.
 
     Args:
@@ -2478,23 +2818,70 @@ def update_translation_contribution_stats_at_submission(
     assert exp_opportunity is not None
     topic_id = exp_opportunity.topic_id
 
-    if isinstance(suggestion.change.translation_html, list):
-        for content in suggestion.change.translation_html:
+    if isinstance(suggestion.change_cmd.translation_html, list):
+        for content in suggestion.change_cmd.translation_html:
             content_plain_text = html_cleaner.strip_html_tags(content)
             content_word_count += len(content_plain_text.split())
     else:
         content_plain_text = html_cleaner.strip_html_tags(
-            suggestion.change.translation_html)
+            suggestion.change_cmd.translation_html)
         content_word_count = len(content_plain_text.split())
 
     translation_contribution_stat_model = (
         suggestion_models.TranslationContributionStatsModel.get(
-            suggestion.change.language_code, suggestion.author_id, topic_id
+            suggestion.change_cmd.language_code, suggestion.author_id, topic_id
         ))
+
+    translation_submitter_total_stat_model = (
+        suggestion_models.TranslationSubmitterTotalContributionStatsModel.get(
+            suggestion.change_cmd.language_code, suggestion.author_id
+        )
+    )
+
+    if translation_submitter_total_stat_model is None:
+        suggestion_models.TranslationSubmitterTotalContributionStatsModel.create( # pylint: disable=line-too-long
+            language_code=suggestion.change_cmd.language_code,
+            contributor_id=suggestion.author_id,
+            topic_ids_with_translation_submissions=[topic_id],
+            recent_review_outcomes=[],
+            recent_performance=0,
+            overall_accuracy=0.0,
+            submitted_translations_count=1,
+            submitted_translation_word_count=content_word_count,
+            accepted_translations_count=0,
+            accepted_translations_without_reviewer_edits_count=0,
+            accepted_translation_word_count=0,
+            rejected_translations_count=0,
+            rejected_translation_word_count=0,
+            first_contribution_date=suggestion.last_updated.date(),
+            last_contribution_date=suggestion.last_updated.date()
+        )
+    else:
+        translation_submitter_total_stat = (
+            contribution_stats_services
+            .get_translation_submitter_total_stats_from_model(
+                translation_submitter_total_stat_model
+             )
+         )
+
+        if topic_id not in (
+            translation_submitter_total_stat
+            .topic_ids_with_translation_submissions):
+            (
+                translation_submitter_total_stat
+                .topic_ids_with_translation_submissions).append(topic_id)
+        translation_submitter_total_stat.submitted_translations_count += 1
+        translation_submitter_total_stat.submitted_translation_word_count += (
+            content_word_count)
+        translation_submitter_total_stat.last_contribution_date = (
+            suggestion.last_updated.date())
+
+        _update_translation_submitter_total_stats_model(
+            translation_submitter_total_stat)
 
     if translation_contribution_stat_model is None:
         suggestion_models.TranslationContributionStatsModel.create(
-            language_code=suggestion.change.language_code,
+            language_code=suggestion.change_cmd.language_code,
             contributor_user_id=suggestion.author_id,
             topic_id=topic_id,
             submitted_translations_count=1,
@@ -2521,10 +2908,68 @@ def update_translation_contribution_stats_at_submission(
             [translation_contribution_stat])
 
 
+def create_stats_for_new_translation_models(
+    suggestion_is_accepted: bool,
+    edited_by_reviewer: bool,
+    content_word_count: int
+) -> Tuple[int, int, int, int, int, List[str], int, float]:
+    """Creates stats data to be used to create a new
+    TranslationContributionStatsModel and
+    TranslationSubmitterTotalContributionStatsModel.
+
+    Args:
+        suggestion_is_accepted: bool. Whether the suggestion is
+            accepted or rejected.
+        edited_by_reviewer: bool. If the suggestion is accepted with
+            reviewers edits.
+        content_word_count: int. Word count of the suggestion.
+
+    Returns:
+        tuple[int, int, int, int, int, list[str], int, float]. A tuple
+        consisting of the stats data required to create a new model.
+    """
+    accepted_translations_count = 0
+    accepted_translation_word_count = 0
+    rejected_translations_count = 0
+    rejected_translation_word_count = 0
+    accepted_translations_without_reviewer_edits_count = 0
+
+    if suggestion_is_accepted:
+        accepted_translations_count += 1
+        accepted_translation_word_count += content_word_count
+        recent_review_outcomes = [
+            suggestion_models.REVIEW_OUTCOME_ACCEPTED_WITH_EDITS]
+        recent_performance = 1
+        overall_accuracy = 100.0
+    else:
+        rejected_translations_count += 1
+        rejected_translation_word_count += content_word_count
+        recent_review_outcomes = [
+            suggestion_models.REVIEW_OUTCOME_REJECTED]
+        recent_performance = -2
+        overall_accuracy = 0.0
+    if suggestion_is_accepted and not edited_by_reviewer:
+        accepted_translations_without_reviewer_edits_count += 1
+        recent_review_outcomes = [
+            suggestion_models.REVIEW_OUTCOME_ACCEPTED]
+
+    return (
+        accepted_translations_count,
+        accepted_translation_word_count,
+        rejected_translations_count,
+        rejected_translation_word_count,
+        accepted_translations_without_reviewer_edits_count,
+        recent_review_outcomes,
+        recent_performance,
+        overall_accuracy
+    )
+
+
 def update_translation_contribution_stats_at_review(
     suggestion: suggestion_registry.BaseSuggestion
 ) -> None:
-    """Creates/updates TranslationContributionStatsModel model for
+    """Creates/updates TranslationContributionStatsModel and
+    TranslationSubmitterTotalContributionStatsModel model for
     given translation submitter when a translation is reviewed.
 
     Args:
@@ -2541,13 +2986,13 @@ def update_translation_contribution_stats_at_review(
     assert exp_opportunity is not None
     topic_id = exp_opportunity.topic_id
 
-    if isinstance(suggestion.change.translation_html, list):
-        for content in suggestion.change.translation_html:
+    if isinstance(suggestion.change_cmd.translation_html, list):
+        for content in suggestion.change_cmd.translation_html:
             content_plain_text = html_cleaner.strip_html_tags(content)
             content_word_count += len(content_plain_text.split())
     else:
         content_plain_text = html_cleaner.strip_html_tags(
-            suggestion.change.translation_html)
+            suggestion.change_cmd.translation_html)
         content_word_count = len(content_plain_text.split())
 
     suggestion_is_accepted = (
@@ -2556,27 +3001,82 @@ def update_translation_contribution_stats_at_review(
 
     translation_contribution_stat_model = (
         suggestion_models.TranslationContributionStatsModel.get(
-            suggestion.change.language_code, suggestion.author_id, topic_id
+            suggestion.change_cmd.language_code, suggestion.author_id, topic_id
         ))
 
+    translation_submitter_total_stat_model = (
+        suggestion_models.TranslationSubmitterTotalContributionStatsModel.get(
+            suggestion.change_cmd.language_code, suggestion.author_id
+        ))
+
+    if translation_submitter_total_stat_model is None:
+        (
+            accepted_translations_count,
+            accepted_translation_word_count,
+            rejected_translations_count,
+            rejected_translation_word_count,
+            accepted_translations_without_reviewer_edits_count,
+            recent_review_outcomes,
+            recent_performance,
+            overall_accuracy
+        ) = create_stats_for_new_translation_models(
+            suggestion_is_accepted,
+            suggestion.edited_by_reviewer,
+            content_word_count)
+        suggestion_models.TranslationSubmitterTotalContributionStatsModel.create( # pylint: disable=line-too-long
+            language_code=suggestion.change_cmd.language_code,
+            contributor_id=suggestion.author_id,
+            topic_ids_with_translation_submissions=[topic_id],
+            recent_review_outcomes=recent_review_outcomes,
+            recent_performance=recent_performance,
+            overall_accuracy=overall_accuracy,
+            submitted_translations_count=1,
+            submitted_translation_word_count=content_word_count,
+            accepted_translations_count=accepted_translations_count,
+            accepted_translations_without_reviewer_edits_count=(
+                accepted_translations_without_reviewer_edits_count),
+            accepted_translation_word_count=accepted_translation_word_count,
+            rejected_translations_count=rejected_translations_count,
+            rejected_translation_word_count=rejected_translation_word_count,
+            first_contribution_date=suggestion.last_updated.date(),
+            last_contribution_date=suggestion.last_updated.date()
+        )
+    else:
+        translation_submitter_total_stat = (
+            contribution_stats_services
+            .get_translation_submitter_total_stats_from_model(
+                translation_submitter_total_stat_model)
+        )
+
+        if topic_id not in (
+            translation_submitter_total_stat
+            .topic_ids_with_translation_submissions):
+            (
+                translation_submitter_total_stat
+                .topic_ids_with_translation_submissions).append(topic_id)
+
+        increment_translation_submitter_total_stats_at_review(
+            translation_submitter_total_stat, content_word_count,
+            suggestion_is_accepted, suggestion.edited_by_reviewer)
+        _update_translation_submitter_total_stats_model(
+            translation_submitter_total_stat)
+
     if translation_contribution_stat_model is None:
-        accepted_translations_count = 0
-        accepted_translation_word_count = 0
-        rejected_translations_count = 0
-        rejected_translation_word_count = 0
-        accepted_translations_without_reviewer_edits_count = 0
-
-        if suggestion_is_accepted:
-            accepted_translations_count += 1
-            accepted_translation_word_count += content_word_count
-        else:
-            rejected_translations_count += 1
-            rejected_translation_word_count += content_word_count
-        if suggestion_is_accepted and not suggestion.edited_by_reviewer:
-            accepted_translations_without_reviewer_edits_count += 1
-
+        (
+            accepted_translations_count,
+            accepted_translation_word_count,
+            rejected_translations_count,
+            rejected_translation_word_count,
+            accepted_translations_without_reviewer_edits_count,
+            recent_review_outcomes,
+            recent_performance,
+            overall_accuracy
+        ) = create_stats_for_new_translation_models(
+            suggestion_is_accepted,
+            suggestion.edited_by_reviewer,
+            content_word_count)
         suggestion_models.TranslationContributionStatsModel.create(
-            language_code=suggestion.change.language_code,
+            language_code=suggestion.change_cmd.language_code,
             contributor_user_id=suggestion.author_id,
             topic_id=topic_id,
             submitted_translations_count=1,
@@ -2604,7 +3104,8 @@ def update_translation_contribution_stats_at_review(
 def update_translation_review_stats(
     suggestion: suggestion_registry.BaseSuggestion
 ) -> None:
-    """Creates/updates TranslationReviewStatsModel model for given translation
+    """Creates/updates TranslationReviewStatsModel
+    TranslationReviewerTotalContributionStatsModel model for given translation
     reviewer when a translation is reviewed.
 
     Args:
@@ -2631,13 +3132,13 @@ def update_translation_review_stats(
         suggestion.status == suggestion_models.STATUS_ACCEPTED
     )
 
-    if isinstance(suggestion.change.translation_html, list):
-        for content in suggestion.change.translation_html:
+    if isinstance(suggestion.change_cmd.translation_html, list):
+        for content in suggestion.change_cmd.translation_html:
             content_plain_text = html_cleaner.strip_html_tags(content)
             content_word_count += len(content_plain_text.split())
     else:
         content_plain_text = html_cleaner.strip_html_tags(
-            suggestion.change.translation_html)
+            suggestion.change_cmd.translation_html)
         content_word_count = len(content_plain_text.split())
 
     translation_review_stat_model = (
@@ -2645,9 +3146,64 @@ def update_translation_review_stats(
         # final_reviewer_id should not be None when the suggestion is
         # up-to-date.
         suggestion_models.TranslationReviewStatsModel.get(
-            suggestion.change.language_code, suggestion.final_reviewer_id,
+            suggestion.change_cmd.language_code, suggestion.final_reviewer_id,
             topic_id
         ))
+
+    translation_reviewer_total_stat_model = (
+        suggestion_models.TranslationReviewerTotalContributionStatsModel.get(
+            suggestion.change_cmd.language_code, suggestion.final_reviewer_id
+        ))
+
+    if translation_reviewer_total_stat_model is None:
+        # This function is called when reviewing a translation and hence
+        # final_reviewer_id should not be None when the suggestion is
+        # up-to-date.
+        accepted_translations_count = 0
+        accepted_translations_with_reviewer_edits_count = 0
+        rejected_translation_count = 0
+        accepted_translation_word_count = 0
+        if suggestion_is_accepted:
+            accepted_translations_count += 1
+            accepted_translation_word_count = content_word_count
+        else:
+            rejected_translation_count += 1
+        if suggestion_is_accepted and suggestion.edited_by_reviewer:
+            accepted_translations_with_reviewer_edits_count += 1
+        suggestion_models.TranslationReviewerTotalContributionStatsModel.create(
+            language_code=suggestion.change_cmd.language_code,
+            contributor_id=suggestion.final_reviewer_id,
+            topic_ids_with_translation_reviews=[topic_id],
+            reviewed_translations_count=1,
+            accepted_translations_count=accepted_translations_count,
+            accepted_translations_with_reviewer_edits_count=(
+                accepted_translations_with_reviewer_edits_count),
+            accepted_translation_word_count=accepted_translation_word_count,
+            rejected_translations_count=rejected_translation_count,
+            first_contribution_date=suggestion.last_updated.date(),
+            last_contribution_date=suggestion.last_updated.date()
+        )
+    else:
+        translation_reviewer_total_stat = (
+            contribution_stats_services
+            .get_translation_reviewer_total_stats_from_model(
+                translation_reviewer_total_stat_model))
+
+        if topic_id not in (
+            translation_reviewer_total_stat
+            .topic_ids_with_translation_reviews):
+            (
+                translation_reviewer_total_stat
+                .topic_ids_with_translation_reviews
+            ).append(topic_id)
+
+        increment_translation_reviewer_total_stats(
+            translation_reviewer_total_stat, content_word_count,
+            suggestion.last_updated, suggestion_is_accepted,
+            suggestion.edited_by_reviewer
+        )
+        _update_translation_reviewer_total_stats_models(
+            translation_reviewer_total_stat)
 
     if translation_review_stat_model is None:
         # This function is called when reviewing a translation and hence
@@ -2662,7 +3218,7 @@ def update_translation_review_stats(
         if suggestion_is_accepted and suggestion.edited_by_reviewer:
             accepted_translations_with_reviewer_edits_count += 1
         suggestion_models.TranslationReviewStatsModel.create(
-            language_code=suggestion.change.language_code,
+            language_code=suggestion.change_cmd.language_code,
             reviewer_user_id=suggestion.final_reviewer_id,
             topic_id=topic_id,
             reviewed_translations_count=1,
@@ -2692,7 +3248,8 @@ def update_translation_review_stats(
 def update_question_contribution_stats_at_submission(
     suggestion: suggestion_registry.BaseSuggestion
 ) -> None:
-    """Creates/updates QuestionContributionStatsModel model for given question
+    """Creates/updates QuestionContributionStatsModel and
+    QuestionSubmitterTotalContributionStatsModel models for given question
     submitter when a question is submitted.
 
     Args:
@@ -2728,11 +3285,55 @@ def update_question_contribution_stats_at_submission(
         _update_question_contribution_stats_models(
             [question_contribution_stat])
 
+    for topic in skill_services.get_all_topic_assignments_for_skill(
+        suggestion.target_id):
+        question_submitter_total_stat_model = (
+            suggestion_models.QuestionSubmitterTotalContributionStatsModel
+            .get_by_id(
+                suggestion.author_id
+            ))
+
+        if question_submitter_total_stat_model is None:
+            suggestion_models.QuestionSubmitterTotalContributionStatsModel.create( # pylint: disable=line-too-long
+                contributor_id=suggestion.author_id,
+                topic_ids_with_question_submissions=[topic.topic_id],
+                recent_review_outcomes=[],
+                recent_performance=0,
+                overall_accuracy=0.0,
+                submitted_questions_count=1,
+                accepted_questions_count=0,
+                accepted_questions_without_reviewer_edits_count=0,
+                rejected_questions_count=0,
+                first_contribution_date=suggestion.last_updated.date(),
+                last_contribution_date=suggestion.last_updated.date()
+            )
+            continue
+
+        question_submitter_total_stat = (
+            contribution_stats_services
+            .get_question_submitter_total_stats_from_model(
+                question_submitter_total_stat_model))
+
+        if topic.topic_id not in (
+            question_submitter_total_stat
+            .topic_ids_with_question_submissions):
+            (
+                question_submitter_total_stat
+                .topic_ids_with_question_submissions
+            ).append(topic.topic_id)
+        question_submitter_total_stat.submitted_questions_count += 1
+        question_submitter_total_stat.last_contribution_date = (
+            suggestion.last_updated.date())
+
+        _update_question_submitter_total_stats_models(
+            question_submitter_total_stat)
+
 
 def update_question_contribution_stats_at_review(
     suggestion: suggestion_registry.BaseSuggestion
 ) -> None:
-    """Creates/updates QuestionContributionStatsModel model for given question
+    """Creates/updates QuestionContributionStatsModel
+    QuestionSubmitterTotalContributionStatsModel models for given question
     submitter when a question is reviewed.
 
     Args:
@@ -2742,6 +3343,27 @@ def update_question_contribution_stats_at_review(
     suggestion_is_accepted = (
         suggestion.status == suggestion_models.STATUS_ACCEPTED
     )
+
+    accepted_questions_count = 0
+    accepted_questions_without_reviewer_edits_count = 0
+    rejected_questions_count = 0
+    if suggestion_is_accepted:
+        accepted_questions_count += 1
+        recent_review_outcomes = [
+            suggestion_models.REVIEW_OUTCOME_ACCEPTED_WITH_EDITS]
+        recent_performance = 1
+        overall_accuracy = 100.0
+    else:
+        rejected_questions_count += 1
+        recent_review_outcomes = [
+            suggestion_models.REVIEW_OUTCOME_REJECTED]
+        recent_performance = -2
+        overall_accuracy = 0.0
+    if suggestion_is_accepted and not suggestion.edited_by_reviewer:
+        accepted_questions_without_reviewer_edits_count += 1
+        recent_review_outcomes = [
+            suggestion_models.REVIEW_OUTCOME_ACCEPTED]
+
     for topic in skill_services.get_all_topic_assignments_for_skill(
         suggestion.target_id):
         question_contribution_stat_model = (
@@ -2750,12 +3372,6 @@ def update_question_contribution_stats_at_review(
             ))
 
         if question_contribution_stat_model is None:
-            accepted_questions_count = 0
-            accepted_questions_without_reviewer_edits_count = 0
-            if suggestion_is_accepted:
-                accepted_questions_count += 1
-            if suggestion_is_accepted and not suggestion.edited_by_reviewer:
-                accepted_questions_without_reviewer_edits_count += 1
             suggestion_models.QuestionContributionStatsModel.create(
                 contributor_user_id=suggestion.author_id,
                 topic_id=topic.topic_id,
@@ -2782,11 +3398,49 @@ def update_question_contribution_stats_at_review(
         _update_question_contribution_stats_models(
             [question_contribution_stat])
 
+    for topic in skill_services.get_all_topic_assignments_for_skill(
+        suggestion.target_id):
+        question_submitter_total_stat_model = (
+            suggestion_models.QuestionSubmitterTotalContributionStatsModel
+            .get_by_id(
+                suggestion.author_id
+            ))
+
+        if question_submitter_total_stat_model is None:
+            suggestion_models.QuestionSubmitterTotalContributionStatsModel.create( # pylint: disable=line-too-long
+                contributor_id=suggestion.author_id,
+                topic_ids_with_question_submissions=[topic.topic_id],
+                recent_review_outcomes=recent_review_outcomes,
+                recent_performance=recent_performance,
+                overall_accuracy=overall_accuracy,
+                submitted_questions_count=1,
+                accepted_questions_count=accepted_questions_count,
+                accepted_questions_without_reviewer_edits_count=(
+                    accepted_questions_without_reviewer_edits_count),
+                rejected_questions_count=rejected_questions_count,
+                first_contribution_date=suggestion.last_updated.date(),
+                last_contribution_date=suggestion.last_updated.date()
+            )
+            continue
+
+        question_submitter_total_stat = (
+            contribution_stats_services
+            .get_question_submitter_total_stats_from_model(
+                question_submitter_total_stat_model))
+
+        increment_question_submitter_total_stats_at_review(
+            question_submitter_total_stat,
+            suggestion_is_accepted, suggestion.edited_by_reviewer)
+
+        _update_question_submitter_total_stats_models(
+            question_submitter_total_stat)
+
 
 def update_question_review_stats(
     suggestion: suggestion_registry.BaseSuggestion
 ) -> None:
-    """Creates/updates QuestionReviewStatsModel model for given question
+    """Creates/updates QuestionReviewStatsModel and
+    QuestionReviewerTotalContributionStatsModel model for given question
     reviewer when a question is reviewed.
 
     Args:
@@ -2845,6 +3499,57 @@ def update_question_review_stats(
             suggestion_is_accepted,
             suggestion.edited_by_reviewer)
         _update_question_review_stats_models([question_review_stat])
+
+    for topic in skill_services.get_all_topic_assignments_for_skill(
+        suggestion.target_id):
+        question_reviewer_total_stat_model = (
+            suggestion_models.QuestionReviewerTotalContributionStatsModel
+            .get_by_id(
+                suggestion.final_reviewer_id
+            ))
+
+        if question_reviewer_total_stat_model is None:
+            accepted_questions_count = 0
+            accepted_questions_with_reviewer_edits_count = 0
+            rejected_questions_count = 0
+            if suggestion_is_accepted:
+                accepted_questions_count += 1
+            else:
+                rejected_questions_count += 1
+            if suggestion_is_accepted and suggestion.edited_by_reviewer:
+                accepted_questions_with_reviewer_edits_count += 1
+            suggestion_models.QuestionReviewerTotalContributionStatsModel.create( # pylint: disable=line-too-long
+                contributor_id=suggestion.final_reviewer_id,
+                topic_ids_with_question_reviews=[topic.topic_id],
+                reviewed_questions_count=1,
+                accepted_questions_count=accepted_questions_count,
+                accepted_questions_with_reviewer_edits_count=(
+                    accepted_questions_with_reviewer_edits_count),
+                rejected_questions_count=rejected_questions_count,
+                first_contribution_date=suggestion.last_updated.date(),
+                last_contribution_date=suggestion.last_updated.date()
+            )
+            continue
+
+        question_reviewer_total_stat = (
+            contribution_stats_services
+            .get_question_reviewer_total_stats_from_model(
+                question_reviewer_total_stat_model))
+
+        if topic.topic_id not in (
+            question_reviewer_total_stat
+            .topic_ids_with_question_reviews):
+            (
+                question_reviewer_total_stat
+                .topic_ids_with_question_reviews
+            ).append(topic.topic_id)
+
+        increment_question_reviewer_total_stats(
+            question_reviewer_total_stat, suggestion.last_updated,
+            suggestion_is_accepted,
+            suggestion.edited_by_reviewer)
+        _update_question_reviewer_total_stats_models(
+            question_reviewer_total_stat)
 
     update_question_contribution_stats_at_review(suggestion)
 
@@ -2939,12 +3644,228 @@ def increment_question_review_stats(
         last_contribution_date.date())
 
 
+def increment_translation_submitter_total_stats_at_review(
+    translation_submitter_total_stat: (
+        suggestion_registry.TranslationSubmitterTotalContributionStats),
+    content_word_count: int,
+    suggestion_is_accepted: bool,
+    edited_by_reviewer: bool
+) -> None:
+    """Updates TranslationSubmitterTotalContributionStats object.
+
+    Args:
+        translation_submitter_total_stat:
+            TranslationSubmitterTotalContributionStats. The stats object to
+            update.
+        content_word_count: int. The number of words in the translation.
+        suggestion_is_accepted: bool. A flag that indicates whether the
+            suggestion is accepted.
+        edited_by_reviewer: bool. A flag that indicates whether the suggestion
+            is edited by the reviewer.
+    """
+    # Weights for calculating performance.
+    # recent_performance = accepted cards - 2 (rejected cards) in last
+    # 100 contributions.
+    if suggestion_is_accepted:
+        translation_submitter_total_stat.accepted_translations_count += 1
+        translation_submitter_total_stat.accepted_translation_word_count += (
+            content_word_count)
+        translation_submitter_total_stat.overall_accuracy = round((
+            translation_submitter_total_stat.accepted_translations_count
+            / translation_submitter_total_stat.submitted_translations_count
+        ), 3) * 100
+
+        if (
+                len(translation_submitter_total_stat
+                    .recent_review_outcomes)
+                >= RECENT_REVIEW_OUTCOMES_LIMIT
+            ):
+            oldest_outcome = (
+                translation_submitter_total_stat
+                .recent_review_outcomes).pop(0)
+            if oldest_outcome == suggestion_models.REVIEW_OUTCOME_REJECTED:
+                translation_submitter_total_stat.recent_performance += 3
+        else:
+            translation_submitter_total_stat.recent_performance += 1
+
+        translation_submitter_total_stat.recent_review_outcomes.append(
+            suggestion_models.REVIEW_OUTCOME_ACCEPTED_WITH_EDITS)
+
+    else:
+        translation_submitter_total_stat.rejected_translations_count += 1
+        translation_submitter_total_stat.rejected_translation_word_count += (
+            content_word_count)
+
+        if (
+                len(translation_submitter_total_stat
+                    .recent_review_outcomes)
+                >= RECENT_REVIEW_OUTCOMES_LIMIT
+            ):
+            oldest_outcome = (
+                translation_submitter_total_stat
+                .recent_review_outcomes).pop(0)
+            if oldest_outcome != suggestion_models.REVIEW_OUTCOME_REJECTED:
+                translation_submitter_total_stat.recent_performance -= 3
+        else:
+            translation_submitter_total_stat.recent_performance -= 2
+
+        translation_submitter_total_stat.recent_review_outcomes.append(
+            suggestion_models.REVIEW_OUTCOME_REJECTED)
+
+    if suggestion_is_accepted and not edited_by_reviewer:
+        translation_submitter_total_stat.accepted_translations_without_reviewer_edits_count += 1 # pylint: disable=line-too-long
+        (
+            translation_submitter_total_stat
+            .recent_review_outcomes
+        ).pop()
+        translation_submitter_total_stat.recent_review_outcomes.append(
+            suggestion_models.REVIEW_OUTCOME_ACCEPTED)
+
+
+def increment_translation_reviewer_total_stats(
+    translation_reviewer_total_stat:
+        suggestion_registry.TranslationReviewerTotalContributionStats,
+    content_word_count: int,
+    last_contribution_date: datetime.datetime,
+    suggestion_is_accepted: bool,
+    edited_by_reviewer: bool
+) -> None:
+    """Updates TranslationReviewerTotalContributionStats object.
+
+    Args:
+        translation_reviewer_total_stat:
+            TranslationReviewerTotalContributionStats. The stats object to
+            update.
+        content_word_count: int. The number of words in the translation.
+        last_contribution_date: datetime.datetime. The last updated date.
+        suggestion_is_accepted: bool. A flag that indicates whether the
+            suggestion is accepted.
+        edited_by_reviewer: bool. A flag that indicates whether the suggestion
+            is edited by the reviewer.
+    """
+    translation_reviewer_total_stat.reviewed_translations_count += 1
+    if suggestion_is_accepted:
+        translation_reviewer_total_stat.accepted_translations_count += 1
+        translation_reviewer_total_stat.accepted_translation_word_count += (
+            content_word_count)
+    else:
+        translation_reviewer_total_stat.rejected_translations_count += 1
+    if suggestion_is_accepted and edited_by_reviewer:
+        (
+            translation_reviewer_total_stat
+            .accepted_translations_with_reviewer_edits_count
+        ) += 1
+    translation_reviewer_total_stat.last_contribution_date = (
+        last_contribution_date.date())
+
+
+def increment_question_submitter_total_stats_at_review(
+    question_submitter_total_stat: (
+        suggestion_registry.QuestionSubmitterTotalContributionStats),
+    suggestion_is_accepted: bool,
+    edited_by_reviewer: bool
+) -> None:
+    """Updates QuestionSubmitterTotalContributionStats object.
+
+    Args:
+        question_submitter_total_stat:
+            QuestionSubmitterTotalContributionStats. The stats object to
+            update.
+        suggestion_is_accepted: bool. A flag that indicates whether the
+            suggestion is accepted.
+        edited_by_reviewer: bool. A flag that indicates whether the suggestion
+            is edited by the reviewer.
+    """
+    # Weights for calculating performance.
+    # recent_performance = accepted cards - 2 (rejected cards) in last
+    # 100 contributions.
+    if suggestion_is_accepted:
+        question_submitter_total_stat.accepted_questions_count += 1
+        question_submitter_total_stat.overall_accuracy = round((
+            question_submitter_total_stat.accepted_questions_count
+            / question_submitter_total_stat.submitted_questions_count
+        ), 3) * 100
+
+        if (
+                len(question_submitter_total_stat
+                    .recent_review_outcomes)
+                >= RECENT_REVIEW_OUTCOMES_LIMIT
+            ):
+            oldest_outcome = (
+                question_submitter_total_stat
+                .recent_review_outcomes).pop(0)
+            if oldest_outcome == suggestion_models.REVIEW_OUTCOME_REJECTED:
+                question_submitter_total_stat.recent_performance += 3
+        else:
+            question_submitter_total_stat.recent_performance += 1
+
+        question_submitter_total_stat.recent_review_outcomes.append(
+            suggestion_models.REVIEW_OUTCOME_ACCEPTED_WITH_EDITS)
+
+    else:
+        question_submitter_total_stat.rejected_questions_count += 1
+
+        if (
+                len(question_submitter_total_stat
+                    .recent_review_outcomes)
+                >= RECENT_REVIEW_OUTCOMES_LIMIT
+            ):
+            oldest_outcome = (
+                question_submitter_total_stat
+                .recent_review_outcomes).pop(0)
+            if oldest_outcome != suggestion_models.REVIEW_OUTCOME_REJECTED:
+                question_submitter_total_stat.recent_performance -= 3
+        else:
+            question_submitter_total_stat.recent_performance -= 2
+
+        question_submitter_total_stat.recent_review_outcomes.append(
+            suggestion_models.REVIEW_OUTCOME_REJECTED)
+
+    if suggestion_is_accepted and not edited_by_reviewer:
+        question_submitter_total_stat.accepted_questions_without_reviewer_edits_count += 1 # pylint: disable=line-too-long
+        (question_submitter_total_stat.recent_review_outcomes).pop()
+        (question_submitter_total_stat.recent_review_outcomes).append(
+            suggestion_models.REVIEW_OUTCOME_ACCEPTED)
+
+
+def increment_question_reviewer_total_stats(
+    question_reviewer_total_stat:
+        suggestion_registry.QuestionReviewerTotalContributionStats,
+    last_contribution_date: datetime.datetime,
+    suggestion_is_accepted: bool,
+    edited_by_reviewer: bool
+) -> None:
+    """Updates QuestionReviewerTotalContributionStats object.
+
+    Args:
+        question_reviewer_total_stat: QuestionReviewerTotalContributionStats.
+            The stats object to update.
+        last_contribution_date: datetime.datetime. The last updated date.
+        suggestion_is_accepted: bool. A flag that indicates whether the
+            suggestion is accepted.
+        edited_by_reviewer: bool. A flag that indicates whether the suggestion
+            is edited by the reviewer.
+    """
+    question_reviewer_total_stat.reviewed_questions_count += 1
+    if suggestion_is_accepted:
+        question_reviewer_total_stat.accepted_questions_count += 1
+    else:
+        question_reviewer_total_stat.rejected_questions_count += 1
+    if suggestion_is_accepted and edited_by_reviewer:
+        (
+            question_reviewer_total_stat
+            .accepted_questions_with_reviewer_edits_count) += 1
+    question_reviewer_total_stat.last_contribution_date = (
+        last_contribution_date.date())
+
+
 def enqueue_contributor_ranking_notification_email_task(
     contributor_user_id: str, contribution_type: str,
     contribution_sub_type: str, language_code: str, rank_name: str,
 ) -> None:
     """Adds a 'send feedback email' (instant) task into the task queue.
-    Attributes:
+
+    Args:
         contributor_user_id: str. The ID of the contributor.
         contribution_type: str. The type of the contribution i.e.
             translation or question.
@@ -2990,3 +3911,211 @@ def enqueue_contributor_ranking_notification_email_task(
     taskqueue_services.enqueue_task(
         feconf.TASK_URL_CONTRIBUTOR_DASHBOARD_ACHIEVEMENT_NOTIFICATION_EMAILS,
         payload, 0)
+
+
+def generate_contributor_certificate_data(
+    username: str,
+    suggestion_type: str,
+    language_code: Optional[str],
+    from_date: datetime.datetime,
+    to_date: datetime.datetime
+) -> Optional[suggestion_registry.ContributorCertificateInfoDict]:
+    """Returns data to generate the certificate.
+
+    Args:
+        username: str. The username of the contributor.
+        language_code: str|None. The language for which the contributions should
+            be considered.
+        suggestion_type: str. The type of suggestion that the certificate
+            needs to generate.
+        from_date: datetime.datetime. The start of the date range for which the
+            contributions were created.
+        to_date: datetime.datetime. The end of the date range for which the
+            contributions were created.
+
+    Returns:
+        ContributorCertificateInfoDict|None. Data to generate the certificate,
+        or None if no data is found.
+
+    Raises:
+        Exception. The suggestion type is invalid.
+        Exception. There is no user for the given username.
+    """
+    user_id = user_services.get_user_id_from_username(username)
+    if user_id is None:
+        raise Exception('There is no user for the given username.')
+
+    if suggestion_type == feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT:
+        # For the suggestion_type translate_content, there should be a
+        # corresponding language_code.
+        assert isinstance(language_code, str)
+        data = _generate_translation_contributor_certificate_data(
+            language_code, from_date, to_date, user_id)
+
+    elif suggestion_type == feconf.SUGGESTION_TYPE_ADD_QUESTION:
+        data = _generate_question_contributor_certificate_data(
+            from_date, to_date, user_id)
+
+    else:
+        raise Exception('The suggestion type is invalid.')
+
+    return data.to_dict() if data is not None else None
+
+
+def _generate_translation_contributor_certificate_data(
+    language_code: str,
+    from_date: datetime.datetime,
+    to_date: datetime.datetime,
+    user_id: str
+) -> Optional[suggestion_registry.ContributorCertificateInfo]:
+    """Returns data to generate translation submitter certificate.
+
+    Args:
+        language_code: str. The language for which the contributions should
+            be considered.
+        from_date: datetime.datetime. The start of the date range for which
+            the contributions were created.
+        to_date: datetime.datetime. The end of the date range for which
+            the contributions were created.
+        user_id: str. The user ID of the contributor.
+
+    Returns:
+        ContributorCertificateInfo|None. Data to generate translation submitter
+        certificate, or None if no data is found.
+
+    Raises:
+        Exception. The language is invalid.
+    """
+    signature = feconf.TRANSLATION_TEAM_LEAD
+
+    # Adds one date to the to_date to make sure the contributions within
+    # the to_date are also counted for the certificate.
+    to_date_to_fetch_contributions = to_date + datetime.timedelta(days=1)
+
+    language = next(filter(
+        lambda lang: lang['id'] == language_code,
+        constants.SUPPORTED_AUDIO_LANGUAGES), None)
+    if language is None:
+        raise Exception('The provided language is invalid.')
+    language_description = language['description']
+    if ' (' in language_description:
+        language_description = language_description[
+            language_description.find('(') + 1:language_description.find(')')]
+
+    suggestions = (
+        suggestion_models.GeneralSuggestionModel
+        .get_translation_suggestions_submitted_within_given_dates(
+            from_date,
+            to_date_to_fetch_contributions,
+            user_id,
+            language_code
+        )
+    )
+
+    words_count = 0
+    for model in suggestions:
+        suggestion = get_suggestion_from_model(model)
+        suggestion_change = suggestion.change_cmd
+        data_is_list = (
+            translation_domain.TranslatableContentFormat
+            .is_data_format_list(suggestion_change.data_format)
+        )
+        if (
+                suggestion_change.cmd == 'add_written_translation' and
+                data_is_list
+        ):
+            words_count += sum(
+                len(item.split()) for item in suggestion_change.translation_html
+            )
+        else:
+            # Retrieve the html content that is emphasized on the
+            # Contributor Dashboard pages. This content is what stands
+            # out for each suggestion when a user views a list of
+            # suggestions.
+            get_html_representing_suggestion = (
+                SUGGESTION_EMPHASIZED_TEXT_GETTER_FUNCTIONS[
+                    suggestion.suggestion_type]
+            )
+            plain_text = _get_plain_text_from_html_content_string(
+                get_html_representing_suggestion(suggestion))
+
+            words = plain_text.split(' ')
+            words_without_empty_strings = [
+                word for word in words if word != '']
+            words_count += len(words_without_empty_strings)
+    # Go to the below link for more information about how we count hours
+    # contributed.# Goto the below link for more information.
+    # https://docs.google.com/spreadsheets/d/1ykSNwPLZ5qTCkuO21VLdtm_2SjJ5QJ0z0PlVjjSB4ZQ/edit?usp=sharing
+    hours_contributed = round(words_count / 300, 2)
+
+    if words_count == 0:
+        return None
+
+    return suggestion_registry.ContributorCertificateInfo(
+        from_date.strftime('%d %b %Y'), to_date.strftime('%d %b %Y'),
+        signature, str(hours_contributed), language_description
+    )
+
+
+def _generate_question_contributor_certificate_data(
+    from_date: datetime.datetime,
+    to_date: datetime.datetime,
+    user_id: str
+) -> Optional[suggestion_registry.ContributorCertificateInfo]:
+    """Returns data to generate question submitter certificate.
+
+    Args:
+        from_date: datetime.datetime. The start of the date range for which
+            the contributions were created.
+        to_date: datetime.datetime. The end of the date range for which
+            the contributions were created.
+        user_id: str. The user ID of the contributor.
+
+    Returns:
+        ContributorCertificateInfo|None. Data to generate question submitter
+        certificate, or None if no data is found.
+
+    Raises:
+        Exception. The suggestion type given to generate the certificate is
+            invalid.
+    """
+    signature = feconf.QUESTION_TEAM_LEAD
+
+    # Adds one date to the to_date to make sure the contributions within
+    # the to_date are also counted for the certificate.
+    to_date_to_fetch_contributions = to_date + datetime.timedelta(days=1)
+
+    suggestions = (
+        suggestion_models.GeneralSuggestionModel
+            .get_question_suggestions_submitted_within_given_dates(
+                from_date, to_date_to_fetch_contributions, user_id))
+
+    minutes_contributed = 0
+    for model in suggestions:
+        suggestion = get_suggestion_from_model(model)
+        # Retrieve the html content that is emphasized on the
+        # Contributor Dashboard pages. This content is what stands
+        # out for each suggestion when a user views a list of
+        # suggestions.
+        get_html_representing_suggestion = (
+            SUGGESTION_EMPHASIZED_TEXT_GETTER_FUNCTIONS[
+                suggestion.suggestion_type]
+        )
+        html_content = get_html_representing_suggestion(suggestion)
+
+        if 'oppia-noninteractive-image' in html_content:
+            minutes_contributed += 20
+        else:
+            minutes_contributed += 12
+    # Go to the below link for more information about how we count hours
+    # contributed.
+    # https://docs.google.com/spreadsheets/d/1ykSNwPLZ5qTCkuO21VLdtm_2SjJ5QJ0z0PlVjjSB4ZQ/edit?usp=sharing
+    hours_contributed = round(minutes_contributed / 60, 2)
+
+    if minutes_contributed == 0:
+        return None
+
+    return suggestion_registry.ContributorCertificateInfo(
+        from_date.strftime('%d %b %Y'), to_date.strftime('%d %b %Y'),
+        signature, str(hours_contributed), None
+    )

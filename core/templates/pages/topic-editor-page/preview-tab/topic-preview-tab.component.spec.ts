@@ -16,23 +16,44 @@
  * @fileoverview Unit tests for topic preview tab.
  */
 
-import { NO_ERRORS_SCHEMA } from '@angular/core';
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
-import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { MaterialModule } from 'modules/material.module';
-import { StorySummary } from 'domain/story/story-summary.model';
-import { UrlInterpolationService } from 'domain/utilities/url-interpolation.service';
-import { TopicEditorStateService } from '../services/topic-editor-state.service';
-import { TopicPreviewTabComponent } from './topic-preview-tab.component';
+import {NO_ERRORS_SCHEMA} from '@angular/core';
+import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
+import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
+import {MaterialModule} from 'modules/material.module';
+import {StorySummary} from 'domain/story/story-summary.model';
+import {UrlInterpolationService} from 'domain/utilities/url-interpolation.service';
+import {TopicEditorStateService} from '../services/topic-editor-state.service';
+import {TopicPreviewTabComponent} from './topic-preview-tab.component';
 
 describe('Topic Preview Tab Component', () => {
   let fixture: ComponentFixture<TopicPreviewTabComponent>;
   let componentInstance: TopicPreviewTabComponent;
   let testName = 'test_name';
   let mockUrl = 'mock_url';
-  let storySummaries = [new StorySummary(
-    'id', 'title', [], 'thumbnailFilename', 'thumbnailBgColor',
-    'description', false, [], 'url', [], '', '', '')];
+  let topicUrl = 'topicUrl';
+  let storySummaries = [
+    new StorySummary(
+      'id',
+      'title',
+      [],
+      'thumbnailFilename',
+      'thumbnailBgColor',
+      'description',
+      false,
+      [],
+      'url',
+      [],
+      '',
+      '',
+      '',
+      0,
+      0,
+      0,
+      [],
+      0,
+      []
+    ),
+  ];
 
   class MockTopicEditorStateService {
     getTopic() {
@@ -43,7 +64,18 @@ describe('Topic Preview Tab Component', () => {
         getSubtopics() {
           return [];
         },
+        getUrlFragment() {
+          return topicUrl;
+        },
       };
+    }
+
+    getClassroomName() {
+      return 'classroom_name';
+    }
+
+    getClassroomUrlFragment() {
+      return 'classroom_url';
     }
 
     getCanonicalStorySummaries() {
@@ -59,24 +91,19 @@ describe('Topic Preview Tab Component', () => {
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [
-        BrowserAnimationsModule,
-        MaterialModule
-      ],
-      declarations: [
-        TopicPreviewTabComponent,
-      ],
+      imports: [BrowserAnimationsModule, MaterialModule],
+      declarations: [TopicPreviewTabComponent],
       providers: [
         {
           provide: TopicEditorStateService,
-          useClass: MockTopicEditorStateService
+          useClass: MockTopicEditorStateService,
         },
         {
           provide: UrlInterpolationService,
-          useClass: MockUrlInterpolationService
-        }
+          useClass: MockUrlInterpolationService,
+        },
       ],
-      schemas: [NO_ERRORS_SCHEMA]
+      schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents();
   }));
 
@@ -93,7 +120,7 @@ describe('Topic Preview Tab Component', () => {
     componentInstance.ngOnInit();
     expect(componentInstance.topicName).toEqual(testName);
     expect(componentInstance.subtopics).toEqual([]);
-    expect(componentInstance.cannonicalStorySummaries).toEqual(storySummaries);
+    expect(componentInstance.canonicalStorySummaries).toEqual(storySummaries);
     expect(componentInstance.chapterCount).toEqual(0);
   });
 

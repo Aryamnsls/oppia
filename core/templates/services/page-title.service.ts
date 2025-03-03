@@ -16,12 +16,11 @@
  * @fileoverview Service to set and get the title of the page.
  */
 
-import { Injectable } from '@angular/core';
-import { Meta, Title } from '@angular/platform-browser';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {Injectable} from '@angular/core';
+import {Meta, Title} from '@angular/platform-browser';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class PageTitleService {
   // These properties are initialized using Angular lifecycle hooks
@@ -50,15 +49,15 @@ export class PageTitleService {
   updateMetaTag(content: string): void {
     this.metaTagService.updateTag({
       name: 'description',
-      content: content
+      content: content,
     });
     this.metaTagService.updateTag({
       itemprop: 'description',
-      content: content
+      content: content,
     });
     this.metaTagService.updateTag({
       property: 'og:description',
-      content: content
+      content: content,
     });
   }
 
@@ -82,6 +81,3 @@ export class PageTitleService {
     return this.pageSubtitleForMobile;
   }
 }
-
-angular.module('oppia').factory(
-  'PageTitleService', downgradeInjectable(PageTitleService));

@@ -66,7 +66,8 @@ def create_new_question(
         question_state_data_schema_version=(
             question.question_state_data_schema_version),
         inapplicable_skill_misconception_ids=(
-            question.inapplicable_skill_misconception_ids)
+            question.inapplicable_skill_misconception_ids),
+        next_content_id_index=question.next_content_id_index
     )
     model.commit(
         committer_id, commit_message, [{'cmd': question_domain.CMD_CREATE_NEW}])
@@ -674,8 +675,18 @@ def apply_change_list(
                         change
                     )
                     question.update_inapplicable_skill_misconception_ids(
-                        update_skill_misconception_ids_cmd.new_value
+                        update_skill_misconception_ids_cmd.new_value)
+                elif (change.property_name ==
+                      question_domain.QUESTION_PROPERTY_NEXT_CONTENT_ID_INDEX):
+                    # Here we use cast because this 'if' condition forces
+                    # change to have type
+                    # UpdateQuestionPropertyNextContentIdIndexCmd.
+                    cmd = cast(
+                        question_domain
+                        .UpdateQuestionPropertyNextContentIdIndexCmd,
+                        change
                     )
+                    question.update_next_content_id_index(cmd.new_value)
 
         return question
 
@@ -693,7 +704,9 @@ def _save_question(
     change_list: List[question_domain.QuestionChange],
     commit_message: str
 ) -> None:
-    """Validates a question and commits it to persistent storage.
+    """Validates a question and commits it to persistent storage. If
+    successful, increments the version number of the incoming question domain
+    object by 1.
 
     Args:
         committer_id: str. The id of the user who is performing the update
@@ -722,6 +735,7 @@ def _save_question(
     question_model.linked_skill_ids = question.linked_skill_ids
     question_model.inapplicable_skill_misconception_ids = (
         question.inapplicable_skill_misconception_ids)
+    question_model.next_content_id_index = question.next_content_id_index
     change_dicts = [change.to_dict() for change in change_list]
     question_model.commit(committer_id, commit_message, change_dicts)
     question.version += 1
@@ -731,7 +745,8 @@ def update_question(
     committer_id: str,
     question_id: str,
     change_list: List[question_domain.QuestionChange],
-    commit_message: str
+    commit_message: str,
+    version: Optional[int] = None
 ) -> None:
     """Updates a question. Commits changes.
 
@@ -744,14 +759,28 @@ def update_question(
             question.
         commit_message: str. A description of changes made to the
             question.
+        version: int. Version of the question coming from payload while
+            updating question.
 
     Raises:
         ValueError. No commit message was provided.
+        Exception. Version of the incoming question and current question
+            differs.
     """
     if not commit_message:
         raise ValueError(
             'Expected a commit message, received none.')
     updated_question = apply_change_list(question_id, change_list)
+    if (version is not None) and (version < updated_question.version):
+        raise Exception(
+            'Unexpected error: trying to update version %s of question '
+            'from version %s. Please reload the page and try again.'
+            % (version, updated_question.version))
+    if (version is not None) and (version > updated_question.version):
+        raise Exception(
+            'Trying to update version %s of question from version %s, '
+            'which is too old. Please reload the page and try again.'
+            % (version, updated_question.version))
     _save_question(
         committer_id, updated_question, change_list, commit_message)
     create_question_summary(question_id)
@@ -807,7 +836,7 @@ def compute_summary_of_question(
         )
     question_summary = question_domain.QuestionSummary(
         question.id, question_content, misconception_ids, interaction_id,
-        question.created_on, question.last_updated)
+        question.created_on, question.last_updated, question.version)
     return question_summary
 
 
@@ -827,7 +856,8 @@ def save_question_summary(
         question_model_created_on=question_summary.created_on,
         question_content=question_summary.question_content,
         misconception_ids=question_summary.misconception_ids,
-        interaction_id=question_summary.interaction_id
+        interaction_id=question_summary.interaction_id,
+        version=question_summary.version
     )
 
     question_summary_model.update_timestamps()
@@ -854,7 +884,8 @@ def get_question_summary_from_model(
         question_summary_model.misconception_ids,
         question_summary_model.interaction_id,
         question_summary_model.question_model_created_on,
-        question_summary_model.question_model_last_updated
+        question_summary_model.question_model_last_updated,
+        question_summary_model.version
     )
 
 
@@ -937,3 +968,67 @@ def untag_deleted_misconceptions(
         update_question(
             committer_id, question.id, change_list,
             'Untagged deleted skill misconception ids.')
+
+
+def populate_question_model_fields(
+    question_model: question_models.QuestionModel,
+    question: question_domain.Question
+) -> question_models.QuestionModel:
+    """Populate question model with the data from question object.
+
+    Args:
+        question_model: QuestionModel. The model to populate.
+        question: Question. The question domain object which should be used to
+            populate the model.
+
+    Returns:
+        QuestionModel. Populated model.
+    """
+    question_model.question_state_data = (
+        question.question_state_data.to_dict()
+    )
+    question_model.question_state_data_schema_version = (
+        question.question_state_data_schema_version)
+    question_model.next_content_id_index = question.next_content_id_index
+    question_model.language_code = question.language_code
+    question_model.linked_skill_ids = question.linked_skill_ids
+    question_model.inapplicable_skill_misconception_ids = (
+        question.inapplicable_skill_misconception_ids)
+
+    return question_model
+
+
+def populate_question_summary_model_fields(
+    question_summary_model: question_models.QuestionSummaryModel,
+    question_summary: question_domain.QuestionSummary
+) -> question_models.QuestionSummaryModel:
+    """Populate question summary model with the data from question summary
+    object.
+
+    Args:
+        question_summary_model: QuestionSummaryModel. The model to populate.
+        question_summary: QuestionSummary. The question summary domain object
+            which should be used to populate the model.
+
+    Returns:
+        QuestionSummaryModel. Populated model.
+    """
+    question_summary_dict = {
+        'question_model_last_updated': (
+            question_summary.last_updated),
+        'question_model_created_on': (
+            question_summary.created_on),
+        'question_content': question_summary.question_content,
+        'interaction_id': question_summary.interaction_id,
+        'version': question_summary.version,
+        'misconception_ids': question_summary.misconception_ids
+    }
+
+    if question_summary_model is not None:
+        question_summary_model.populate(**question_summary_dict)
+    else:
+        question_summary_dict['id'] = question_summary.id
+        question_summary_model = question_models.QuestionSummaryModel(
+            **question_summary_dict)
+
+    return question_summary_model

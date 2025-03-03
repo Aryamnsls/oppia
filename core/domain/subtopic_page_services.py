@@ -22,7 +22,7 @@ import copy
 
 from core import feconf
 from core.domain import change_domain
-from core.domain import classroom_services
+from core.domain import classroom_config_services
 from core.domain import learner_group_services
 from core.domain import skill_services
 from core.domain import subtopic_page_domain
@@ -112,10 +112,7 @@ def get_subtopic_page_by_id(
 
 @overload
 def get_subtopic_page_by_id(
-    topic_id: str,
-    subtopic_id: int,
-    *,
-    strict: Literal[True]
+    topic_id: str, subtopic_id: int, *, version: int
 ) -> subtopic_page_domain.SubtopicPage: ...
 
 
@@ -124,7 +121,18 @@ def get_subtopic_page_by_id(
     topic_id: str,
     subtopic_id: int,
     *,
-    strict: Literal[False]
+    strict: Literal[True],
+    version: Optional[int] = ...
+) -> subtopic_page_domain.SubtopicPage: ...
+
+
+@overload
+def get_subtopic_page_by_id(
+    topic_id: str,
+    subtopic_id: int,
+    *,
+    strict: Literal[False],
+    version: Optional[int] = ...
 ) -> Optional[subtopic_page_domain.SubtopicPage]: ...
 
 
@@ -133,14 +141,16 @@ def get_subtopic_page_by_id(
     topic_id: str,
     subtopic_id: int,
     *,
-    strict: bool = ...
+    strict: bool = ...,
+    version: Optional[int] = ...
 ) -> Optional[subtopic_page_domain.SubtopicPage]: ...
 
 
 def get_subtopic_page_by_id(
     topic_id: str,
     subtopic_id: int,
-    strict: bool = True
+    strict: bool = True,
+    version: Optional[int] = None
 ) -> Optional[subtopic_page_domain.SubtopicPage]:
     """Returns a domain object representing a subtopic page.
 
@@ -149,6 +159,7 @@ def get_subtopic_page_by_id(
         subtopic_id: int. The id of the subtopic.
         strict: bool. Whether to fail noisily if no subtopic page with the given
             id exists in the datastore.
+        version: str or None. The version number of the subtopic page.
 
     Returns:
         SubtopicPage or None. The domain object representing a subtopic page
@@ -157,7 +168,7 @@ def get_subtopic_page_by_id(
     subtopic_page_id = subtopic_page_domain.SubtopicPage.get_subtopic_page_id(
         topic_id, subtopic_id)
     subtopic_page_model = subtopic_models.SubtopicPageModel.get(
-        subtopic_page_id, strict=strict)
+        subtopic_page_id, strict=strict, version=version)
     if subtopic_page_model:
         subtopic_page = get_subtopic_page_from_model(subtopic_page_model)
         return subtopic_page
@@ -422,7 +433,7 @@ def get_multi_users_subtopic_pages_progress(
                     'subtopic_mastery': subtopic_mastery,
                     'parent_topic_url_fragment': topic.url_fragment,
                     'classroom_url_fragment': (
-                        classroom_services
+                        classroom_config_services
                             .get_classroom_url_fragment_for_topic_id(
                                 topic.id))
                 })
@@ -466,3 +477,27 @@ def get_learner_group_syllabus_subtopic_page_summaries(
             })
 
     return all_learner_group_subtopic_page_summaries
+
+
+def populate_subtopic_page_model_fields(
+    subtopic_page_model: subtopic_models.SubtopicPageModel,
+    subtopic_page: subtopic_page_domain.SubtopicPage
+) -> subtopic_models.SubtopicPageModel:
+    """Populate subtopic page model with the data from subtopic page object.
+
+    Args:
+        subtopic_page_model: SubtopicPageModel. The model to populate.
+        subtopic_page: SubtopicPage. The subtopic page domain object which
+            should be used to populate the model.
+
+    Returns:
+        SubtopicPageModel. Populated model.
+    """
+    subtopic_page_model.topic_id = subtopic_page.topic_id
+    subtopic_page_model.page_contents = subtopic_page.page_contents.to_dict()
+    subtopic_page_model.page_contents_schema_version = (
+        subtopic_page.page_contents_schema_version)
+
+    subtopic_page_model.language_code = subtopic_page.language_code
+
+    return subtopic_page_model

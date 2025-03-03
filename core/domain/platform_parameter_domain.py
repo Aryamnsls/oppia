@@ -41,9 +41,9 @@ class ServerMode(enum.Enum):
 
 FeatureStages = ServerMode
 
-# Union type defined from allowed types that a platform can contain
-# for it's data types.
-PlatformDataTypes = Union[str, int, bool]
+# Union type defined from allowed types that a platform parameter can contain
+# for its data types.
+PlatformDataTypes = Union[str, int, bool, float]
 
 
 class DataTypes(enum.Enum):
@@ -66,9 +66,6 @@ ALLOWED_FEATURE_STAGES: Final = [
 ]
 ALLOWED_PLATFORM_TYPES: List[str] = (
     constants.PLATFORM_PARAMETER_ALLOWED_PLATFORM_TYPES
-)
-ALLOWED_BROWSER_TYPES: List[str] = (
-    constants.PLATFORM_PARAMETER_ALLOWED_BROWSER_TYPES
 )
 ALLOWED_APP_VERSION_FLAVORS: List[str] = (
     constants.PLATFORM_PARAMETER_ALLOWED_APP_VERSION_FLAVORS
@@ -112,7 +109,6 @@ class ClientSideContextDict(TypedDict):
     """Dictionary representing the client's side Context object."""
 
     platform_type: Optional[str]
-    browser_type: Optional[str]
     app_version: Optional[str]
 
 
@@ -128,12 +124,10 @@ class EvaluationContext:
     def __init__(
         self,
         platform_type: Optional[str],
-        browser_type: Optional[str],
         app_version: Optional[str],
         server_mode: ServerMode
     ) -> None:
         self._platform_type = platform_type
-        self._browser_type = browser_type
         self._app_version = app_version
         self._server_mode = server_mode
 
@@ -145,16 +139,6 @@ class EvaluationContext:
             str|None. The platform type, e.g. 'Web', 'Android', 'Backend'.
         """
         return self._platform_type
-
-    @property
-    def browser_type(self) -> Optional[str]:
-        """Returns client browser type.
-
-        Returns:
-            str|None. The client browser type, e.g. 'Chrome', 'FireFox',
-            'Edge'. None if the platform type is not Web.
-        """
-        return self._browser_type
 
     @property
     def app_version(self) -> Optional[str]:
@@ -199,13 +183,6 @@ class EvaluationContext:
         """Validates the EvaluationContext domain object, raising an exception
         if the object is in an irrecoverable error state.
         """
-        if (
-                self._browser_type is not None and
-                self._browser_type not in ALLOWED_BROWSER_TYPES):
-            raise utils.ValidationError(
-                'Invalid browser type \'%s\', must be one of %s.' % (
-                    self._browser_type, ALLOWED_BROWSER_TYPES))
-
         if self._app_version is not None:
             match = APP_VERSION_WITH_HASH_REGEXP.match(self._app_version)
             if match is None:
@@ -249,7 +226,6 @@ class EvaluationContext:
         # to fetch dictionary keys.
         return cls(
             client_context_dict['platform_type'],
-            client_context_dict.get('browser_type'),
             client_context_dict.get('app_version'),
             server_context_dict['server_mode'],
         )
@@ -266,14 +242,11 @@ class PlatformParameterFilter:
     """Domain object for filters in platform parameters."""
 
     SUPPORTED_FILTER_TYPES: Final = [
-        'server_mode', 'platform_type', 'browser_type', 'app_version',
-        'app_version_flavor',
+        'server_mode', 'platform_type', 'app_version', 'app_version_flavor',
     ]
 
     SUPPORTED_OP_FOR_FILTERS: Final = {
-        'server_mode': ['='],
         'platform_type': ['='],
-        'browser_type': ['='],
         'app_version_flavor': ['=', '<', '<=', '>', '>='],
         'app_version': ['=', '<', '<=', '>', '>='],
     }
@@ -341,22 +314,15 @@ class PlatformParameterFilter:
         Raises:
             Exception. Given operator is not supported.
         """
-        if (
-            self._type in ['server_mode', 'platform_type', 'browser_type']
-            and op != '='
-        ):
+        if self._type == 'platform_type' and op != '=':
             raise Exception(
                 'Unsupported comparison operator \'%s\' for %s filter, '
                 'expected one of %s.' % (
                     op, self._type, self.SUPPORTED_OP_FOR_FILTERS[self._type]))
 
         matched = False
-        if self._type == 'server_mode' and op == '=':
-            matched = context.server_mode.value == value
-        elif self._type == 'platform_type' and op == '=':
+        if self._type == 'platform_type' and op == '=':
             matched = context.platform_type == value
-        elif self._type == 'browser_type' and op == '=':
-            matched = context.browser_type == value
         elif self._type == 'app_version_flavor':
             # Ruling out the possibility of None for mypy type checking.
             assert context.app_version is not None
@@ -381,16 +347,7 @@ class PlatformParameterFilter:
                         op, self._type,
                         self.SUPPORTED_OP_FOR_FILTERS[self._type]))
 
-        if self._type == 'server_mode':
-            for _, mode in self._conditions:
-                if not any(
-                        mode == server_mode
-                        for server_mode in ALLOWED_SERVER_MODES
-                ):
-                    raise utils.ValidationError(
-                        'Invalid server mode \'%s\', must be one of %s.' % (
-                            mode, ALLOWED_SERVER_MODES))
-        elif self._type == 'platform_type':
+        if self._type == 'platform_type':
             for _, platform_type in self._conditions:
                 if platform_type not in ALLOWED_PLATFORM_TYPES:
                     raise utils.ValidationError(
@@ -644,16 +601,6 @@ class PlatformParameterRule:
             filter_domain.evaluate(context)
             for filter_domain in self._filters)
 
-    def has_server_mode_filter(self) -> bool:
-        """Checks if the rule has a filter with type 'server_mode'.
-
-        Returns:
-            bool. True if the rule has a filter with type 'server_mode'.
-        """
-        return any(
-            filter_domain.type == 'server_mode'
-            for filter_domain in self._filters)
-
     def to_dict(self) -> PlatformParameterRuleDict:
         """Returns a dict representation of the PlatformParameterRule domain
         object.
@@ -704,8 +651,6 @@ class PlatformParameterDict(TypedDict):
     rules: List[PlatformParameterRuleDict]
     rule_schema_version: int
     default_value: PlatformDataTypes
-    is_feature: bool
-    feature_stage: Optional[str]
 
 
 class PlatformParameter:
@@ -728,9 +673,7 @@ class PlatformParameter:
         data_type: str,
         rules: List[PlatformParameterRule],
         rule_schema_version: int,
-        default_value: PlatformDataTypes,
-        is_feature: bool,
-        feature_stage: Optional[str]
+        default_value: PlatformDataTypes
     ) -> None:
         self._name = name
         self._description = description
@@ -738,8 +681,6 @@ class PlatformParameter:
         self._rules = rules
         self._rule_schema_version = rule_schema_version
         self._default_value = default_value
-        self._is_feature = is_feature
-        self._feature_stage = feature_stage
 
     @property
     def name(self) -> str:
@@ -804,24 +745,14 @@ class PlatformParameter:
         """
         return self._default_value
 
-    @property
-    def is_feature(self) -> bool:
-        """Returns whether this parameter is also a feature flag.
+    def set_default_value(self, default_value: PlatformDataTypes) -> None:
+        """Sets the default value of the PlatformParameter.
 
-        Returns:
-            bool. True if the parameter is a feature flag.
+        Args:
+            default_value: PlatformDataTypes. The new default value of the
+                parameter.
         """
-        return self._is_feature
-
-    @property
-    def feature_stage(self) -> Optional[str]:
-        """Returns the stage of the feature flag.
-
-        Returns:
-            FeatureStages|None. The stage of the feature flag, None if the
-            parameter isn't a feature flag.
-        """
-        return self._feature_stage
+        self._default_value = default_value
 
     def validate(self) -> None:
         """Validates the PlatformParameter domain object."""
@@ -844,13 +775,7 @@ class PlatformParameter:
                 raise utils.ValidationError(
                     'Expected %s, received \'%s\' in value_when_matched.' % (
                         self._data_type, rule.value_when_matched))
-            if not rule.has_server_mode_filter():
-                raise utils.ValidationError(
-                    'All rules must have a server_mode filter.')
             rule.validate()
-
-        if self._is_feature:
-            self._validate_feature_flag()
 
     def evaluate(
         self, context: EvaluationContext
@@ -888,48 +813,8 @@ class PlatformParameter:
             'data_type': self._data_type,
             'rules': [rule.to_dict() for rule in self._rules],
             'rule_schema_version': self._rule_schema_version,
-            'default_value': self._default_value,
-            'is_feature': self._is_feature,
-            'feature_stage': self._feature_stage
+            'default_value': self._default_value
         }
-
-    def _validate_feature_flag(self) -> None:
-        """Validates the PlatformParameter domain object that is a feature
-        flag.
-        """
-        if self._data_type != DataTypes.BOOL.value:
-            raise utils.ValidationError(
-                'Data type of feature flags must be bool, got \'%s\' '
-                'instead.' % self._data_type)
-        if not any(
-                self._feature_stage == feature_stage
-                for feature_stage in ALLOWED_FEATURE_STAGES
-        ):
-            raise utils.ValidationError(
-                'Invalid feature stage, got \'%s\', expected one of %s.' % (
-                    self._feature_stage, ALLOWED_FEATURE_STAGES))
-        enabling_rules = [
-            rule for rule in self._rules if rule.value_when_matched]
-        for rule in enabling_rules:
-            server_mode_filters = [
-                server_mode_filter for server_mode_filter in rule.filters
-                if server_mode_filter.type == 'server_mode']
-            for server_mode_filter in server_mode_filters:
-                server_modes = [
-                    value for _, value in server_mode_filter.conditions]
-                if self._feature_stage == FeatureStages.DEV.value:
-                    if (
-                            ServerMode.TEST.value in server_modes or
-                            ServerMode.PROD.value in server_modes
-                    ):
-                        raise utils.ValidationError(
-                            'Feature in dev stage cannot be enabled in test or'
-                            ' production environments.')
-                elif self._feature_stage == FeatureStages.TEST.value:
-                    if ServerMode.PROD.value in server_modes:
-                        raise utils.ValidationError(
-                            'Feature in test stage cannot be enabled in '
-                            'production environment.')
 
     @classmethod
     def from_dict(cls, param_dict: PlatformParameterDict) -> PlatformParameter:
@@ -970,8 +855,6 @@ class PlatformParameter:
                 for rule_dict in param_dict['rules']],
             param_dict['rule_schema_version'],
             param_dict['default_value'],
-            param_dict['is_feature'],
-            param_dict['feature_stage'],
         )
 
     def serialize(self) -> str:

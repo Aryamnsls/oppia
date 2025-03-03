@@ -16,8 +16,7 @@
  * @fileoverview Unit tests for ExplorationSummaryModel.
  */
 
-import { LearnerExplorationSummary } from
-  'domain/summary/learner-exploration-summary.model';
+import {LearnerExplorationSummary} from 'domain/summary/learner-exploration-summary.model';
 
 describe('Exploration summary model', () => {
   it('should correctly convert backend dict to exp summary object', () => {
@@ -30,24 +29,24 @@ describe('Exploration summary model', () => {
       thumbnail_icon_url: '/subjects/Algebra.svg',
       human_readable_contributors_summary: {},
       language_code: 'en',
-      thumbnail_bg_color: '#cd672b',
+      thumbnail_bg_color: '#cc4b00',
       created_on_msec: 1591296635736.666,
       ratings: {
         1: 0,
         2: 0,
         3: 0,
         4: 0,
-        5: 0
+        5: 0,
       },
       status: 'public',
       tags: [],
       activity_type: 'exploration',
       category: 'Algebra',
-      title: 'Test Title'
+      title: 'Test Title',
     };
 
-    let expSummaryObject = LearnerExplorationSummary.createFromBackendDict(
-      backendDict);
+    let expSummaryObject =
+      LearnerExplorationSummary.createFromBackendDict(backendDict);
 
     expect(expSummaryObject.lastUpdatedMsec).toEqual(1591296737470.528);
     expect(expSummaryObject.communityOwned).toEqual(false);
@@ -57,14 +56,14 @@ describe('Exploration summary model', () => {
     expect(expSummaryObject.thumbnailIconUrl).toEqual('/subjects/Algebra.svg');
     expect(expSummaryObject.humanReadableContributorsSummary).toEqual({});
     expect(expSummaryObject.languageCode).toEqual('en');
-    expect(expSummaryObject.thumbnailBgColor).toEqual('#cd672b');
+    expect(expSummaryObject.thumbnailBgColor).toEqual('#cc4b00');
     expect(expSummaryObject.createdOnMsec).toEqual(1591296635736.666);
     expect(expSummaryObject.ratings).toEqual({
       1: 0,
       2: 0,
       3: 0,
       4: 0,
-      5: 0
+      5: 0,
     });
     expect(expSummaryObject.status).toEqual('public');
     expect(expSummaryObject.tags).toEqual([]);

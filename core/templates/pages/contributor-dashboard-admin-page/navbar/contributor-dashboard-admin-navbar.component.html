@@ -57,7 +57,7 @@
       <div class="navbar-header e2e-test-navbar-header float-left">
         <a class="oppia-navbar-brand-name oppia-transition-200 float-left"
            href="/community-library"
-           [smartRouterLink]="'/' + PAGES_REGISTERED_WITH_FRONTEND.LIBRARY_INDEX.ROUTE">
+           [routerLink]="'/' + PAGES_REGISTERED_WITH_FRONTEND.LIBRARY_INDEX.ROUTE">
           <picture>
             <source type="image/webp" [srcset]="logoWebpImageSrc">
             <source type="image/png" [srcset]="logoPngImageSrc">
@@ -82,17 +82,14 @@
                    data-toggle="dropdown"
                    (mouseenter)="activateProfileDropdown()"
                    (mouseleave)="deactivateProfileDropdown()">
-                  <span *ngIf="profilePictureDataUrl">
-                      <!--
-                        Lighthouse flags <img> elements that don't have alt attributes:
-                        If the image acts as decoration and does not provide any useful content, give it an empty alt=""
-                        https://web.dev/image-alt/?utm_source=lighthouse&utm_medium=devtools#how-to-add-alternative-text-to-images
-                      -->
-                    <img [src]="profilePictureDataUrl"
+                  <picture *ngIf="profilePicturePngDataUrl">
+                    <source type="image/webp" [srcset]="profilePictureWebpDataUrl">
+                    <source type="image/png" [srcset]="profilePicturePngDataUrl">
+                    <img [src]="profilePicturePngDataUrl"
                          class="oppia-navbar-profile-picture rounded-circle"
-                         alt="">
-                  </span>
-                  <div *ngIf="!profilePictureDataUrl" class="dropdown-toggle">
+                         alt="User profile picture">
+                  </picture>
+                  <div *ngIf="!profilePicturePngDataUrl" class="dropdown-toggle">
                     <i class="material-icons md-40 oppia-dropdown-toggle-icon">&#xE853;</i>
                   </div>
                 </a>
@@ -121,7 +118,7 @@
                   </li>
                   <li>
                     <a href="/preferences"
-                       [smartRouterLink]="'/' + PAGES_REGISTERED_WITH_FRONTEND.PREFERENCES.ROUTE"
+                       [routerLink]="'/' + PAGES_REGISTERED_WITH_FRONTEND.PREFERENCES.ROUTE"
                        class="dropdown-item oppia-dropdown-item-text">
                       Preferences
                     </a>
@@ -129,7 +126,7 @@
                   <hr class="oppia-top-right-menu-item-separator">
                   <li>
                     <a [href]="logoutUrl"
-                       [smartRouterLink]="logoutUrl"
+                       [routerLink]="logoutUrl"
                        class="dropdown-item oppia-dropdown-item-text">
                       Logout
                     </a>

@@ -16,25 +16,31 @@
  * @fileoverview Unit tests for the translation topic selector component.
  */
 
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import {async, ComponentFixture, TestBed} from '@angular/core/testing';
 
-import { TranslationTopicSelectorComponent } from
+import {
+  TranslationTopicSelectorComponent,
   // eslint-disable-next-line max-len
-  'pages/contributor-dashboard-page/translation-topic-selector/translation-topic-selector.component';
-import { ContributionOpportunitiesBackendApiService } from
+} from 'pages/contributor-dashboard-page/translation-topic-selector/translation-topic-selector.component';
+import {
+  ContributionOpportunitiesBackendApiService,
   // eslint-disable-next-line max-len
-  'pages/contributor-dashboard-page/services/contribution-opportunities-backend-api.service';
+} from 'pages/contributor-dashboard-page/services/contribution-opportunities-backend-api.service';
 
 describe('Translation language selector', () => {
   let component: TranslationTopicSelectorComponent;
   let fixture: ComponentFixture<TranslationTopicSelectorComponent>;
 
-  let topicNames = ['All', 'Topic 1'];
+  const topicsPerClassroomBackendDict = [
+    {classroom: 'Class 1', topics: ['Topic 1', 'Topic 2']},
+    {classroom: 'Class 2', topics: ['Topic 3']},
+    {classroom: '', topics: ['All', 'Topic 4']},
+  ];
 
-  let contributionOpportunitiesBackendApiServiceStub:
-    Partial<ContributionOpportunitiesBackendApiService> = {
-      fetchTranslatableTopicNamesAsync: async() =>
-        Promise.resolve(topicNames)
+  let contributionOpportunitiesBackendApiServiceStub: Partial<ContributionOpportunitiesBackendApiService> =
+    {
+      fetchTranslatableTopicNamesPerClassroomAsync: async () =>
+        Promise.resolve(topicsPerClassroomBackendDict),
     };
 
   let clickDropdown: () => void;
@@ -43,10 +49,12 @@ describe('Translation language selector', () => {
   beforeEach(async(() => {
     TestBed.configureTestingModule({
       declarations: [TranslationTopicSelectorComponent],
-      providers: [{
-        provide: ContributionOpportunitiesBackendApiService,
-        useValue: contributionOpportunitiesBackendApiServiceStub
-      }]
+      providers: [
+        {
+          provide: ContributionOpportunitiesBackendApiService,
+          useValue: contributionOpportunitiesBackendApiServiceStub,
+        },
+      ],
     }).compileComponents();
   }));
 
@@ -67,16 +75,41 @@ describe('Translation language selector', () => {
 
     getDropdownOptionsContainer = () => {
       return fixture.debugElement.nativeElement.querySelector(
-        '.oppia-translation-topic-selector-dropdown-container');
+        '.oppia-translation-topic-selector-dropdown-container'
+      );
     };
   });
 
   it('should correctly initialize dropdown activeTopicName', () => {
-    const dropdown = (
-      fixture.nativeElement.querySelector(
-        '.oppia-translation-topic-selector-inner-container'));
+    const dropdown = fixture.nativeElement.querySelector(
+      '.oppia-translation-topic-selector-inner-container'
+    );
 
     expect(dropdown.firstChild.textContent.trim()).toBe('All');
+  });
+
+  it('should correctly display topics organized by classroom', async () => {
+    await fixture.whenStable();
+    expect(component.topicsPerClassroomMap).toBeTruthy();
+
+    clickDropdown();
+    expect(component.dropdownShown).toBe(true);
+
+    const classroomLabels = fixture.debugElement.nativeElement.querySelectorAll(
+      '.oppia-translation-topic-selector-dropdown-label'
+    );
+
+    // Only Class 1 and Class 2 should have labels.
+    expect(classroomLabels.length).toBe(2);
+    expect(classroomLabels[0].textContent).toBe('Class 1');
+    expect(classroomLabels[1].textContent).toBe('Class 2');
+
+    const allOptions = fixture.debugElement.nativeElement.querySelectorAll(
+      '.oppia-translation-topic-selector-dropdown-option'
+    );
+
+    // Total topics across all classrooms.
+    expect(allOptions.length).toBe(5);
   });
 
   it('should correctly show and hide the dropdown', () => {
@@ -96,10 +129,9 @@ describe('Translation language selector', () => {
     expect(getDropdownOptionsContainer()).toBeTruthy();
 
     let fakeClickAwayEvent = new MouseEvent('click');
-    Object.defineProperty(
-      fakeClickAwayEvent,
-      'target',
-      {value: document.createElement('div')});
+    Object.defineProperty(fakeClickAwayEvent, 'target', {
+      value: document.createElement('div'),
+    });
     component.onDocumentClick(fakeClickAwayEvent);
     fixture.detectChanges();
     expect(component.dropdownShown).toBe(false);

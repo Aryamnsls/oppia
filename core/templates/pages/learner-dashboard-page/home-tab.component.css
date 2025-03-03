@@ -8,6 +8,8 @@
   font-family: 'Capriola', 'Roboto', Arial, sans-serif;
   font-size: 32px;
 }
+
+/*change width to 100% for redesign*/
 .home-tab .continue-where-you-left-off {
   background-color: #fff;
   border-radius: 4px;
@@ -80,11 +82,17 @@
   font-size: 18px;
   padding: 30px 0;
 }
+.home-tab .empty-suggested-for-you-section a {
+  color: #000;
+  font-weight: 600;
+  text-decoration: underline;
+}
 
 .home-tab .empty-suggested-for-you.learn-something-new-section {
   padding: 32px 23px 0 32px;
 }
 
+/*change width to 100% for redesign*/
 .home-tab .suggested-for-you,
 .home-tab .empty-suggested-for-you {
   background-color: #fff;
@@ -170,6 +178,7 @@
     font-size: 25px;
     margin-left: 0;
   }
+  /*change width to 100% for redesign*/
   .home-tab .continue-where-you-left-off,
   .home-tab .suggested-for-you,
   .home-tab .empty-suggested-for-you {
@@ -197,7 +206,7 @@
   .home-tab .continue-where-you-left-off, .home-tab .suggested-for-you,
   .home-tab .empty-suggested-for-you {
     margin-left: auto;
-    width: 335px;
+    width: 100%;
   }
 
   .home-tab .suggested-for-you .topic-summary-tile-scroll {

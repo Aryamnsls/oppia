@@ -235,16 +235,16 @@ class InstallBackendPythonLibsTests(test_utils.GenericTestBase):
             self.assertEqual(
                 install_python_prod_dependencies.get_mismatches(),
                 {
-                    u'dependency1': (u'1.6.1', u'1.5.1'),
-                    u'dependency2': (u'4.9.1', u'4.9.1.2'),
-                    u'dependency3': (u'3.1.5', None),
-                    u'dependency4': (u'0.3.0.1', None),
-                    u'dependency5': (
+                    'dependency1': ('1.6.1', '1.5.1'),
+                    'dependency2': ('4.9.1', '4.9.1.2'),
+                    'dependency3': ('3.1.5', None),
+                    'dependency4': ('0.3.0.1', None),
+                    'dependency5': (
                         self.get_git_version_string('dependency5', 'a'),
                         self.get_git_version_string('dependency5', 'b')),
-                    u'dependency6': (
+                    'dependency6': (
                         None, self.get_git_version_string('dependency6', 'z')),
-                    u'dependency7': (
+                    'dependency7': (
                         self.get_git_version_string('dependency7', 'b'), None),
                 }
             )
@@ -260,8 +260,8 @@ class InstallBackendPythonLibsTests(test_utils.GenericTestBase):
         def mock_get_mismatches(
         ) -> install_python_prod_dependencies.MismatchType:
             return {
-                u'flask': (None, u'10.0.1'),
-                u'six': (None, u'10.13.0.1'),
+                'flask': (None, '10.0.1'),
+                'six': (None, '10.13.0.1'),
             }
 
         def mock_validate_metadata_directories() -> None:
@@ -287,11 +287,13 @@ class InstallBackendPythonLibsTests(test_utils.GenericTestBase):
             self.cmd_token_list,
             [
                 [
-                    'pip-compile', '--no-emit-index-url', 'requirements.in',
+                    'pip-compile', '--no-emit-index-url', '--quiet',
+                    '--strip-extras', '--generate-hashes', 'requirements.in',
                     '--output-file', 'requirements.txt',
                 ],
                 [
-                    'python', '-m', 'pip', 'install', '--target',
+                    'python', '-m', 'pip', 'install', '--require-hashes',
+                    '--no-deps', '--target',
                     common.THIRD_PARTY_PYTHON_LIBS_DIR,
                     '--no-dependencies',
                     '-r', common.COMPILED_REQUIREMENTS_FILE_PATH,
@@ -307,12 +309,12 @@ class InstallBackendPythonLibsTests(test_utils.GenericTestBase):
         def mock_get_mismatches(
         ) -> install_python_prod_dependencies.MismatchType:
             return {
-                u'flask': (u'1.1.0.1', u'1.1.1.0'),
-                u'six': (u'1.16.0', None),
-                u'git-dep1': (
+                'flask': ('1.1.0.1', '1.1.1.0'),
+                'six': ('1.16.0', None),
+                'git-dep1': (
                     self.get_git_version_string('git-dep1', 'a'),
                     self.get_git_version_string('git-dep1', 'b')),
-                u'git-dep2': (
+                'git-dep2': (
                     self.get_git_version_string('git-dep2', 'a'), None),
             }
 
@@ -336,7 +338,8 @@ class InstallBackendPythonLibsTests(test_utils.GenericTestBase):
             self.cmd_token_list,
             [
                 [
-                    'pip-compile', '--no-emit-index-url', 'requirements.in',
+                    'pip-compile', '--no-emit-index-url', '--quiet',
+                    '--strip-extras', '--generate-hashes', 'requirements.in',
                     '--output-file', 'requirements.txt',
                 ],
                 [
@@ -382,11 +385,11 @@ class InstallBackendPythonLibsTests(test_utils.GenericTestBase):
         def mock_get_mismatches(
         ) -> install_python_prod_dependencies.MismatchType:
             return {
-                u'flask': (u'1.1.1', None),
-                u'six': (u'1.16.0', None),
-                u'simplejson': (None, u'3.16.0'),
-                u'bleach': (u'3.1.4', u'3.1.5'),
-                u'callbacks': (u'0.3.0', u'0.2.0'),
+                'flask': ('1.1.1', None),
+                'six': ('1.16.0', None),
+                'simplejson': (None, '3.16.0'),
+                'bleach': ('3.1.4', '3.1.5'),
+                'callbacks': ('0.3.0', '0.2.0'),
             }
 
         def mock_validate_metadata_directories() -> None:
@@ -416,11 +419,13 @@ class InstallBackendPythonLibsTests(test_utils.GenericTestBase):
             self.cmd_token_list,
             [
                 [
-                    'pip-compile', '--no-emit-index-url', 'requirements.in',
+                    'pip-compile', '--no-emit-index-url', '--quiet',
+                    '--strip-extras', '--generate-hashes', 'requirements.in',
                     '--output-file', 'requirements.txt',
                 ],
                 [
-                    'python', '-m', 'pip', 'install', '--target',
+                    'python', '-m', 'pip', 'install', '--require-hashes',
+                    '--no-deps', '--target',
                     common.THIRD_PARTY_PYTHON_LIBS_DIR,
                     '--no-dependencies', '-r',
                     common.COMPILED_REQUIREMENTS_FILE_PATH,
@@ -462,7 +467,8 @@ class InstallBackendPythonLibsTests(test_utils.GenericTestBase):
 
         self.assertEqual(self.cmd_token_list, [
             [
-                'pip-compile', '--no-emit-index-url', 'requirements.in',
+                'pip-compile', '--no-emit-index-url', '--quiet',
+                '--strip-extras', '--generate-hashes', 'requirements.in',
                 '--output-file', 'requirements.txt',
             ],
         ])
@@ -495,7 +501,8 @@ class InstallBackendPythonLibsTests(test_utils.GenericTestBase):
 
         self.assertEqual(self.cmd_token_list, [
             [
-                'pip-compile', '--no-emit-index-url', 'requirements.in',
+                'pip-compile', '--no-emit-index-url', '--quiet',
+                '--strip-extras', '--generate-hashes', 'requirements.in',
                 '--output-file', 'requirements.txt',
             ],
         ])
@@ -535,10 +542,10 @@ class InstallBackendPythonLibsTests(test_utils.GenericTestBase):
         def mock_get_mismatches(
         ) -> install_python_prod_dependencies.MismatchType:
             return {
-                u'flask': (u'1.1.1', u'10.0.1'),
-                u'six': (u'1.16.0', u'10.13.0'),
-                u'webencodings': (u'1.1.1', u'1.0.1'),
-                u'google-cloud-datastore': (u'1.15.0', u'1.13.0')
+                'flask': ('1.1.1', '10.0.1'),
+                'six': ('1.16.0', '10.13.0'),
+                'webencodings': ('1.1.1', '1.0.1'),
+                'google-cloud-datastore': ('1.15.0', '1.13.0')
             }
         def mock_validate_metadata_directories() -> None:
             pass
@@ -563,7 +570,8 @@ class InstallBackendPythonLibsTests(test_utils.GenericTestBase):
             self.cmd_token_list,
             [
                 [
-                    'pip-compile', '--no-emit-index-url', 'requirements.in',
+                    'pip-compile', '--no-emit-index-url', '--quiet',
+                    '--strip-extras', '--generate-hashes', 'requirements.in',
                     '--output-file', 'requirements.txt',
                 ],
                 [
@@ -595,10 +603,10 @@ class InstallBackendPythonLibsTests(test_utils.GenericTestBase):
         self.assertItemsEqual(
             paths_to_delete,
             [
-                u'flask-10.0.1.dist-info',
-                u'webencodings-1.0.1.dist-info',
-                u'six-10.13.0.egg-info',
-                u'google_cloud_datastore-1.13.0.dist-info'
+                'flask-10.0.1.dist-info',
+                'webencodings-1.0.1.dist-info',
+                'six-10.13.0.egg-info',
+                'google_cloud_datastore-1.13.0.dist-info'
             ])
 
     def test_correct_metadata_directory_names_do_not_throw_error(self) -> None:
@@ -621,8 +629,8 @@ class InstallBackendPythonLibsTests(test_utils.GenericTestBase):
             return [
                 'dependency-1-1.5.1.dist-info',
                 'dependency2-5.0.0.egg-info',
-                'dependency-5-0.5.3-py3.8.egg-info',
-                'dependency_6-0.5.3-py3.8.egg-info',
+                'dependency-5-0.5.3-py3.9.egg-info',
+                'dependency_6-0.5.3-py3.9.egg-info',
             ]
 
         def mock_is_dir(unused_path: str) -> bool:
@@ -692,7 +700,9 @@ class InstallBackendPythonLibsTests(test_utils.GenericTestBase):
         # regular letters, digits, periods, underscores, or hyphens and ending
         # with an optional suffix of the pattern [str] with no brackets inside
         # the outside brackets.
-        library_name_pattern = re.compile(r'^[a-zA-Z0-9_.-]+(\[[^\[^\]]+\])*$')
+        library_name_pattern = re.compile(
+            r'^[a-zA-Z0-9_.-]+(\[[^\[^\]]+\])*$|^\s*--hash=sha256:.*$|\\$'
+        )
         with utils.open_file(
             common.COMPILED_REQUIREMENTS_FILE_PATH, 'r') as f:
             lines = f.readlines()

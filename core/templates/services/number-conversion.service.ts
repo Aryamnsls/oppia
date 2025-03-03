@@ -16,22 +16,19 @@
  * @fileoverview Service for providing conversion services to the numeric input.
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { Injectable } from '@angular/core';
-import { AppConstants } from 'app.constants';
-import { I18nLanguageCodeService } from './i18n-language-code.service';
+import {Injectable} from '@angular/core';
+import {AppConstants} from 'app.constants';
+import {I18nLanguageCodeService} from './i18n-language-code.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class NumberConversionService {
-  constructor(
-    private i18nLanguageCodeService: I18nLanguageCodeService,
-  ) {}
+  constructor(private i18nLanguageCodeService: I18nLanguageCodeService) {}
 
   currentDecimalSeparator(): string {
-    const currentLanguage = this.i18nLanguageCodeService
-      .getCurrentI18nLanguageCode();
+    const currentLanguage =
+      this.i18nLanguageCodeService.getCurrentI18nLanguageCode();
     const supportedLanguages = AppConstants.SUPPORTED_SITE_LANGUAGES;
     let decimalSeparator: string = '.';
 
@@ -44,8 +41,7 @@ export class NumberConversionService {
     return decimalSeparator;
   }
 
-
-  convertToEnglishDecimal(number: string): (null | number) {
+  convertToEnglishDecimal(number: string): null | number {
     const decimalSeparator = this.currentDecimalSeparator();
 
     let numString = number.replace(`${decimalSeparator}`, '.');
@@ -58,7 +54,7 @@ export class NumberConversionService {
     return engNum;
   }
 
-  convertToLocalizedNumber(number: number|string): string {
+  convertToLocalizedNumber(number: number | string): string {
     let decimalSeparator = this.currentDecimalSeparator();
     let stringNumber = number.toString();
     let convertedNumber: string = stringNumber;
@@ -68,7 +64,3 @@ export class NumberConversionService {
     return convertedNumber;
   }
 }
-
-angular.module('oppia').factory(
-  'NumberConversionService',
-  downgradeInjectable(NumberConversionService));

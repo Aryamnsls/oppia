@@ -16,8 +16,7 @@
  * @fileoverview Unit tests for CreatorExplorationSummary.
  */
 
-import { CreatorExplorationSummary } from
-  'domain/summary/creator-exploration-summary.model';
+import {CreatorExplorationSummary} from 'domain/summary/creator-exploration-summary.model';
 
 describe('Creator Exploration summary model', () => {
   it('should correctly convert backend dict to exp summary object', () => {
@@ -30,14 +29,14 @@ describe('Creator Exploration summary model', () => {
       thumbnail_icon_url: '/subjects/Algebra.svg',
       human_readable_contributors_summary: {},
       language_code: 'en',
-      thumbnail_bg_color: '#cd672b',
+      thumbnail_bg_color: '#cc4b00',
       created_on_msec: 1591296635736.666,
       ratings: {
         1: 0,
         2: 0,
         3: 0,
         4: 0,
-        5: 0
+        5: 0,
       },
       status: 'public',
       tags: [],
@@ -45,7 +44,7 @@ describe('Creator Exploration summary model', () => {
       category: 'Algebra',
       title: 'Test Title',
       num_total_threads: 0,
-      num_open_threads: 0
+      num_open_threads: 0,
     };
 
     let expSummaryObject =
@@ -59,14 +58,14 @@ describe('Creator Exploration summary model', () => {
     expect(expSummaryObject.thumbnailIconUrl).toEqual('/subjects/Algebra.svg');
     expect(expSummaryObject.humanReadableContributorsSummary).toEqual({});
     expect(expSummaryObject.languageCode).toEqual('en');
-    expect(expSummaryObject.thumbnailBgColor).toEqual('#cd672b');
+    expect(expSummaryObject.thumbnailBgColor).toEqual('#cc4b00');
     expect(expSummaryObject.createdOnMsec).toEqual(1591296635736.666);
     expect(expSummaryObject.ratings).toEqual({
       1: 0,
       2: 0,
       3: 0,
       4: 0,
-      5: 0
+      5: 0,
     });
     expect(expSummaryObject.status).toEqual('public');
     expect(expSummaryObject.tags).toEqual([]);
