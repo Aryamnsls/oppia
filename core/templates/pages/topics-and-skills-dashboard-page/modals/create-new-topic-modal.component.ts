@@ -16,19 +16,19 @@
  * @fileoverview Modal for the creating new topic.
  */
 
-import { Component } from '@angular/core';
-import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
-import { AppConstants } from 'app.constants';
-import { ConfirmOrCancelModal } from 'components/common-layout-directives/common-elements/confirm-or-cancel-modal.component';
-import { NewlyCreatedTopic } from 'domain/topics_and_skills_dashboard/newly-created-topic.model';
-import { TopicEditorStateService } from 'pages/topic-editor-page/services/topic-editor-state.service';
-import { ContextService } from 'services/context.service';
-import { WindowRef } from 'services/contextual/window-ref.service';
-import { ImageLocalStorageService } from 'services/image-local-storage.service';
+import {Component} from '@angular/core';
+import {NgbActiveModal} from '@ng-bootstrap/ng-bootstrap';
+import {AppConstants} from 'app.constants';
+import {ConfirmOrCancelModal} from 'components/common-layout-directives/common-elements/confirm-or-cancel-modal.component';
+import {NewlyCreatedTopic} from 'domain/topics_and_skills_dashboard/newly-created-topic.model';
+import {TopicEditorStateService} from 'pages/topic-editor-page/services/topic-editor-state.service';
+import {ContextService} from 'services/context.service';
+import {WindowRef} from 'services/contextual/window-ref.service';
+import {ImageLocalStorageService} from 'services/image-local-storage.service';
 
 @Component({
   selector: 'oppia-create-new-topic-modal',
-  templateUrl: './create-new-topic-modal.component.html'
+  templateUrl: './create-new-topic-modal.component.html',
 })
 export class CreateNewTopicModalComponent extends ConfirmOrCancelModal {
   allowedBgColors: object = AppConstants.ALLOWED_THUMBNAIL_BG_COLORS.topic;
@@ -36,16 +36,17 @@ export class CreateNewTopicModalComponent extends ConfirmOrCancelModal {
   newlyCreatedTopic: NewlyCreatedTopic = NewlyCreatedTopic.createDefault();
   hostname: string = this.windowRef.nativeWindow.location.hostname;
   MAX_CHARS_IN_TOPIC_NAME: number = AppConstants.MAX_CHARS_IN_TOPIC_NAME;
-  MAX_CHARS_IN_TOPIC_DESCRIPTION: number = (
-    AppConstants.MAX_CHARS_IN_TOPIC_DESCRIPTION);
+  MAX_CHARS_IN_TOPIC_DESCRIPTION: number =
+    AppConstants.MAX_CHARS_IN_TOPIC_DESCRIPTION;
 
-  MAX_CHARS_IN_TOPIC_URL_FRAGMENT = (
-    AppConstants.MAX_CHARS_IN_TOPIC_URL_FRAGMENT);
+  MAX_CHARS_IN_TOPIC_URL_FRAGMENT =
+    AppConstants.MAX_CHARS_IN_TOPIC_URL_FRAGMENT;
 
   topicUrlFragmentExists: boolean = false;
   topicNameExists: boolean = false;
   maxWebTitleFrag = AppConstants.MAX_CHARS_IN_PAGE_TITLE_FRAGMENT_FOR_WEB;
   minWebTitleFrag = AppConstants.MIN_CHARS_IN_PAGE_TITLE_FRAGMENT_FOR_WEB;
+  generatedUrlPrefix = `${this.hostname}/learn/staging`;
 
   constructor(
     private contextService: ContextService,
@@ -72,22 +73,29 @@ export class CreateNewTopicModalComponent extends ConfirmOrCancelModal {
   isValid(): boolean {
     return Boolean(
       this.newlyCreatedTopic.isValid() &&
-      this.imageLocalStorageService.getStoredImagesData().length > 0
+        this.imageLocalStorageService.getStoredImagesData().length > 0
     );
+  }
+
+  onUrlFragmentChange(urlFragment: string): void {
+    this.newlyCreatedTopic.urlFragment = urlFragment;
+    this.onTopicUrlFragmentChange();
   }
 
   onTopicUrlFragmentChange(): void {
     if (!this.newlyCreatedTopic.urlFragment) {
       return;
     }
-
     this.topicEditorStateService.updateExistenceOfTopicUrlFragment(
-      this.newlyCreatedTopic.urlFragment, () => {
-        this.topicUrlFragmentExists = (
-          this.topicEditorStateService.getTopicWithUrlFragmentExists());
-      }, () => {
+      this.newlyCreatedTopic.urlFragment,
+      () => {
+        this.topicUrlFragmentExists =
+          this.topicEditorStateService.getTopicWithUrlFragmentExists();
+      },
+      () => {
         return;
-      });
+      }
+    );
   }
 
   onTopicNameChange(): void {
@@ -96,11 +104,13 @@ export class CreateNewTopicModalComponent extends ConfirmOrCancelModal {
     }
 
     this.newlyCreatedTopic.name = this.newlyCreatedTopic.name
-      .replace(/\s+/g, ' ').trim();
+      .replace(/\s+/g, ' ')
+      .trim();
     this.topicEditorStateService.updateExistenceOfTopicName(
-      this.newlyCreatedTopic.name, () => {
-        this.topicNameExists = (
-          this.topicEditorStateService.getTopicWithNameExists());
+      this.newlyCreatedTopic.name,
+      () => {
+        this.topicNameExists =
+          this.topicEditorStateService.getTopicWithNameExists();
       }
     );
   }

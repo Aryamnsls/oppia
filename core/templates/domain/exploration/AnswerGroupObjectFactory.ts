@@ -17,39 +17,52 @@
  * domain objects.
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { Injectable } from '@angular/core';
+import {Injectable} from '@angular/core';
 
-import { InteractionAnswer } from 'interactions/answer-defs';
-import { Outcome, OutcomeBackendDict, OutcomeObjectFactory } from
-  'domain/exploration/OutcomeObjectFactory';
-import { Rule, RuleBackendDict, RuleObjectFactory } from
-  'domain/exploration/RuleObjectFactory';
+import {InteractionAnswer} from 'interactions/answer-defs';
+import {
+  Outcome,
+  OutcomeBackendDict,
+  OutcomeObjectFactory,
+} from 'domain/exploration/OutcomeObjectFactory';
+import {Rule, RuleBackendDict} from 'domain/exploration/rule.model';
+import {BaseTranslatableObject} from 'domain/objects/BaseTranslatableObject.model';
 
 export interface AnswerGroupBackendDict {
-  'rule_specs': RuleBackendDict[];
-  'outcome': OutcomeBackendDict;
-  'training_data': readonly InteractionAnswer[];
+  rule_specs: RuleBackendDict[];
+  outcome: OutcomeBackendDict;
+  training_data: readonly InteractionAnswer[];
   // Note: Here the type 'null' comes from file
   // 'add-answer-group-modal.controller.ts'. Property
   // 'tmpTaggedSkillMisconceptionId' has been initialized
   // as 'null' there.
-  'tagged_skill_misconception_id': string | null;
+  tagged_skill_misconception_id: string | null;
 }
 
-export class AnswerGroup {
+export class AnswerGroup extends BaseTranslatableObject {
   rules: Rule[];
   outcome: Outcome;
   trainingData: readonly InteractionAnswer[];
   taggedSkillMisconceptionId: string | null;
   constructor(
-      rules: Rule[], outcome: Outcome,
-      trainingData: readonly InteractionAnswer[],
-      taggedSkillMisconceptionId: string | null) {
+    rules: Rule[],
+    outcome: Outcome,
+    trainingData: readonly InteractionAnswer[],
+    taggedSkillMisconceptionId: string | null
+  ) {
+    super();
     this.rules = rules;
     this.outcome = outcome;
     this.trainingData = trainingData;
     this.taggedSkillMisconceptionId = taggedSkillMisconceptionId;
+  }
+
+  getTranslatableObjects(): BaseTranslatableObject[] {
+    return [this.outcome, ...this.rules];
+  }
+
+  getContentIdToHtml(): {[contentId: string]: string} {
+    return this.outcome.getContentIdToHtml();
   }
 
   toBackendDict(): AnswerGroupBackendDict {
@@ -57,50 +70,54 @@ export class AnswerGroup {
       rule_specs: this.rules.map(rule => rule.toBackendDict()),
       outcome: this.outcome.toBackendDict(),
       training_data: this.trainingData,
-      tagged_skill_misconception_id: this.taggedSkillMisconceptionId
+      tagged_skill_misconception_id: this.taggedSkillMisconceptionId,
     };
   }
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AnswerGroupObjectFactory {
-  constructor(
-    private outcomeObjectFactory: OutcomeObjectFactory,
-    private ruleObjectFactory: RuleObjectFactory) {}
+  constructor(private outcomeObjectFactory: OutcomeObjectFactory) {}
 
   generateRulesFromBackendDict(
-      ruleBackendDicts: RuleBackendDict[],
-      interactionId: string | null
+    ruleBackendDicts: RuleBackendDict[],
+    interactionId: string
   ): Rule[] {
-    return ruleBackendDicts.map(
-      ruleBackendDict => this.ruleObjectFactory.createFromBackendDict(
-        ruleBackendDict, interactionId)
+    return ruleBackendDicts.map(ruleBackendDict =>
+      Rule.createFromBackendDict(ruleBackendDict, interactionId)
     );
   }
 
   createNew(
-      rules: Rule[], outcome: Outcome,
-      trainingData: readonly InteractionAnswer[],
-      taggedSkillMisconceptionId: string | null): AnswerGroup {
+    rules: Rule[],
+    outcome: Outcome,
+    trainingData: readonly InteractionAnswer[],
+    taggedSkillMisconceptionId: string | null
+  ): AnswerGroup {
     return new AnswerGroup(
-      rules, outcome, trainingData, taggedSkillMisconceptionId);
+      rules,
+      outcome,
+      trainingData,
+      taggedSkillMisconceptionId
+    );
   }
 
   createFromBackendDict(
-      answerGroupBackendDict: AnswerGroupBackendDict,
-      interactionId: string | null
+    answerGroupBackendDict: AnswerGroupBackendDict,
+    interactionId: string
   ): AnswerGroup {
     return new AnswerGroup(
       this.generateRulesFromBackendDict(
-        answerGroupBackendDict.rule_specs, interactionId),
+        answerGroupBackendDict.rule_specs,
+        interactionId
+      ),
       this.outcomeObjectFactory.createFromBackendDict(
-        answerGroupBackendDict.outcome),
+        answerGroupBackendDict.outcome
+      ),
       answerGroupBackendDict.training_data,
-      answerGroupBackendDict.tagged_skill_misconception_id);
+      answerGroupBackendDict.tagged_skill_misconception_id
+    );
   }
 }
-
-angular.module('oppia').factory(
-  'AnswerGroupObjectFactory', downgradeInjectable(AnswerGroupObjectFactory));

@@ -16,11 +16,10 @@
  * @fileoverview A service to show loading screen.
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { EventEmitter, Injectable } from '@angular/core';
+import {EventEmitter, Injectable} from '@angular/core';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class LoaderService {
   // TODO(#8472): Remove static when migration is complete.
@@ -45,7 +44,3 @@ export class LoaderService {
     LoaderService.loadingMessageChangedEventEmitter.emit('');
   }
 }
-
-angular.module('oppia').factory(
-  'LoaderService',
-  downgradeInjectable(LoaderService));

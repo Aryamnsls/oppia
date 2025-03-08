@@ -1,4 +1,4 @@
-// Copyright 2021 The Oppia Authors. All Rights Reserved.
+// Copyright 2024 The Oppia Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,12 +17,11 @@
  * contributor dashboard admin panel.
  */
 
-import { Component, OnInit } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
+import {Component, OnInit} from '@angular/core';
 
-import { UrlInterpolationService } from 'domain/utilities/url-interpolation.service';
-import { UserService } from 'services/user.service';
-import { AppConstants } from 'app.constants';
+import {UrlInterpolationService} from 'domain/utilities/url-interpolation.service';
+import {UserService} from 'services/user.service';
+import {AppConstants} from 'app.constants';
 
 @Component({
   selector: 'oppia-contributor-dashboard-admin-navbar',
@@ -32,22 +31,22 @@ export class ContributorDashboardAdminNavbarComponent implements OnInit {
   // These properties are initialized using Angular lifecycle hooks
   // and we need to do non-null assertion. For more information, see
   // https://github.com/oppia/oppia/wiki/Guide-on-defining-types#ts-7-1
-  profilePictureDataUrl!: string;
+  profilePicturePngDataUrl!: string;
+  profilePictureWebpDataUrl!: string;
   profileUrl!: string;
   logoWebpImageSrc!: string;
   logoPngImageSrc!: string;
   // User name is null if the user is not logged in.
   username: string | null = null;
-  logoutUrl: string = (
-    '/' + AppConstants.PAGES_REGISTERED_WITH_FRONTEND.LOGOUT.ROUTE);
+  logoutUrl: string =
+    '/' + AppConstants.PAGES_REGISTERED_WITH_FRONTEND.LOGOUT.ROUTE;
 
   profileDropdownIsActive: boolean = false;
-  PAGES_REGISTERED_WITH_FRONTEND = (
-    AppConstants.PAGES_REGISTERED_WITH_FRONTEND);
+  PAGES_REGISTERED_WITH_FRONTEND = AppConstants.PAGES_REGISTERED_WITH_FRONTEND;
 
   constructor(
     private urlInterpolationService: UrlInterpolationService,
-    private userService: UserService,
+    private userService: UserService
   ) {}
 
   activateProfileDropdown(): void {
@@ -58,37 +57,31 @@ export class ContributorDashboardAdminNavbarComponent implements OnInit {
     this.profileDropdownIsActive = false;
   }
 
-  async getProfileImageDataAsync(): Promise<void> {
-    let dataUrl = await this.userService.getProfileImageDataUrlAsync();
-    this.profilePictureDataUrl = decodeURIComponent(dataUrl);
-  }
-
   async getUserInfoAsync(): Promise<void> {
     const userInfo = await this.userService.getUserInfoAsync();
-
     this.username = userInfo.getUsername();
     if (this.username === null) {
       throw new Error('User name is null.');
     } else {
-      this.profileUrl = (
-        this.urlInterpolationService.interpolateUrl('/profile/<username>', {
-          username: this.username
-        })
+      this.profileUrl = this.urlInterpolationService.interpolateUrl(
+        '/profile/<username>',
+        {
+          username: this.username,
+        }
       );
+      [this.profilePicturePngDataUrl, this.profilePictureWebpDataUrl] =
+        this.userService.getProfileImageDataUrl(this.username);
     }
   }
 
   ngOnInit(): void {
-    this.getProfileImageDataAsync();
     this.getUserInfoAsync();
 
     this.logoPngImageSrc = this.urlInterpolationService.getStaticImageUrl(
-      '/logo/288x128_logo_white.png');
+      '/logo/288x128_logo_white.png'
+    );
     this.logoWebpImageSrc = this.urlInterpolationService.getStaticImageUrl(
-      '/logo/288x128_logo_white.webp');
+      '/logo/288x128_logo_white.webp'
+    );
   }
 }
-
-angular.module('oppia').directive(
-  'oppiaContributorDashboardAdminNavbar', downgradeComponent(
-    {component: ContributorDashboardAdminNavbarComponent}));

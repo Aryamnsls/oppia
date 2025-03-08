@@ -87,7 +87,7 @@
 
 .oppia-subscription-button:hover,
 .oppia-subscription-button:focus {
-  background-color: #05beb2;
+  background-color: #004d45;
   color: white;
 }
 
@@ -218,6 +218,12 @@
 @media (max-width: 820px) {
   .mat-card-content.oppia-profile-portfolio-container {
     grid-template-columns: max-content;
+  }
+}
+
+@media (max-width: 1065px) {
+  .oppia-profile-h1 {
+    display: none;
   }
 }
 

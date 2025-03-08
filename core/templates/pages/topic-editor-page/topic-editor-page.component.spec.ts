@@ -16,233 +16,319 @@
  * @fileoverview Unit tests for topic editor page component.
  */
 
-// TODO(#7222): Remove the following block of unnnecessary imports once
-// App.ts is upgraded to Angular 8.
-import { importAllAngularServices } from 'tests/unit-test-utils.ajs';
-// ^^^ This block is to be removed.
+import {EventEmitter, NO_ERRORS_SCHEMA} from '@angular/core';
+import {Subtopic} from 'domain/topic/subtopic.model';
+import {ShortSkillSummary} from 'domain/skill/short-skill-summary.model';
+import {StoryReference} from 'domain/topic/story-reference-object.model';
+import {Topic} from 'domain/topic/topic-object.model';
+import {HttpClientTestingModule} from '@angular/common/http/testing';
+import {ComponentFixture, waitForAsync, TestBed} from '@angular/core/testing';
+import {TopicEditorRoutingService} from './services/topic-editor-routing.service';
+import {TopicEditorStateService} from './services/topic-editor-state.service';
+import {TopicEditorPageComponent} from './topic-editor-page.component';
+import {UndoRedoService} from 'domain/editor/undo_redo/undo-redo.service';
+import {ContextService} from 'services/context.service';
+import {UrlService} from 'services/contextual/url.service';
+import {PageTitleService} from 'services/page-title.service';
+import {PreventPageUnloadEventService} from 'services/prevent-page-unload-event.service';
 
-require('pages/topic-editor-page/topic-editor-page.component.ts');
+class MockContextService {
+  getExplorationId() {
+    return 'explorationId';
+  }
 
-import { EventEmitter } from '@angular/core';
-import { Subtopic } from 'domain/topic/subtopic.model';
-import { ShortSkillSummary } from 'domain/skill/short-skill-summary.model';
-import { StoryReference } from 'domain/topic/story-reference-object.model';
-import { Topic } from 'domain/topic/topic-object.model';
+  getEntityType() {
+    return 'exploration';
+  }
 
-describe('Topic editor page', function() {
-  var ctrl = null;
-  var $scope = null;
-  var ContextService = null;
-  var PageTitleService = null;
-  var PreventPageUnloadEventService = null;
-  var TopicEditorRoutingService = null;
-  var UndoRedoService = null;
-  var TopicEditorStateService = null;
-  var UrlService = null;
-  var topic = null;
+  getEntityId() {
+    return 'dkfn32sxssasd';
+  }
+}
 
-  importAllAngularServices();
+describe('Topic editor page', () => {
+  let component: TopicEditorPageComponent;
+  let fixture: ComponentFixture<TopicEditorPageComponent>;
+  let pageTitleService: PageTitleService;
+  let preventPageUnloadEventService: PreventPageUnloadEventService;
+  let topicEditorRoutingService: TopicEditorRoutingService;
+  let undoRedoService: UndoRedoService;
+  let topicEditorStateService: TopicEditorStateService;
+  let urlService: UrlService;
+  let topic;
 
-  beforeEach(angular.mock.inject(function($injector, $componentController) {
-    var $rootScope = $injector.get('$rootScope');
-    ContextService = $injector.get('ContextService');
-    UndoRedoService = $injector.get('UndoRedoService');
-    PageTitleService = $injector.get('PageTitleService');
-    PreventPageUnloadEventService = $injector.get(
-      'PreventPageUnloadEventService');
-    TopicEditorRoutingService = $injector.get('TopicEditorRoutingService');
-    TopicEditorStateService = $injector.get('TopicEditorStateService');
-    UrlService = $injector.get('UrlService');
+  beforeEach(waitForAsync(() => {
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      declarations: [TopicEditorPageComponent],
+      providers: [
+        PageTitleService,
+        PreventPageUnloadEventService,
+        TopicEditorRoutingService,
+        UndoRedoService,
+        TopicEditorStateService,
+        UrlService,
+        {
+          provide: ContextService,
+          useClass: MockContextService,
+        },
+      ],
+      schemas: [NO_ERRORS_SCHEMA],
+    }).compileComponents();
+  }));
 
-    var subtopic = Subtopic.createFromTitle(1, 'subtopic1');
+  beforeEach(() => {
+    fixture = TestBed.createComponent(TopicEditorPageComponent);
+    component = fixture.componentInstance;
+
+    undoRedoService = TestBed.inject(UndoRedoService);
+    pageTitleService = TestBed.inject(PageTitleService);
+    preventPageUnloadEventService = TestBed.inject(
+      PreventPageUnloadEventService
+    );
+    topicEditorRoutingService = TestBed.inject(TopicEditorRoutingService);
+    topicEditorStateService = TestBed.inject(TopicEditorStateService);
+    urlService = TestBed.inject(UrlService);
+
+    let subtopic = Subtopic.createFromTitle(1, 'subtopic1');
     subtopic._thumbnailFilename = 'b.svg';
-    var skillSummary = ShortSkillSummary.create(
-      'skill1', 'Addition');
+    let skillSummary = ShortSkillSummary.create('skill1', 'Addition');
     subtopic._skillSummaries = [skillSummary];
     topic = new Topic(
-      'id', 'Topic name loading', 'Abbrev. name loading',
-      'Url Fragment loading', 'Topic description loading', 'en',
-      [], [], [], 1, 1, [], 'str', '', {}, false, '', '', []
+      'id',
+      'Topic name loading',
+      'Abbrev. name loading',
+      'Url Fragment loading',
+      'Topic description loading',
+      'en',
+      [],
+      [],
+      [],
+      1,
+      1,
+      [],
+      'str',
+      '',
+      {},
+      false,
+      '',
+      '',
+      []
     );
     topic._subtopics = [subtopic];
     topic._thumbnailFilename = 'a.svg';
     topic._metaTagContent = 'topic';
-    var story1 = StoryReference.createFromStoryId('storyId1');
-    var story2 = StoryReference.createFromStoryId('storyId2');
+    let story1 = StoryReference.createFromStoryId('storyId1');
+    let story2 = StoryReference.createFromStoryId('storyId2');
     topic._canonicalStoryReferences = [story1, story2];
     topic.setName('New Name');
     topic.setUrlFragment('topic-url-fragment');
     topic.setPageTitleFragmentForWeb('topic page title');
     topic.setSkillSummariesForDiagnosticTest([skillSummary]);
-    TopicEditorStateService.setTopic(topic);
-    spyOn(TopicEditorStateService, 'getTopic').and.returnValue(topic);
-    $scope = $rootScope.$new();
-    ctrl = $componentController('topicEditorPage', {
-      $scope: $scope
-    });
-  }));
 
-  it('should load topic based on its id on url when component is initialized' +
-    ' and set page title', function() {
-    let topicInitializedEventEmitter = new EventEmitter();
-    let topicReinitializedEventEmitter = new EventEmitter();
-    let undoRedoChangeEventEmitter = new EventEmitter();
-    let topicUpdateViewEmitter = new EventEmitter();
-    spyOn(TopicEditorStateService, 'loadTopic').and.callFake(function() {
-      topicInitializedEventEmitter.emit();
-      topicReinitializedEventEmitter.emit();
-      undoRedoChangeEventEmitter.emit();
-      topicUpdateViewEmitter.emit();
-    });
-    spyOnProperty(
-      TopicEditorStateService, 'onTopicInitialized').and.returnValue(
-      topicInitializedEventEmitter);
-    spyOnProperty(
-      TopicEditorStateService, 'onTopicReinitialized').and.returnValue(
-      topicReinitializedEventEmitter);
-    spyOnProperty(TopicEditorRoutingService, 'updateViewEventEmitter')
-      .and.returnValue(topicUpdateViewEmitter);
-    spyOn(UrlService, 'getTopicIdFromUrl').and.returnValue('topic_1');
-    spyOn(PageTitleService, 'setDocumentTitle').and.callThrough();
-
-    ctrl.$onInit();
-
-    expect(TopicEditorStateService.loadTopic).toHaveBeenCalledWith('topic_1');
-    expect(PageTitleService.setDocumentTitle).toHaveBeenCalledTimes(2);
-
-    ctrl.$onDestroy();
+    topicEditorStateService.setTopic(topic);
+    spyOn(topicEditorStateService, 'getTopic').and.returnValue(topic);
   });
 
-  it('should get active tab name', function() {
-    ctrl.selectQuestionsTab();
-    spyOn(TopicEditorRoutingService, 'getActiveTabName').and.returnValue(
-      'questions');
-    expect(ctrl.getActiveTabName()).toBe('questions');
-    expect(ctrl.isInTopicEditorTabs()).toBe(true);
-    expect(ctrl.isInPreviewTab()).toBe(false);
-    expect(ctrl.isMainEditorTabSelected()).toBe(false);
-    expect(ctrl.getNavbarText()).toBe('Question Editor');
+  it(
+    'should load topic based on its id on url when component is initialized' +
+      ' and set page title',
+    () => {
+      let topicInitializedEventEmitter = new EventEmitter();
+      let topicReinitializedEventEmitter = new EventEmitter();
+      let undoRedoChangeEventEmitter = new EventEmitter();
+      let topicUpdateViewEmitter = new EventEmitter();
+
+      spyOn(topicEditorStateService, 'loadTopic').and.callFake(() => {
+        topicInitializedEventEmitter.emit();
+        topicReinitializedEventEmitter.emit();
+        undoRedoChangeEventEmitter.emit();
+        topicUpdateViewEmitter.emit();
+      });
+      spyOnProperty(
+        topicEditorStateService,
+        'onTopicInitialized'
+      ).and.returnValue(topicInitializedEventEmitter);
+      spyOnProperty(
+        topicEditorStateService,
+        'onTopicReinitialized'
+      ).and.returnValue(topicReinitializedEventEmitter);
+      spyOnProperty(
+        topicEditorRoutingService,
+        'updateViewEventEmitter'
+      ).and.returnValue(topicUpdateViewEmitter);
+      spyOn(urlService, 'getTopicIdFromUrl').and.returnValue('topic_1');
+      spyOn(pageTitleService, 'setDocumentTitle').and.callThrough();
+
+      component.ngOnInit();
+
+      expect(topicEditorStateService.loadTopic).toHaveBeenCalledWith('topic_1');
+      expect(pageTitleService.setDocumentTitle).toHaveBeenCalledTimes(2);
+
+      component.ngOnDestroy();
+    }
+  );
+
+  it('should get active tab name', () => {
+    component.selectQuestionsTab();
+    spyOn(topicEditorRoutingService, 'getActiveTabName').and.returnValue(
+      'questions'
+    );
+    expect(component.getActiveTabName()).toBe('questions');
+    expect(component.isInTopicEditorTabs()).toBe(true);
+    expect(component.isInPreviewTab()).toBe(false);
+    expect(component.isMainEditorTabSelected()).toBe(false);
+    expect(component.getNavbarText()).toBe('Question Editor');
+
+    component.hideWarnings();
+    expect(component.warningsAreShown).toBe(false);
   });
 
-  it('should addListener by passing getChangeCount to ' +
-  'PreventPageUnloadEventService', function() {
-    spyOn(UrlService, 'getTopicIdFromUrl').and.returnValue('topic_1');
-    spyOn(PageTitleService, 'setDocumentTitle').and.callThrough();
-    spyOn(UndoRedoService, 'getChangeCount').and.returnValue(10);
-    spyOn(PreventPageUnloadEventService, 'addListener').and
-      .callFake((callback) => callback());
+  it(
+    'should addListener by passing getChangeCount to ' +
+      'PreventPageUnloadEventService',
+    () => {
+      spyOn(urlService, 'getTopicIdFromUrl').and.returnValue('topic_1');
+      spyOn(pageTitleService, 'setDocumentTitle').and.callThrough();
+      spyOn(undoRedoService, 'getChangeCount').and.returnValue(10);
+      spyOn(preventPageUnloadEventService, 'addListener').and.callFake(
+        callback => callback()
+      );
 
-    ctrl.$onInit();
+      component.ngOnInit();
 
-    expect(PreventPageUnloadEventService.addListener)
-      .toHaveBeenCalledWith(jasmine.any(Function));
+      expect(preventPageUnloadEventService.addListener).toHaveBeenCalledWith(
+        jasmine.any(Function)
+      );
+    }
+  );
+
+  it('should return the change count', () => {
+    spyOn(undoRedoService, 'getChangeCount').and.returnValue(10);
+    expect(component.getChangeListLength()).toBe(10);
   });
 
-  it('should return the change count', function() {
-    spyOn(UndoRedoService, 'getChangeCount').and.returnValue(10);
-    expect(ctrl.getChangeListLength()).toBe(10);
+  it('should get entity type from context service', () => {
+    expect(component.getEntityType()).toBe('exploration');
   });
 
-  it('should get entity type from context service', function() {
-    spyOn(ContextService, 'getEntityType').and.returnValue('exploration');
-    expect(ctrl.getEntityType()).toBe('exploration');
-  });
-
-  it('should open subtopic preview tab if active tab is subtopic editor',
-    function() {
-      spyOn(TopicEditorRoutingService, 'getActiveTabName').and.returnValue(
-        'subtopic_editor');
-      const topicPreviewSpy = spyOn(
-        TopicEditorRoutingService, 'navigateToSubtopicPreviewTab');
-      ctrl.openTopicViewer();
-      expect(topicPreviewSpy).toHaveBeenCalled();
-    });
-
-  it('should open topic preview if active tab is topic editor', function() {
-    spyOn(TopicEditorRoutingService, 'getActiveTabName').and.returnValue(
-      'topic_editor');
+  it('should open subtopic preview tab if active tab is subtopic editor', () => {
+    spyOn(topicEditorRoutingService, 'getActiveTabName').and.returnValue(
+      'subtopic_editor'
+    );
     const topicPreviewSpy = spyOn(
-      TopicEditorRoutingService, 'navigateToTopicPreviewTab');
-    ctrl.openTopicViewer();
+      topicEditorRoutingService,
+      'navigateToSubtopicPreviewTab'
+    );
+    component.openTopicViewer();
     expect(topicPreviewSpy).toHaveBeenCalled();
   });
 
-  it('should open subtopic preview tab if active tab is subtopic editor',
-    function() {
-      spyOn(TopicEditorRoutingService, 'getActiveTabName').and.returnValue(
-        'subtopic_editor');
-      const topicPreviewSpy = spyOn(
-        TopicEditorRoutingService, 'navigateToSubtopicPreviewTab');
-      ctrl.openTopicViewer();
-      expect(topicPreviewSpy).toHaveBeenCalled();
-    });
-
-  it('should navigate to topic editor tab in topic editor', function() {
-    spyOn(TopicEditorRoutingService, 'getActiveTabName').and.returnValue(
-      'topic_preview');
+  it('should open topic preview if active tab is topic editor', () => {
+    spyOn(topicEditorRoutingService, 'getActiveTabName').and.returnValue(
+      'topic_editor'
+    );
     const topicPreviewSpy = spyOn(
-      TopicEditorRoutingService, 'navigateToMainTab');
-    ctrl.selectMainTab();
+      topicEditorRoutingService,
+      'navigateToTopicPreviewTab'
+    );
+    component.openTopicViewer();
     expect(topicPreviewSpy).toHaveBeenCalled();
   });
 
-  it('should select navigate to the subtopic editor tab in subtopic editor',
-    function() {
-      spyOn(TopicEditorRoutingService, 'getActiveTabName').and.returnValue(
-        'subtopic_preview');
-      const topicPreviewSpy = spyOn(
-        TopicEditorRoutingService, 'navigateToSubtopicEditorWithId');
-      ctrl.selectMainTab();
-      expect(topicPreviewSpy).toHaveBeenCalled();
-    });
-
-  it('should validate the topic and return validation issues', function() {
-    ctrl.topic = topic;
-    spyOn(
-      TopicEditorStateService, 'getTopicWithNameExists').and.returnValue(true);
-    spyOn(
-      TopicEditorStateService, 'getTopicWithUrlFragmentExists').and.returnValue(
-      true);
-    ctrl._validateTopic();
-    expect(ctrl.validationIssues.length).toEqual(2);
-    expect(ctrl.validationIssues[0]).toEqual(
-      'A topic with this name already exists.');
-    expect(ctrl.validationIssues[1]).toEqual(
-      'Topic URL fragment already exists.');
-    expect(ctrl.getWarningsCount()).toEqual(2);
-    expect(ctrl.getTotalWarningsCount()).toEqual(2);
+  it('should open subtopic preview tab if active tab is subtopic editor', () => {
+    spyOn(topicEditorRoutingService, 'getActiveTabName').and.returnValue(
+      'subtopic_editor'
+    );
+    const topicPreviewSpy = spyOn(
+      topicEditorRoutingService,
+      'navigateToSubtopicPreviewTab'
+    );
+    component.openTopicViewer();
+    expect(topicPreviewSpy).toHaveBeenCalled();
   });
 
-  it('should return the navbar text', function() {
-    ctrl.selectQuestionsTab();
-    var routingSpy = spyOn(
-      TopicEditorRoutingService, 'getActiveTabName').and.returnValue(
-      'questions');
-    expect(ctrl.getNavbarText()).toBe('Question Editor');
+  it('should navigate to topic editor tab in topic editor', () => {
+    spyOn(topicEditorRoutingService, 'getActiveTabName').and.returnValue(
+      'topic_preview'
+    );
+    const topicPreviewSpy = spyOn(
+      topicEditorRoutingService,
+      'navigateToMainTab'
+    );
+    component.selectMainTab();
+    expect(topicPreviewSpy).toHaveBeenCalled();
+  });
+
+  it('should select navigate to the subtopic editor tab in subtopic editor', () => {
+    spyOn(topicEditorRoutingService, 'getActiveTabName').and.returnValue(
+      'subtopic_preview'
+    );
+    const topicPreviewSpy = spyOn(
+      topicEditorRoutingService,
+      'navigateToSubtopicEditorWithId'
+    );
+    component.selectMainTab();
+    expect(topicPreviewSpy).toHaveBeenCalled();
+  });
+
+  it('should validate the topic and return validation issues', () => {
+    component.topic = topic;
+    spyOn(topicEditorStateService, 'getTopicWithNameExists').and.returnValue(
+      true
+    );
+    spyOn(
+      topicEditorStateService,
+      'getTopicWithUrlFragmentExists'
+    ).and.returnValue(true);
+    component._validateTopic();
+    expect(component.validationIssues.length).toEqual(2);
+    expect(component.validationIssues[0]).toEqual(
+      'A topic with this name already exists.'
+    );
+    expect(component.validationIssues[1]).toEqual(
+      'Topic URL fragment already exists.'
+    );
+    expect(component.getWarningsCount()).toEqual(2);
+    expect(component.getTotalWarningsCount()).toEqual(2);
+  });
+
+  it('should return the navbar text', () => {
+    component.selectQuestionsTab();
+    let routingSpy = spyOn(
+      topicEditorRoutingService,
+      'getActiveTabName'
+    ).and.returnValue('questions');
+    expect(component.getNavbarText()).toBe('Question Editor');
     routingSpy.and.returnValue('subtopic_editor');
-    expect(ctrl.getNavbarText()).toEqual('Subtopic Editor');
+    expect(component.getNavbarText()).toEqual('Subtopic Editor');
     routingSpy.and.returnValue('subtopic_preview');
-    expect(ctrl.getNavbarText()).toEqual('Subtopic Preview');
+    expect(component.getNavbarText()).toEqual('Subtopic Preview');
     routingSpy.and.returnValue('topic_preview');
-    expect(ctrl.getNavbarText()).toEqual('Topic Preview');
+    expect(component.getNavbarText()).toEqual('Topic Preview');
     routingSpy.and.returnValue('main');
-    expect(ctrl.getNavbarText()).toEqual('Topic Editor');
+    expect(component.getNavbarText()).toEqual('Topic Editor');
   });
 
-  it('should load topic based on its id on url when undo or redo action' +
-  ' is performed', function() {
-    let mockUndoRedoChangeEventEmitter = new EventEmitter();
-    spyOn(UndoRedoService, 'getUndoRedoChangeEventEmitter')
-      .and.returnValue(mockUndoRedoChangeEventEmitter);
-    spyOn(PageTitleService, 'setDocumentTitle').and.callThrough();
-    spyOn(UrlService, 'getTopicIdFromUrl').and.returnValue('topic_1');
-    ctrl.$onInit();
-    mockUndoRedoChangeEventEmitter.emit();
+  it(
+    'should load topic based on its id on url when undo or redo action' +
+      ' is performed',
+    () => {
+      let mockUndoRedoChangeEventEmitter = new EventEmitter();
+      spyOn(undoRedoService, 'getUndoRedoChangeEventEmitter').and.returnValue(
+        mockUndoRedoChangeEventEmitter
+      );
+      spyOn(pageTitleService, 'setDocumentTitle').and.callThrough();
+      spyOn(urlService, 'getTopicIdFromUrl').and.returnValue('topic_1');
+      component.ngOnInit();
+      mockUndoRedoChangeEventEmitter.emit();
 
-    expect(PageTitleService.setDocumentTitle)
-      .toHaveBeenCalledWith('New Name - Oppia');
-    expect(ctrl.topic).toEqual(topic);
+      expect(pageTitleService.setDocumentTitle).toHaveBeenCalledWith(
+        'New Name - Oppia'
+      );
+      expect(component.topic).toEqual(topic);
 
-    ctrl.$onDestroy();
-  });
+      component.ngOnDestroy();
+    }
+  );
 });

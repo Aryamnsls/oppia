@@ -16,14 +16,13 @@
  * @fileoverview Component for the navigation bar in the admin panel.
  */
 
-import { Component, OnInit } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
+import {Component, OnInit} from '@angular/core';
 
-import { AdminRouterService } from 'pages/admin-page/services/admin-router.service';
-import { UrlInterpolationService } from 'domain/utilities/url-interpolation.service';
-import { UserService } from 'services/user.service';
-import { AdminPageConstants } from 'pages/admin-page/admin-page.constants';
-import { AppConstants } from 'app.constants';
+import {AdminRouterService} from 'pages/admin-page/services/admin-router.service';
+import {UrlInterpolationService} from 'domain/utilities/url-interpolation.service';
+import {UserService} from 'services/user.service';
+import {AdminPageConstants} from 'pages/admin-page/admin-page.constants';
+import {AppConstants} from 'app.constants';
 
 @Component({
   selector: 'oppia-admin-navbar',
@@ -36,7 +35,8 @@ export class AdminNavbarComponent implements OnInit {
   imagePath!: string;
   // Username is set to null if the user is not logged in.
   username: string | null = null;
-  profilePictureDataUrl: string = '';
+  profilePicturePngDataUrl!: string;
+  profilePictureWebpDataUrl!: string;
   isModerator: boolean = false;
   isSuperAdmin: boolean = false;
   profileUrl: string = '';
@@ -44,13 +44,12 @@ export class AdminNavbarComponent implements OnInit {
   logoutUrl = '/' + AppConstants.PAGES_REGISTERED_WITH_FRONTEND.LOGOUT.ROUTE;
   profileDropdownIsActive = false;
   dropdownMenuIsActive = false;
-  PAGES_REGISTERED_WITH_FRONTEND = (
-    AppConstants.PAGES_REGISTERED_WITH_FRONTEND);
+  PAGES_REGISTERED_WITH_FRONTEND = AppConstants.PAGES_REGISTERED_WITH_FRONTEND;
 
   constructor(
     private adminRouterService: AdminRouterService,
     private urlInterpolationService: UrlInterpolationService,
-    private userService: UserService,
+    private userService: UserService
   ) {}
 
   getStaticImageUrl(imagePath: string): string {
@@ -61,12 +60,8 @@ export class AdminNavbarComponent implements OnInit {
     return this.adminRouterService.isActivitiesTabOpen();
   }
 
-  isConfigTabOpen(): boolean {
-    return this.adminRouterService.isConfigTabOpen();
-  }
-
-  isFeaturesTabOpen(): boolean {
-    return this.adminRouterService.isFeaturesTabOpen();
+  isPlatformParamsTabOpen(): boolean {
+    return this.adminRouterService.isPlatformParamsTabOpen();
   }
 
   isRolesTabOpen(): boolean {
@@ -78,24 +73,19 @@ export class AdminNavbarComponent implements OnInit {
   }
 
   activateProfileDropdown(): boolean {
-    return this.profileDropdownIsActive = true;
+    return (this.profileDropdownIsActive = true);
   }
 
   deactivateProfileDropdown(): boolean {
-    return this.profileDropdownIsActive = false;
+    return (this.profileDropdownIsActive = false);
   }
 
   activateDropdownMenu(): boolean {
-    return this.dropdownMenuIsActive = true;
+    return (this.dropdownMenuIsActive = true);
   }
 
   deactivateDropdownMenu(): boolean {
-    return this.dropdownMenuIsActive = false;
-  }
-
-  async getProfileImageDataAsync(): Promise<void> {
-    let dataUrl = await this.userService.getProfileImageDataUrlAsync();
-    this.profilePictureDataUrl = decodeURIComponent(dataUrl);
+    return (this.dropdownMenuIsActive = false);
   }
 
   async getUserInfoAsync(): Promise<void> {
@@ -108,20 +98,17 @@ export class AdminNavbarComponent implements OnInit {
     this.isModerator = userInfo.isModerator();
     this.isSuperAdmin = userInfo.isSuperAdmin();
 
-    this.profileUrl = (
-      this.urlInterpolationService.interpolateUrl(
-        AdminPageConstants.PROFILE_URL_TEMPLATE, {
-          username: this.username
-        })
+    this.profileUrl = this.urlInterpolationService.interpolateUrl(
+      AdminPageConstants.PROFILE_URL_TEMPLATE,
+      {
+        username: this.username,
+      }
     );
+    [this.profilePicturePngDataUrl, this.profilePictureWebpDataUrl] =
+      this.userService.getProfileImageDataUrl(this.username);
   }
 
   ngOnInit(): void {
-    this.getProfileImageDataAsync();
     this.getUserInfoAsync();
   }
 }
-
-angular.module('oppia').directive(
-  'oppiaAdminNavbar', downgradeComponent(
-    {component: AdminNavbarComponent}));

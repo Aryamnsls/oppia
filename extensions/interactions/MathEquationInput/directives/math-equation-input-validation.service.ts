@@ -16,47 +16,46 @@
  * @fileoverview Validator service for the MathEquationInput interaction.
  */
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {Injectable} from '@angular/core';
 
 import nerdamer from 'nerdamer';
 
-import { AnswerGroup } from
-  'domain/exploration/AnswerGroupObjectFactory';
-import { Warning, baseInteractionValidationService } from
-  'interactions/base-interaction-validation.service';
-import { MathEquationInputCustomizationArgs } from
-  'extensions/interactions/customization-args-defs';
-import { MathEquationInputRulesService } from
-  './math-equation-input-rules.service';
-import { MathInteractionsService } from 'services/math-interactions.service';
-import { Outcome } from
-  'domain/exploration/OutcomeObjectFactory';
-import { AppConstants } from 'app.constants';
-import { AlgebraicExpressionInputRulesService } from 'interactions/AlgebraicExpressionInput/directives/algebraic-expression-input-rules.service';
-import { NumericExpressionInputRulesService } from 'interactions/NumericExpressionInput/directives/numeric-expression-input-rules.service';
+import {AnswerGroup} from 'domain/exploration/AnswerGroupObjectFactory';
+import {
+  Warning,
+  baseInteractionValidationService,
+} from 'interactions/base-interaction-validation.service';
+import {MathEquationInputCustomizationArgs} from 'extensions/interactions/customization-args-defs';
+import {MathEquationInputRulesService} from './math-equation-input-rules.service';
+import {MathInteractionsService} from 'services/math-interactions.service';
+import {Outcome} from 'domain/exploration/OutcomeObjectFactory';
+import {AppConstants} from 'app.constants';
+import {AlgebraicExpressionInputRulesService} from 'interactions/AlgebraicExpressionInput/directives/algebraic-expression-input-rules.service';
+import {NumericExpressionInputRulesService} from 'interactions/NumericExpressionInput/directives/numeric-expression-input-rules.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class MathEquationInputValidationService {
   private supportedFunctionNames = AppConstants.SUPPORTED_FUNCTION_NAMES;
 
   constructor(
-      private baseInteractionValidationServiceInstance:
-        baseInteractionValidationService) {}
+    private baseInteractionValidationServiceInstance: baseInteractionValidationService
+  ) {}
 
   getCustomizationArgsWarnings(
-      customizationArgs: MathEquationInputCustomizationArgs): Warning[] {
+    customizationArgs: MathEquationInputCustomizationArgs
+  ): Warning[] {
     let warningsList = [];
 
     let allowedLettersLimit = AppConstants.MAX_CUSTOM_LETTERS_FOR_OSK;
     if (customizationArgs.allowedVariables.value.length > allowedLettersLimit) {
       warningsList.push({
         type: AppConstants.WARNING_TYPES.ERROR,
-        message: (
+        message:
           'The number of custom letters cannot be more than ' +
-          allowedLettersLimit + '.')
+          allowedLettersLimit +
+          '.',
       });
     }
 
@@ -64,9 +63,11 @@ export class MathEquationInputValidationService {
   }
 
   getAllWarnings(
-      stateName: string,
-      customizationArgs: MathEquationInputCustomizationArgs,
-      answerGroups: AnswerGroup[], defaultOutcome: Outcome): Warning[] {
+    stateName: string,
+    customizationArgs: MathEquationInputCustomizationArgs,
+    answerGroups: AnswerGroup[],
+    defaultOutcome: Outcome
+  ): Warning[] {
     let warningsList: Warning[] = [];
     let meirs = new MathEquationInputRulesService(
       new AlgebraicExpressionInputRulesService(
@@ -77,11 +78,16 @@ export class MathEquationInputValidationService {
     let mathInteractionsService = new MathInteractionsService();
 
     warningsList = warningsList.concat(
-      this.getCustomizationArgsWarnings(customizationArgs));
+      this.getCustomizationArgsWarnings(customizationArgs)
+    );
 
     warningsList = warningsList.concat(
       this.baseInteractionValidationServiceInstance.getAllOutcomeWarnings(
-        answerGroups, defaultOutcome, stateName));
+        answerGroups,
+        defaultOutcome,
+        stateName
+      )
+    );
 
     // This validations ensures that there are no redundant rules present in the
     // answer groups.
@@ -103,9 +109,11 @@ export class MathEquationInputValidationService {
 
         // Explicitly inserting '*' signs wherever necessary.
         splitInput[0] = mathInteractionsService.insertMultiplicationSigns(
-          splitInput[0]);
+          splitInput[0]
+        );
         splitInput[1] = mathInteractionsService.insertMultiplicationSigns(
-          splitInput[1]);
+          splitInput[1]
+        );
 
         for (let variable of nerdamer(splitInput[0]).variables()) {
           if (seenVariables.indexOf(variable) === -1) {
@@ -119,25 +127,27 @@ export class MathEquationInputValidationService {
           }
         }
 
-        let unsupportedFunctions = (
-          mathInteractionsService.checkUnsupportedFunctions(
-            splitInput[0]
-          ).concat(
-            mathInteractionsService.checkUnsupportedFunctions(
-              splitInput[1]
-            )
-          )
-        );
+        let unsupportedFunctions = mathInteractionsService
+          .checkUnsupportedFunctions(splitInput[0])
+          .concat(
+            mathInteractionsService.checkUnsupportedFunctions(splitInput[1])
+          );
         if (unsupportedFunctions.length > 0) {
           warningsList.push({
             type: AppConstants.WARNING_TYPES.ERROR,
-            message: (
-              'Input for rule ' + (j + 1) + ' from answer group ' + (i + 1) +
-              ' uses these function(s) that aren\'t supported: ' +
-              '[' + unsupportedFunctions + ']' +
+            message:
+              'Input for learner answer ' +
+              (j + 1) +
+              ' from Oppia response ' +
+              (i + 1) +
+              " uses these function(s) that aren't supported: " +
+              '[' +
+              unsupportedFunctions +
+              ']' +
               ' The supported functions are: ' +
-              '[' + this.supportedFunctionNames + ']'
-            )
+              '[' +
+              this.supportedFunctionNames +
+              ']',
           });
         }
 
@@ -145,28 +155,41 @@ export class MathEquationInputValidationService {
           let seenInput = seenRule.inputs.x as string;
           let seenRuleType = seenRule.type as string;
 
-          if (seenRuleType === 'IsEquivalentTo' && (
-            meirs.IsEquivalentTo(seenInput, {x: currentInput}))) {
+          if (
+            seenRuleType === 'IsEquivalentTo' &&
+            meirs.IsEquivalentTo(seenInput, {x: currentInput})
+          ) {
             // This rule will make all of the following matching
             // inputs obsolete.
             warningsList.push({
               type: AppConstants.WARNING_TYPES.ERROR,
-              message: (
-                'Rule ' + (j + 1) + ' from answer group ' + (i + 1) +
-                ' will never be matched because it is preceded ' +
-                'by an \'IsEquivalentTo\' rule with a matching input.')
+              message:
+                'Learner answer ' +
+                (j + 1) +
+                ' from Oppia response ' +
+                (i + 1) +
+                ' will never be matched because it is preceded by ' +
+                "an 'IsEquivalentTo' learner answer with a matching input.",
             });
-          } else if (currentRuleType === 'MatchesExactlyWith' && (
-            meirs.MatchesExactlyWith(
-              seenInput, {x: currentInput, y: currentPositionOfTerms}))) {
+          } else if (
+            currentRuleType === 'MatchesExactlyWith' &&
+            meirs.MatchesExactlyWith(seenInput, {
+              x: currentInput,
+              y: currentPositionOfTerms,
+            })
+          ) {
             // This rule will make the following inputs with MatchesExactlyWith
             // rule obsolete.
             warningsList.push({
               type: AppConstants.WARNING_TYPES.ERROR,
-              message: (
-                'Rule ' + (j + 1) + ' from answer group ' + (i + 1) +
-                ' will never be matched because it is preceded ' +
-                'by a \'MatchesExactlyWith\' rule with a matching input.')
+              message:
+                'Learner answer ' +
+                (j + 1) +
+                ' from Oppia response ' +
+                (i + 1) +
+                ' will never be matched because it is preceded by ' +
+                "a 'MatchesExactlyWith' learner answer with " +
+                'a matching input.',
             });
           }
         }
@@ -174,10 +197,10 @@ export class MathEquationInputValidationService {
       }
     }
 
-    let greekLetters = Object.keys(
-      AppConstants.GREEK_LETTER_NAMES_TO_SYMBOLS);
+    let greekLetters = Object.keys(AppConstants.GREEK_LETTER_NAMES_TO_SYMBOLS);
     let greekSymbols = Object.values(
-      AppConstants.GREEK_LETTER_NAMES_TO_SYMBOLS);
+      AppConstants.GREEK_LETTER_NAMES_TO_SYMBOLS
+    );
     let missingVariables = [];
 
     for (let variable of seenVariables) {
@@ -194,16 +217,13 @@ export class MathEquationInputValidationService {
     if (missingVariables.length > 0) {
       warningsList.push({
         type: AppConstants.WARNING_TYPES.ERROR,
-        message: (
-          'The following variables are present in some of the answer groups ' +
-          'but are missing from the custom letters list: ' + missingVariables)
+        message:
+          'The following variables are present in some of the Oppia ' +
+          'responses but are missing from the custom letters list: ' +
+          missingVariables,
       });
     }
 
     return warningsList;
   }
 }
-
-angular.module('oppia').factory(
-  'MathEquationInputValidationService',
-  downgradeInjectable(MathEquationInputValidationService));

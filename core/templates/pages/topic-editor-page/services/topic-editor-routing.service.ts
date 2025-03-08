@@ -16,14 +16,13 @@
  * @fileoverview Service that handles routing for the topic editor page.
  */
 
-import { Injectable, EventEmitter } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { UrlInterpolationService } from 'domain/utilities/url-interpolation.service';
-import { WindowRef } from 'services/contextual/window-ref.service';
-import { PageTitleService } from 'services/page-title.service';
+import {Injectable, EventEmitter} from '@angular/core';
+import {UrlInterpolationService} from 'domain/utilities/url-interpolation.service';
+import {WindowRef} from 'services/contextual/window-ref.service';
+import {PageTitleService} from 'services/page-title.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class TopicEditorRoutingService {
   private _MAIN_TAB = 'main';
@@ -110,17 +109,18 @@ export class TopicEditorRoutingService {
   }
 
   getSubtopicIdFromUrl(): number {
-    return parseInt(
-      this.windowRef.nativeWindow.location.hash.split('/')[2]);
+    return parseInt(this.windowRef.nativeWindow.location.hash.split('/')[2]);
   }
 
   navigateToSkillEditorWithId(skillId: string): void {
     let SKILL_EDITOR_URL_TEMPLATE = '/skill_editor/<skill_id>';
 
     let skillEditorUrl = this.urlInterpolationService.interpolateUrl(
-      SKILL_EDITOR_URL_TEMPLATE, {
-        skill_id: skillId
-      });
+      SKILL_EDITOR_URL_TEMPLATE,
+      {
+        skill_id: skillId,
+      }
+    );
     this.windowRef.nativeWindow.open(skillEditorUrl);
   }
 
@@ -128,6 +128,3 @@ export class TopicEditorRoutingService {
     return this._updateViewEventEmitter;
   }
 }
-
-angular.module('oppia').factory('TopicEditorRoutingService',
-  downgradeInjectable(TopicEditorRoutingService));

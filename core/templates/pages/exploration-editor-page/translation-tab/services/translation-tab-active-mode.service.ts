@@ -17,14 +17,12 @@
  *      tab.
  */
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {Injectable} from '@angular/core';
 
-import { ExplorationEditorPageConstants } from
-  'pages/exploration-editor-page/exploration-editor-page.constants';
+import {ExplorationEditorPageConstants} from 'pages/exploration-editor-page/exploration-editor-page.constants';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class TranslationTabActiveModeService {
   private activeMode!: string;
@@ -45,7 +43,3 @@ export class TranslationTabActiveModeService {
     return this.activeMode === ExplorationEditorPageConstants.VOICEOVER_MODE;
   }
 }
-
-angular.module('oppia').factory(
-  'TranslationTabActiveModeService',
-  downgradeInjectable(TranslationTabActiveModeService));

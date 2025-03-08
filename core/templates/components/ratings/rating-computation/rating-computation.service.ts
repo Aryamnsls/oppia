@@ -16,16 +16,14 @@
  * @fileoverview Service for computing the average rating.
  */
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {Injectable} from '@angular/core';
 
-import { ExplorationRatings } from
-  'domain/summary/learner-exploration-summary.model';
+import {ExplorationRatings} from 'domain/summary/learner-exploration-summary.model';
 
 type ExplorationRatingsKey = keyof ExplorationRatings;
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class RatingComputationService {
   static areRatingsShown(ratingFrequencies: ExplorationRatings): boolean {
@@ -42,8 +40,7 @@ export class RatingComputationService {
   // Returns 'null' if the ratings are less than the
   // minimum acceptable number of ratings. The average should
   // not be computed in this case.
-  computeAverageRating(
-      ratingFrequencies: ExplorationRatings): number | null {
+  computeAverageRating(ratingFrequencies: ExplorationRatings): number | null {
     if (!RatingComputationService.areRatingsShown(ratingFrequencies)) {
       return null;
     } else {
@@ -59,6 +56,3 @@ export class RatingComputationService {
     }
   }
 }
-
-angular.module('oppia').factory(
-  'RatingComputationService', downgradeInjectable(RatingComputationService));

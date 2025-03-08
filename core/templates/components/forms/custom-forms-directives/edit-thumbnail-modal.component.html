@@ -6,8 +6,8 @@
   <div class="modal-body oppia-thumbnail-uploader-container">
     <div class="oppia-thumbnail-uploader">
       <div [hidden]="uploadedImage">
-        <strong>Please upload an SVG image.</strong>
-        <div class="alert alert-warning">
+        <strong tabindex="0">Please upload an SVG image.</strong>
+        <div class="alert alert-warning" tabindex="0">
           <span>Here are some guidelines to follow:</span>
           <ul>
             <li>Uploaded image should have an aspect ratio of {{ aspectRatio }}.</li>
@@ -15,10 +15,11 @@
             <li>Please ensure that the uploaded image is less than 100 KB.</li>
           </ul>
         </div>
-        <oppia-image-uploader (fileChanged)="onFileChanged($event)"
+        <oppia-image-receiver (fileChanged)="onFileChanged($event)"
                               [allowedImageFormats]="allowedImageFormats"
-                              [isBlogPostThumbnailUploader]="false">
-        </oppia-image-uploader>
+                              [maxImageSizeInKB]="100"
+                              >
+        </oppia-image-receiver>
       </div>
       <div class="oppia-form-error" *ngIf="invalidImageWarningIsShown">
         Please upload a valid SVG image.

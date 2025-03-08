@@ -21,6 +21,8 @@ from __future__ import annotations
 import collections
 import logging
 
+from core import feconf
+
 from core.constants import constants
 from core.domain import exp_domain
 from core.domain import exp_fetchers
@@ -31,6 +33,7 @@ from core.domain import story_fetchers
 from core.domain import suggestion_services
 from core.domain import topic_domain
 from core.domain import topic_fetchers
+from core.domain import translation_services
 from core.platform import models
 
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -38,9 +41,10 @@ from typing import Dict, List, Optional, Sequence, Tuple
 MYPY = False
 if MYPY: # pragma: no cover
     from mypy_imports import opportunity_models
+    from mypy_imports import user_models
 
-(opportunity_models,) = models.Registry.import_models([
-    models.Names.OPPORTUNITY
+(opportunity_models, user_models) = models.Registry.import_models([
+    models.Names.OPPORTUNITY, models.Names.USER
 ])
 
 # NOTE TO DEVELOPERS: The functions:
@@ -104,7 +108,7 @@ def get_exploration_opportunity_summary_from_model(
         new_incomplete_translation_language_codes, model.translation_counts,
         model.language_codes_needing_voice_artists,
         model.language_codes_with_assigned_voice_artists,
-        {})
+        {}, False)
 
 
 def _construct_new_opportunity_summary_models(
@@ -193,7 +197,8 @@ def create_exp_opportunity_summary(
     # TODO(#13903): Find a way to reduce runtime of computing the complete
     # languages.
     complete_translation_language_list = (
-        exploration.get_languages_with_complete_translation())
+        translation_services.get_languages_with_complete_translation(
+            exploration))
     # TODO(#13912): Revisit voiceover language logic.
     language_codes_needing_voice_artists = set(
         complete_translation_language_list)
@@ -209,7 +214,9 @@ def create_exp_opportunity_summary(
         language_codes_needing_voice_artists.add(exploration.language_code)
 
     content_count = exploration.get_content_count()
-    translation_counts = exploration.get_translation_counts()
+    translation_counts = translation_services.get_translation_counts(
+        feconf.TranslatableEntityType.EXPLORATION, exploration
+    )
 
     story_node = story.story_contents.get_node_with_corresponding_exp_id(
         exploration.id)
@@ -294,27 +301,31 @@ def _create_exploration_opportunities(
 
 
 def compute_opportunity_models_with_updated_exploration(
-    exp_id: str
+    exp_id: str,
+    content_count: int,
+    translation_counts: Dict[str, int]
 ) -> List[opportunity_models.ExplorationOpportunitySummaryModel]:
-    """Computes the opportunities models with the changes made in the
-    exploration. Note: This method does not perform a put operation. The caller
-    must perform the put operation.
+    """Updates the opportunities models with the changes made in the
+    exploration.
 
     Args:
         exp_id: str. The exploration id which is also the id of the opportunity
             model.
+        content_count: int. The number of contents available in the exploration.
+        translation_counts: dict(str, int). The number of translations available
+            for the exploration in different languages.
 
     Returns:
         list(ExplorationOpportunitySummaryModel). A list of opportunity models
         which are updated.
     """
     updated_exploration = exp_fetchers.get_exploration_by_id(exp_id)
-    content_count = updated_exploration.get_content_count()
-    translation_counts = updated_exploration.get_translation_counts()
-    # TODO(#13903): Find a way to reduce runtime of computing the complete
-    # languages.
-    complete_translation_language_list = (
-        updated_exploration.get_languages_with_complete_translation())
+
+    complete_translation_language_list = []
+    for language_code, translation_count in translation_counts.items():
+        if translation_count == content_count:
+            complete_translation_language_list.append(language_code)
+
     model = opportunity_models.ExplorationOpportunitySummaryModel.get(exp_id)
     exploration_opportunity_summary = (
         get_exploration_opportunity_summary_from_model(model))
@@ -354,6 +365,41 @@ def compute_opportunity_models_with_updated_exploration(
 
     return _construct_new_opportunity_summary_models(
         [exploration_opportunity_summary])
+
+
+def update_translation_opportunity_with_accepted_suggestion(
+    exploration_id: str, language_code: str
+) -> None:
+    """Updates the translation opportunity for the accepted suggestion in the
+    ExplorationOpportunitySummaryModel.
+
+    Args:
+        exploration_id: str. The ID of the exploration.
+        language_code: str. The langauge code of the accepted translation
+            suggestion.
+    """
+    model = opportunity_models.ExplorationOpportunitySummaryModel.get(
+        exploration_id)
+    exp_opportunity_summary = (
+        get_exploration_opportunity_summary_from_model(model))
+
+    if language_code in exp_opportunity_summary.translation_counts:
+        exp_opportunity_summary.translation_counts[language_code] += 1
+    else:
+        exp_opportunity_summary.translation_counts[language_code] = 1
+
+    if (
+        exp_opportunity_summary.content_count ==
+        exp_opportunity_summary.translation_counts[language_code]
+    ):
+        exp_opportunity_summary.incomplete_translation_language_codes.remove(
+            language_code)
+        exp_opportunity_summary.language_codes_needing_voice_artists.append(
+            language_code
+        )
+
+    exp_opportunity_summary.validate()
+    _save_multi_exploration_opportunity_summary([exp_opportunity_summary])
 
 
 def update_exploration_opportunities_with_story_changes(
@@ -986,3 +1032,88 @@ def regenerate_opportunities_related_to_topic(
     _save_multi_exploration_opportunity_summary(
         exploration_opportunity_summary_list)
     return len(exploration_opportunity_summary_list)
+
+
+def update_pinned_opportunity_model(
+    user_id: str,
+    language_code: str,
+    topic_id: str,
+    lesson_id: Optional[str]
+) -> None:
+    """Pins/Unpins Reviewable opportunities in Contributor Dashboard.
+
+    Args:
+        user_id: str. The ID of the user.
+        language_code: str. The language code for which opportunity
+            has to be pinned.
+        topic_id: str. The topic id of the opportunity to be
+            pinned.
+        lesson_id: str or None. The opportunity_id/exp_id of opportunity
+            to be pinned. None if user wants to unpin the opportunity.
+    """
+
+    pinned_opportunity = user_models.PinnedOpportunityModel.get_model(
+        user_id,
+        language_code,
+        topic_id)
+
+    if not pinned_opportunity and not lesson_id:
+        # If there's no model and no lesson_id provided, no action needed.
+        return
+
+    if not pinned_opportunity and lesson_id:
+        # If no model exists, create a new one with the provided parameters.
+        user_models.PinnedOpportunityModel.create(
+            user_id=user_id,
+            language_code=language_code,
+            topic_id=topic_id,
+            opportunity_id=lesson_id
+        )
+    else:
+        if pinned_opportunity:
+            # Update the model's opportunity_id with the given lesson_id.
+            pinned_opportunity.opportunity_id = lesson_id
+            pinned_opportunity.update_timestamps()
+            pinned_opportunity.put()
+
+
+def get_pinned_lesson(
+    user_id: str,
+    language_code: str,
+    topic_id: str
+) -> Optional[opportunity_domain.ExplorationOpportunitySummary]:
+    """Retrieves the pinned lesson for a user in a specific language and topic.
+
+    NOTE: If the pinned lesson exists, it will have the 'is_pinned'
+    attribute set to True.
+
+    Args:
+        user_id: str. The ID of the user for whom to retrieve the pinned
+            lesson.
+        language_code: str. The ISO 639-1 language code for the
+            desired language.
+        topic_id: str. The ID of the topic for which to retrieve
+            the pinned lesson.
+
+    Returns:
+        ExplorationOpportunitySummary or None. The pinned lesson as an
+        ExplorationOpportunitySummary object, or None if no
+        pinned lesson exists.
+    """
+    pinned_opportunity = user_models.PinnedOpportunityModel.get_model(
+        user_id,
+        language_code,
+        topic_id
+    )
+    if pinned_opportunity and pinned_opportunity.opportunity_id is not None:
+        # If the model exists and has a valid opportunity_id, return it.
+        model = opportunity_models.ExplorationOpportunitySummaryModel.get(
+            pinned_opportunity.opportunity_id)
+        exploration_opportunity_summary = (
+            get_exploration_opportunity_summary_from_model(model))
+        exploration_opportunity_summary.is_pinned = True
+
+        return exploration_opportunity_summary
+
+    # If the model doesn't exist or has None as opportunity_id, return None.
+    return None
