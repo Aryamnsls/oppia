@@ -42,6 +42,7 @@ from core.domain import suggestion_registry
 from core.domain import suggestion_services
 from core.domain import topic_domain
 from core.domain import topic_services
+from core.domain import translation_domain
 from core.domain import user_services
 from core.platform import models
 from core.tests import test_utils
@@ -111,17 +112,11 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
         self.exploration = (
             self.save_new_linear_exp_with_state_names_and_interactions(
                 self.EXP_ID, self.editor_id, ['State 1', 'State 2', 'State 3'],
-                ['TextInput'], category='Algebra',
-                correctness_feedback_enabled=True))
-
-        self.old_content = state_domain.SubtitledHtml(
-            'content', '<p>old content html</p>').to_dict()
-        self.exploration.states['State 1'].update_content(
-            state_domain.SubtitledHtml.from_dict(self.old_content))
-        self.exploration.states['State 2'].update_content(
-            state_domain.SubtitledHtml.from_dict(self.old_content))
-        self.exploration.states['State 3'].update_content(
-            state_domain.SubtitledHtml.from_dict(self.old_content))
+                ['TextInput'], category='Algebra'))
+        self.old_content_html = '<p>old content html</p>'
+        self.exploration.states['State 1'].content.html = self.old_content_html
+        self.exploration.states['State 2'].content.html = self.old_content_html
+        self.exploration.states['State 3'].content.html = self.old_content_html
         exp_models = (
             exp_services._compute_models_for_updating_exploration( # pylint: disable=protected-access
                 self.editor_id,
@@ -137,12 +132,7 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
         rights_manager.assign_role_for_exploration(
             self.editor, self.EXP_ID, self.owner_id, rights_domain.ROLE_EDITOR)
 
-        self.new_content = state_domain.SubtitledHtml(
-            'content', '<p>new content html</p>').to_dict()
-        self.resubmit_change_content = state_domain.SubtitledHtml(
-            'content', '<p>resubmit change content html</p>').to_dict()
-        self.update_change_content = state_domain.SubtitledHtml(
-            'content', '<p>update change content html</p>').to_dict()
+        self.new_content_html = '<p>new content html</p>'
 
         topic = topic_domain.Topic.create_default_topic(
             self.TOPIC_ID, 'topic', 'abbrev', 'description', 'fragm')
@@ -193,8 +183,16 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
                 'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
                 'property_name': exp_domain.STATE_PROPERTY_CONTENT,
                 'state_name': 'State 1',
-                'old_value': self.old_content,
-                'new_value': self.new_content
+                'old_value': {
+                    'content_id': (
+                        self.exploration.states['State 1'].content.content_id),
+                    'html': self.old_content_html
+                },
+                'new_value': {
+                    'content_id': (
+                        self.exploration.states['State 1'].content.content_id),
+                    'html': self.new_content_html
+                }
             },
             'change to state 1')
         suggestion_services.create_suggestion(
@@ -205,8 +203,16 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
                 'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
                 'property_name': exp_domain.STATE_PROPERTY_CONTENT,
                 'state_name': 'State 2',
-                'old_value': self.old_content,
-                'new_value': self.new_content
+                'old_value': {
+                    'content_id': (
+                        self.exploration.states['State 2'].content.content_id),
+                    'html': self.old_content_html
+                },
+                'new_value': {
+                    'content_id': (
+                        self.exploration.states['State 2'].content.content_id),
+                    'html': self.new_content_html
+                }
             },
             'change to state 2')
         suggestion_services.create_suggestion(
@@ -217,8 +223,16 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
                 'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
                 'property_name': exp_domain.STATE_PROPERTY_CONTENT,
                 'state_name': 'State 3',
-                'old_value': self.old_content,
-                'new_value': self.new_content
+                'old_value': {
+                    'content_id': (
+                        self.exploration.states['State 3'].content.content_id),
+                    'html': self.old_content_html
+                },
+                'new_value': {
+                    'content_id': (
+                        self.exploration.states['State 3'].content.content_id),
+                    'html': self.new_content_html
+                }
             },
             'change to state 3')
 
@@ -231,10 +245,11 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
                 'target_type': feconf.ENTITY_TYPE_EXPLORATION,
                 'target_id': self.EXP_ID,
                 'target_version_at_submission': self.exploration.version,
-                'change': {
+                'change_cmd': {
                     'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
                     'state_name': 'State 3',
-                    'content_id': 'content',
+                    'content_id': (
+                        self.exploration.states['State 3'].content.content_id),
                     'language_code': 'hi',
                     'content_html': '<p>old content html</p>',
                     'translation_html': '<p>In हिन्दी (Hindi)</p>',
@@ -254,12 +269,22 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
                 'target_type': feconf.ENTITY_TYPE_EXPLORATION,
                 'target_id': 'exp1',
                 'target_version_at_submission': 2,
-                'change': {
+                'change_cmd': {
                     'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
                     'property_name': exp_domain.STATE_PROPERTY_CONTENT,
                     'state_name': 'State 1',
-                    'old_value': self.old_content,
-                    'new_value': self.new_content
+                    'old_value': {
+                        'content_id': (
+                            self.exploration.states['State 3']
+                            .content.content_id),
+                        'html': self.old_content_html
+                    },
+                    'new_value': {
+                        'content_id': (
+                            self.exploration.states['State 3']
+                            .content.content_id),
+                        'html': self.new_content_html
+                    }
                 },
                 'description': 'change to state 1',
             }, csrf_token=csrf_token, expected_status_int=400)
@@ -284,8 +309,8 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
             '%s/exploration/%s/%s' % (
                 feconf.SUGGESTION_ACTION_URL_PREFIX,
                 suggestion_to_accept['target_id'], 'invalid_suggestion_id'), {
-                    'action': u'reject',
-                    'review_message': u'Rejected!'
+                    'action': 'reject',
+                    'review_message': 'Rejected!'
                 }, csrf_token=csrf_token, expected_status_int=400)
 
         self.assertEqual(
@@ -301,8 +326,8 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
                 feconf.SUGGESTION_ACTION_URL_PREFIX,
                 suggestion_to_accept['target_id'],
                 'exploration.target_id.id'), {
-                    'action': u'reject',
-                    'review_message': u'Rejected!'
+                    'action': 'reject',
+                    'review_message': 'Rejected!'
                 }, csrf_token=csrf_token,
             expected_status_int=404)
 
@@ -312,15 +337,16 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
         self
     ) -> None:
         self.login(self.EDITOR_EMAIL)
-
+        content_id_generator = translation_domain.ContentIdGenerator()
         question_dict = {
             'question_state_data': self._create_valid_question_data(
-                'default_state').to_dict(),
+                'default_state', content_id_generator).to_dict(),
             'language_code': 'en',
             'question_state_data_schema_version': (
                 feconf.CURRENT_STATE_SCHEMA_VERSION),
             'linked_skill_ids': ['skill_id'],
-            'inapplicable_skill_misconception_ids': ['skillid12345-1']
+            'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+            'next_content_id_index': content_id_generator.next_content_id_index
         }
 
         exp_id = 'new_exp_id'
@@ -348,8 +374,8 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
             '%s/exploration/%s/%s' % (
                 feconf.SUGGESTION_ACTION_URL_PREFIX, exp_id,
                 suggestion_id), {
-                    'action': u'reject',
-                    'review_message': u'Rejected!'
+                    'action': 'reject',
+                    'review_message': 'Rejected!'
                 }, csrf_token=csrf_token, expected_status_int=400)
 
         self.assertEqual(
@@ -384,8 +410,8 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
             feconf.SUGGESTION_ACTION_URL_PREFIX,
             suggestion_to_accept['target_id'],
             suggestion_to_accept['suggestion_id']), {
-                'action': u'accept',
-                'review_message': u'suggestion accepted!'
+                'action': 'accept',
+                'review_message': 'suggestion accepted!'
             },
             csrf_token=csrf_token,
             expected_status_int=500
@@ -417,8 +443,8 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
             '%s/exploration/%s/%s' % (
                 feconf.SUGGESTION_ACTION_URL_PREFIX, 'exp_id',
                 suggestion_to_accept['suggestion_id']), {
-                    'action': u'reject',
-                    'review_message': u'Rejected!'
+                    'action': 'reject',
+                    'review_message': 'Rejected!'
                 }, csrf_token=csrf_token, expected_status_int=400)
 
         self.assertEqual(
@@ -428,7 +454,9 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
 
         self.logout()
 
-    def test_owner_of_exploration_cannot_repond_to_own_suggestion(self) -> None:
+    def test_owner_of_exploration_cannot_respond_to_own_suggestion(
+        self
+    ) -> None:
         self.login(self.EDITOR_EMAIL)
 
         exp_id = 'new_exp_id'
@@ -457,8 +485,8 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
             '%s/exploration/%s/%s' % (
                 feconf.SUGGESTION_ACTION_URL_PREFIX,
                 exp_id, suggestion_id), {
-                    'action': u'reject',
-                    'review_message': u'Rejected!'
+                    'action': 'reject',
+                    'review_message': 'Rejected!'
                 }, csrf_token=csrf_token, expected_status_int=401)
 
         self.assertEqual(
@@ -518,8 +546,8 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
             feconf.SUGGESTION_ACTION_URL_PREFIX,
             suggestion_to_reject['target_id'],
             suggestion_to_reject['suggestion_id']), {
-                'action': u'reject',
-                'review_message': u'Rejected!'
+                'action': 'reject',
+                'review_message': 'Rejected!'
             }, csrf_token=csrf_token)
 
         suggestion = suggestion_services.get_suggestion_by_id(
@@ -546,10 +574,10 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
             feconf.SUGGESTION_ACTION_URL_PREFIX,
             suggestion_to_accept['target_id'],
             suggestion_to_accept['suggestion_id']), {
-                'action': u'accept',
+                'action': 'accept',
                 'commit_message':
-                    u'a' * (constants.MAX_COMMIT_MESSAGE_LENGTH + 1),
-                'review_message': u'Accepted'
+                    'a' * (constants.MAX_COMMIT_MESSAGE_LENGTH + 1),
+                'review_message': 'Accepted'
             }, csrf_token=csrf_token, expected_status_int=400)
         self.assertIn(
             'Schema validation for \'commit_message\' failed: Validation '
@@ -588,9 +616,9 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
                 feconf.SUGGESTION_ACTION_URL_PREFIX,
                 suggestion_to_accept['target_id'],
                 suggestion_to_accept['suggestion_id']), {
-                    'action': u'accept',
-                    'commit_message': u'commit message',
-                    'review_message': u'Accepted'
+                    'action': 'accept',
+                    'commit_message': 'commit message',
+                    'review_message': 'Accepted'
                 }, csrf_token=csrf_token)
         suggestion_post_accept = self.get_json(
             '%s?author_id=%s' % (
@@ -602,8 +630,8 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
         exploration = exp_fetchers.get_exploration_by_id(self.EXP_ID)
         self.assertEqual(
             exploration.states[suggestion_to_accept[
-                'change']['state_name']].content.html,
-            suggestion_to_accept['change']['new_value']['html'])
+                'change_cmd']['state_name']].content.html,
+            suggestion_to_accept['change_cmd']['new_value']['html'])
         self.logout()
 
         # Testing user without permissions cannot accept.
@@ -618,9 +646,9 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
             feconf.SUGGESTION_ACTION_URL_PREFIX,
             suggestion_to_accept['target_id'],
             suggestion_to_accept['suggestion_id']), {
-                'action': u'accept',
-                'commit_message': u'commit message',
-                'review_message': u'Accepted'
+                'action': 'accept',
+                'commit_message': 'commit message',
+                'review_message': 'Accepted'
             }, csrf_token=csrf_token, expected_status_int=401)
         self.logout()
 
@@ -636,9 +664,9 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
             feconf.SUGGESTION_ACTION_URL_PREFIX,
             suggestion_to_accept['target_id'],
             suggestion_to_accept['suggestion_id']), {
-                'action': u'accept',
-                'commit_message': u'commit message',
-                'review_message': u'Accepted'
+                'action': 'accept',
+                'commit_message': 'commit message',
+                'review_message': 'Accepted'
             }, csrf_token=csrf_token, expected_status_int=401)
 
         # Testing users with scores above threshold can accept.
@@ -651,9 +679,9 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
             feconf.SUGGESTION_ACTION_URL_PREFIX,
             suggestion_to_accept['target_id'],
             suggestion_to_accept['suggestion_id']), {
-                'action': u'accept',
-                'commit_message': u'commit message',
-                'review_message': u'Accepted'
+                'action': 'accept',
+                'commit_message': 'commit message',
+                'review_message': 'Accepted'
             }, csrf_token=csrf_token)
 
         suggestion_post_accept = self.get_json(
@@ -676,9 +704,9 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
             feconf.SUGGESTION_ACTION_URL_PREFIX,
             suggestion_to_accept['target_id'],
             suggestion_to_accept['suggestion_id']), {
-                'action': u'accept',
-                'commit_message': u'commit message',
-                'review_message': u'Accepted'
+                'action': 'accept',
+                'commit_message': 'commit message',
+                'review_message': 'Accepted'
             }, csrf_token=csrf_token)
         suggestion_post_accept = self.get_json(
             '%s?author_id=%s' % (
@@ -716,13 +744,23 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
             '%s/resubmit/%s' % (
                 feconf.SUGGESTION_ACTION_URL_PREFIX, 'invalid_suggestion_id'), {
                     'summary_message': 'summary message',
-                    'action': u'resubmit',
-                    'change': {
+                    'action': 'resubmit',
+                    'change_cmd': {
                         'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
                         'property_name': exp_domain.STATE_PROPERTY_CONTENT,
                         'state_name': 'State 1',
-                        'new_value': self.resubmit_change_content,
-                        'old_value': self.old_content
+                        'old_value': {
+                            'content_id': (
+                                self.exploration.states['State 1']
+                                .content.content_id),
+                            'html': self.old_content_html
+                        },
+                        'new_value': {
+                            'content_id': (
+                                self.exploration.states['State 1']
+                                .content.content_id),
+                            'html': ''
+                        }
                     }
                 }, csrf_token=csrf_token, expected_status_int=400)
 
@@ -742,17 +780,28 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
 
         self.login(self.AUTHOR_EMAIL)
         csrf_token = self.get_new_csrf_token()
-
+        resubmit_change_content_html = (
+            '<p>resubmit change content html</p>')
         self.put_json('%s/resubmit/%s' % (
             feconf.SUGGESTION_ACTION_URL_PREFIX, suggestion.suggestion_id), {
                 'summary_message': 'summary message',
-                'action': u'resubmit',
-                'change': {
+                'action': 'resubmit',
+                'change_cmd': {
                     'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
                     'property_name': exp_domain.STATE_PROPERTY_CONTENT,
                     'state_name': 'State 1',
-                    'new_value': self.resubmit_change_content,
-                    'old_value': self.old_content
+                    'old_value': {
+                        'content_id': (
+                            self.exploration.states['State 1']
+                            .content.content_id),
+                        'html': self.old_content_html
+                    },
+                    'new_value': {
+                        'content_id': (
+                            self.exploration.states['State 1']
+                            .content.content_id),
+                        'html': resubmit_change_content_html
+                    }
                 }
             }, csrf_token=csrf_token)
 
@@ -764,14 +813,15 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
         self.assertEqual(
             suggestion.status, suggestion_models.STATUS_IN_REVIEW)
         self.assertEqual(
-            suggestion.change.new_value['html'],
-            self.resubmit_change_content['html'])
+            suggestion.change_cmd.new_value['html'],
+            resubmit_change_content_html)
         self.assertEqual(
-            suggestion.change.cmd, exp_domain.CMD_EDIT_STATE_PROPERTY)
+            suggestion.change_cmd.cmd, exp_domain.CMD_EDIT_STATE_PROPERTY)
         self.assertEqual(
-            suggestion.change.property_name, exp_domain.STATE_PROPERTY_CONTENT)
+            suggestion.change_cmd.property_name,
+            exp_domain.STATE_PROPERTY_CONTENT)
         self.assertEqual(
-            suggestion.change.state_name, 'State 1')
+            suggestion.change_cmd.state_name, 'State 1')
         self.logout()
 
     def test_translation_accept_suggestion_by_reviewer(self) -> None:
@@ -785,14 +835,19 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
                 self.translator_id))['suggestions'][0]
 
         csrf_token = self.get_new_csrf_token()
-        self.put_json('%s/exploration/%s/%s' % (
-            feconf.SUGGESTION_ACTION_URL_PREFIX,
-            suggestion_to_accept['target_id'],
-            suggestion_to_accept['suggestion_id']), {
-                'action': u'accept',
-                'commit_message': u'commit message',
-                'review_message': u'Accepted'
-            }, csrf_token=csrf_token)
+        with self.swap(
+            opportunity_services,
+            'update_translation_opportunity_with_accepted_suggestion',
+            lambda x, _: x
+        ):
+            self.put_json('%s/exploration/%s/%s' % (
+                feconf.SUGGESTION_ACTION_URL_PREFIX,
+                suggestion_to_accept['target_id'],
+                suggestion_to_accept['suggestion_id']), {
+                    'action': 'accept',
+                    'commit_message': 'commit message',
+                    'review_message': 'Accepted'
+                }, csrf_token=csrf_token)
         suggestion_post_accept = self.get_json(
             '%s?author_id=%s' % (
                 feconf.SUGGESTION_LIST_URL_PREFIX,
@@ -802,16 +857,17 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
             suggestion_models.STATUS_ACCEPTED)
         self.logout()
 
-    def test_translation_suggestion_creation_with_new_images(self) -> None:
+    def test_saves_new_images_uploaded_by_translation_submitter(
+        self
+    ) -> None:
         exp_id = '12345678exp1'
         exploration = (
             self.save_new_linear_exp_with_state_names_and_interactions(
                 exp_id, self.editor_id, ['State 1'],
-                ['EndExploration'], category='Algebra',
-                correctness_feedback_enabled=True))
+                ['EndExploration'], category='Algebra'))
 
         state_content_dict = {
-            'content_id': 'content',
+            'content_id': 'content_0',
             'html': (
                 '<oppia-noninteractive-image filepath-with-value='
                 '"&quot;img.png&quot;" caption-with-value="&quot;&quot;" '
@@ -867,10 +923,6 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
         text_to_translate = exploration.states['State 1'].content.html
         self.logout()
 
-        fs = fs_services.GcsFileSystem(feconf.ENTITY_TYPE_EXPLORATION, exp_id)
-
-        self.assertTrue(fs.isfile('image/img.png'))
-
         self.login(self.TRANSLATOR_EMAIL)
         csrf_token = self.get_new_csrf_token()
 
@@ -881,10 +933,10 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
                 'target_type': feconf.ENTITY_TYPE_EXPLORATION,
                 'target_id': exp_id,
                 'target_version_at_submission': exploration.version,
-                'change': {
+                'change_cmd': {
                     'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
                     'state_name': 'State 1',
-                    'content_id': 'content',
+                    'content_id': 'content_0',
                     'language_code': 'hi',
                     'content_html': text_to_translate,
                     'translation_html': (
@@ -912,6 +964,104 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
         self.assertTrue(fs.isfile('image/translation_image.png'))
         self.assertTrue(fs.isfile('image/img_compressed.png'))
 
+    def test_copies_new_images_in_accepted_translation_to_target_exploration(
+        self
+    ) -> None:
+        exp_id = '12345678exp1'
+        exploration = (
+            self.save_new_linear_exp_with_state_names_and_interactions(
+                exp_id, self.editor_id, ['State 1'],
+                ['EndExploration'], category='Algebra'))
+
+        state_content_dict = {
+            'content_id': 'content_0',
+            'html': (
+                '<oppia-noninteractive-image filepath-with-value='
+                '"&quot;img.png&quot;" caption-with-value="&quot;&quot;" '
+                'alt-with-value="&quot;Image&quot;">'
+                '</oppia-noninteractive-image>')
+        }
+        self.login(self.EDITOR_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+
+        with utils.open_file(
+            os.path.join(feconf.TESTS_DATA_DIR, 'img.png'),
+            'rb', encoding=None
+        ) as f:
+            raw_image = f.read()
+        self.post_json(
+            '%s/exploration/%s' % (
+                feconf.EXPLORATION_IMAGE_UPLOAD_PREFIX, exp_id),
+            {'filename': 'img.png'},
+            csrf_token=csrf_token,
+            upload_files=[('image', 'unused_filename', raw_image)]
+        )
+        exp_services.update_exploration(
+            self.editor_id, exp_id, [exp_domain.ExplorationChange({
+                'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
+                'property_name': exp_domain.STATE_PROPERTY_CONTENT,
+                'state_name': 'State 1',
+                'new_value': state_content_dict
+            })], 'Changes content.')
+        rights_manager.publish_exploration(self.editor, exp_id)
+
+        story = story_domain.Story.create_default_story(
+            'story_123', 'A story', 'Description', self.TOPIC_ID, 'story-a')
+        story_services.save_new_story(self.owner_id, story)
+        topic_services.add_canonical_story(
+            self.owner_id, self.TOPIC_ID, 'story_123')
+        topic_services.publish_story(
+            self.TOPIC_ID, 'story_123', self.admin_id)
+
+        story_services.update_story(
+            self.owner_id, 'story_123', [story_domain.StoryChange({
+                'cmd': 'add_story_node',
+                'node_id': 'node_1',
+                'title': 'Node1',
+            }), story_domain.StoryChange({
+                'cmd': 'update_story_node_property',
+                'property_name': 'exploration_id',
+                'node_id': 'node_1',
+                'old_value': None,
+                'new_value': exp_id
+            })], 'Changes.')
+
+        exploration = exp_fetchers.get_exploration_by_id(exp_id)
+        text_to_translate = exploration.states['State 1'].content.html
+        self.logout()
+
+        self.login(self.TRANSLATOR_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+
+        self.post_json(
+            '%s/' % feconf.SUGGESTION_URL_PREFIX, {
+                'suggestion_type': (
+                    feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT),
+                'target_type': feconf.ENTITY_TYPE_EXPLORATION,
+                'target_id': exp_id,
+                'target_version_at_submission': exploration.version,
+                'change_cmd': {
+                    'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
+                    'state_name': 'State 1',
+                    'content_id': 'content_0',
+                    'language_code': 'hi',
+                    'content_html': text_to_translate,
+                    'translation_html': (
+                        '<oppia-noninteractive-image filepath-with-value='
+                        '"&quot;translation_image.png&quot;" '
+                        'caption-with-value="&quot;&quot;" '
+                        'alt-with-value="&quot;Image&quot;">'
+                        '</oppia-noninteractive-image>'),
+                    'data_format': 'html'
+                },
+                'description': 'test',
+                'files': {
+                    'translation_image.png': (
+                        base64.b64encode(raw_image).decode('utf-8'))
+                 },
+            },
+            csrf_token=csrf_token
+        )
         suggestion_to_accept = self.get_json(
             '%s?author_id=%s' % (
                 feconf.SUGGESTION_LIST_URL_PREFIX,
@@ -921,606 +1071,28 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
         self.login(self.EDITOR_EMAIL)
         csrf_token = self.get_new_csrf_token()
 
-        self.put_json('%s/exploration/%s/%s' % (
-            feconf.SUGGESTION_ACTION_URL_PREFIX,
-            suggestion_to_accept['target_id'],
-            suggestion_to_accept['suggestion_id']), {
-                'action': u'accept',
-                'commit_message': u'Translated content of State 1',
-                'review_message': u'This looks good!',
-            }, csrf_token=csrf_token)
+        with self.swap(
+            opportunity_services,
+            'update_translation_opportunity_with_accepted_suggestion',
+            lambda x, _: x
+        ):
+            self.put_json('%s/exploration/%s/%s' % (
+                feconf.SUGGESTION_ACTION_URL_PREFIX,
+                suggestion_to_accept['target_id'],
+                suggestion_to_accept['suggestion_id']), {
+                    'action': 'accept',
+                    'commit_message': 'Translated content of State 1',
+                    'review_message': 'This looks good!',
+                }, csrf_token=csrf_token)
 
         fs = fs_services.GcsFileSystem(feconf.ENTITY_TYPE_EXPLORATION, exp_id)
         self.assertTrue(fs.isfile('image/img.png'))
         self.assertTrue(fs.isfile('image/translation_image.png'))
         self.assertTrue(fs.isfile('image/img_compressed.png'))
 
-    def test_set_of_strings_translation_suggestion_creation(self) -> None:
-        self.login(self.TRANSLATOR_EMAIL)
-        csrf_token = self.get_new_csrf_token()
-        self.post_json(
-            '%s/' % feconf.SUGGESTION_URL_PREFIX, {
-                'suggestion_type': (
-                    feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT),
-                'target_type': feconf.ENTITY_TYPE_EXPLORATION,
-                'target_id': self.EXP_ID,
-                'target_version_at_submission': self.exploration.version,
-                'change': {
-                    'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
-                    'state_name': 'State 1',
-                    'content_id': 'content',
-                    'language_code': 'hi',
-                    'content_html': '<p>old content html</p>',
-                    'translation_html': ['test1', 'test2'],
-                    'data_format': (
-                        state_domain.WrittenTranslation
-                        .DATA_FORMAT_SET_OF_NORMALIZED_STRING
-                    ),
-                },
-                'description': 'description',
-            }, csrf_token=csrf_token)
-        self.logout()
-
-        suggestions = self.get_json(
-            '%s?author_id=%s&target_type=%s&target_id=%s' % (
-                feconf.SUGGESTION_LIST_URL_PREFIX, self.translator_id,
-                feconf.ENTITY_TYPE_EXPLORATION, self.EXP_ID)
-            )['suggestions']
-        self.assertEqual(len(suggestions), 2)
-
-    def test_set_of_strings_translation_suggestion_review(self) -> None:
-        self.login(self.STRINGS_TRANSLATOR_EMAIL)
-        csrf_token = self.get_new_csrf_token()
-        self.post_json(
-            '%s/' % feconf.SUGGESTION_URL_PREFIX, {
-                'suggestion_type': (
-                    feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT),
-                'target_type': feconf.ENTITY_TYPE_EXPLORATION,
-                'target_id': self.EXP_ID,
-                'target_version_at_submission': self.exploration.version,
-                'change': {
-                    'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
-                    'state_name': 'State 1',
-                    'content_id': 'content',
-                    'language_code': 'hi',
-                    'content_html': '<p>old content html</p>',
-                    'translation_html': ['test1', 'test2'],
-                    'data_format': (
-                        state_domain.WrittenTranslation
-                        .DATA_FORMAT_SET_OF_NORMALIZED_STRING
-                    ),
-                },
-                'description': 'description',
-            }, csrf_token=csrf_token)
-        self.logout()
-
-        suggestions = self.get_json(
-            '%s?author_id=%s&target_type=%s&target_id=%s' % (
-                feconf.SUGGESTION_LIST_URL_PREFIX, self.strings_translator_id,
-                feconf.ENTITY_TYPE_EXPLORATION, self.EXP_ID)
-            )['suggestions']
-        self.assertEqual(len(suggestions), 1)
-
-        # Test reviewer can accept successfully.
-        self.login(self.REVIEWER_EMAIL)
-        csrf_token = self.get_new_csrf_token()
-
-        suggestion_to_accept = suggestions[0]
-
-        csrf_token = self.get_new_csrf_token()
-        self.put_json('%s/exploration/%s/%s' % (
-            feconf.SUGGESTION_ACTION_URL_PREFIX,
-            suggestion_to_accept['target_id'],
-            suggestion_to_accept['suggestion_id']), {
-                'action': u'accept',
-                'commit_message': u'commit message',
-                'review_message': u'Accepted'
-            }, csrf_token=csrf_token)
-        suggestion_post_accept = self.get_json(
-            '%s?author_id=%s' % (
-                feconf.SUGGESTION_LIST_URL_PREFIX,
-                self.strings_translator_id))['suggestions'][0]
-        self.assertEqual(
-            suggestion_post_accept['status'],
-            suggestion_models.STATUS_ACCEPTED)
-        self.logout()
-
-    def test_update_suggestion_updates_translation_html(self) -> None:
-        self.login(self.TRANSLATOR_EMAIL)
-        csrf_token = self.get_new_csrf_token()
-
-        suggestion = suggestion_services.query_suggestions(
-            [('author_id', self.translator_id), ('target_id', self.EXP_ID)])[0]
-        self.logout()
-
-        self.login(self.CURRICULUM_ADMIN_EMAIL)
-        csrf_token = self.get_new_csrf_token()
-
-        self.put_json('%s/%s' % (
-            feconf.UPDATE_TRANSLATION_SUGGESTION_URL_PREFIX,
-            suggestion.suggestion_id), {
-                'translation_html': '<p>Updated In Hindi</p>'
-            }, csrf_token=csrf_token)
-
-        suggestion = suggestion_services.query_suggestions(
-            [('author_id', self.translator_id), ('target_id', self.EXP_ID)])[0]
-        self.assertEqual(
-            suggestion.change.translation_html, '<p>Updated In Hindi</p>')
-        self.logout()
-
-    def test_cannot_update_already_handled_translation(self) -> None:
-        self.login(self.CURRICULUM_ADMIN_EMAIL)
-        change_dict = {
-            'cmd': 'add_translation',
-            'content_id': 'content',
-            'language_code': 'hi',
-            'content_html': '<p>old content html</p>',
-            'state_name': 'State 1',
-            'translation_html': '<p>Translation for content.</p>'
-        }
-
-        suggestion = suggestion_services.create_suggestion(
-            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
-            feconf.ENTITY_TYPE_EXPLORATION,
-            'exp1', 1, self.translator_id, change_dict, 'description')
-        suggestion_services.accept_suggestion(
-            suggestion.suggestion_id, self.reviewer_id, 'Accepted', 'Done'
-        )
-
-        csrf_token = self.get_new_csrf_token()
-        response = self.put_json('%s/%s' % (
-            feconf.UPDATE_TRANSLATION_SUGGESTION_URL_PREFIX,
-            suggestion.suggestion_id), {
-                'translation_html': '<p>Updated In Hindi</p>'
-            }, csrf_token=csrf_token, expected_status_int=400)
-        self.assertEqual(
-            response['error'],
-            'The suggestion with id %s has been accepted or rejected' % (
-                suggestion.suggestion_id))
-        self.logout()
-
-    def test_cannot_update_translations_without_translation_html(self) -> None:
-        self.login(self.CURRICULUM_ADMIN_EMAIL)
-        change_dict = {
-            'cmd': 'add_translation',
-            'content_id': 'content',
-            'language_code': 'hi',
-            'content_html': '<p>old content html</p>',
-            'state_name': 'State 1',
-            'translation_html': '<p>Translation for content.</p>'
-        }
-
-        suggestion = suggestion_services.create_suggestion(
-            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
-            feconf.ENTITY_TYPE_EXPLORATION,
-            'exp1', 1, self.translator_id, change_dict, 'description')
-
-        csrf_token = self.get_new_csrf_token()
-        response = self.put_json(
-            '%s/%s' % (
-                feconf.UPDATE_TRANSLATION_SUGGESTION_URL_PREFIX,
-                suggestion.suggestion_id), {},
-            csrf_token=csrf_token,
-            expected_status_int=400)
-        self.assertEqual(
-            response['error'],
-            'Missing key in handler args: translation_html.')
-        self.logout()
-
-    def test_cannot_update_translation_with_invalid_translation_html(
+    def test_raises_exception_if_new_contentless_image_in_translation(
         self
     ) -> None:
-        self.login(self.CURRICULUM_ADMIN_EMAIL)
-        change_dict = {
-            'cmd': 'add_translation',
-            'content_id': 'content',
-            'language_code': 'hi',
-            'content_html': '<p>old content html</p>',
-            'state_name': 'State 1',
-            'translation_html': '<p>Translation for content.</p>'
-        }
-
-        suggestion = suggestion_services.create_suggestion(
-            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
-            feconf.ENTITY_TYPE_EXPLORATION,
-            'exp1', 1, self.translator_id, change_dict, 'description')
-
-        csrf_token = self.get_new_csrf_token()
-        response = self.put_json(
-            '%s/%s' % (
-                feconf.UPDATE_TRANSLATION_SUGGESTION_URL_PREFIX,
-                suggestion.suggestion_id), {
-                    'translation_html': 12
-                },
-            csrf_token=csrf_token,
-            expected_status_int=400)
-        self.assertIn(
-            'failed: Expected string, received 12',
-            response['error']
-        )
-        self.logout()
-
-    def test_update_suggestion_updates_question_suggestion_content(
-        self
-    ) -> None:
-        skill_id = skill_services.get_new_skill_id()
-        self.save_new_skill(skill_id, self.author_id, description='description')
-        suggestion_change: Dict[
-            str, Union[str, question_domain.QuestionSuggestionChangeDict, float]
-        ] = {
-            'cmd': question_domain.CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION,
-            'question_dict': {
-                'question_state_data': self._create_valid_question_data(
-                    'default_state').to_dict(),
-                'language_code': 'en',
-                'question_state_data_schema_version': (
-                    feconf.CURRENT_STATE_SCHEMA_VERSION),
-                'linked_skill_ids': ['skill_1'],
-                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
-                'id': None,
-                'version': 40
-            },
-            'skill_id': skill_id,
-            'skill_difficulty': 0.3
-        }
-        new_solution_dict: state_domain.SolutionDict = {
-            'answer_is_exclusive': False,
-            'correct_answer': 'Solution',
-            'explanation': {
-                'content_id': 'solution',
-                'html': '<p>This is the updated solution.</p>',
-            },
-        }
-        suggestion = suggestion_services.create_suggestion(
-            feconf.SUGGESTION_TYPE_ADD_QUESTION,
-            feconf.ENTITY_TYPE_SKILL, skill_id, 1,
-            self.author_id, suggestion_change, 'test description')
-
-        question_state_data = suggestion.change.question_dict[
-            'question_state_data']
-        question_state_data['content']['html'] = (
-            '<p>Updated question</p>'
-            '<oppia-noninteractive-image filepath-with-value='
-            '"&quot;img.png&quot;" caption-with-value="&quot;&quot;" '
-            'alt-with-value="&quot;Image&quot;">'
-            '</oppia-noninteractive-image>')
-        question_state_data['interaction']['solution'] = new_solution_dict
-
-        self.login(self.CURRICULUM_ADMIN_EMAIL)
-        csrf_token = self.get_new_csrf_token()
-
-        self.post_json(
-            '%s/%s' % (
-                feconf.UPDATE_QUESTION_SUGGESTION_URL_PREFIX,
-                suggestion.suggestion_id
-            ), {
-                'question_state_data': question_state_data,
-                'skill_difficulty': 0.6
-            },
-            csrf_token=csrf_token
-        )
-
-        updated_suggestion = suggestion_services.get_suggestion_by_id(
-            suggestion.suggestion_id)
-        assert isinstance(
-            updated_suggestion, suggestion_registry.SuggestionAddQuestion
-        )
-        new_question_state_data = updated_suggestion.change.question_dict[
-            'question_state_data']
-
-        self.assertEqual(
-            new_question_state_data['content']['html'],
-            '<p>Updated question</p>'
-            '<oppia-noninteractive-image filepath-with-value='
-            '"&quot;img.png&quot;" caption-with-value="&quot;&quot;" '
-            'alt-with-value="&quot;Image&quot;">'
-            '</oppia-noninteractive-image>'
-        )
-        self.assertEqual(
-            new_question_state_data['interaction']['solution'],
-            new_solution_dict)
-        self.logout()
-
-    def test_cannot_update_question_with_invalid_skill_difficulty(self) -> None:
-        skill_id = skill_services.get_new_skill_id()
-        self.save_new_skill(skill_id, self.author_id, description='description')
-        suggestion_change: Dict[
-            str, Union[str, question_domain.QuestionSuggestionChangeDict, float]
-        ] = {
-            'cmd': question_domain.CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION,
-            'question_dict': {
-                'question_state_data': self._create_valid_question_data(
-                    'default_state').to_dict(),
-                'language_code': 'en',
-                'question_state_data_schema_version': (
-                    feconf.CURRENT_STATE_SCHEMA_VERSION),
-                'linked_skill_ids': ['skill_1'],
-                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
-                'id': None,
-                'version': 40
-            },
-            'skill_id': skill_id,
-            'skill_difficulty': 0.3
-        }
-        suggestion = suggestion_services.create_suggestion(
-            feconf.SUGGESTION_TYPE_ADD_QUESTION,
-            feconf.ENTITY_TYPE_SKILL, skill_id, 1,
-            self.author_id, suggestion_change, 'test description')
-
-        question_state_data = suggestion.change.question_dict[
-            'question_state_data']
-        question_state_data['content']['html'] = '<p>Updated question</p>'
-        new_solution_dict: state_domain.SolutionDict = {
-            'answer_is_exclusive': False,
-            'correct_answer': 'Solution',
-            'explanation': {
-                'content_id': 'solution',
-                'html': '<p>This is the updated solution.</p>',
-            },
-        }
-        question_state_data['interaction']['solution'] = new_solution_dict
-
-        self.login(self.CURRICULUM_ADMIN_EMAIL)
-        csrf_token = self.get_new_csrf_token()
-
-        response = self.post_json(
-            '%s/%s' % (
-                feconf.UPDATE_QUESTION_SUGGESTION_URL_PREFIX,
-                suggestion.suggestion_id
-            ),
-            {
-                'question_state_data': question_state_data,
-                'skill_difficulty': 'string_value'
-            },
-            csrf_token=csrf_token,
-            expected_status_int=400
-        )
-
-        self.assertIn(
-            'Schema validation for \'skill_difficulty\' failed: Could '
-            'not convert str to float',
-            response['error']
-        )
-        self.logout()
-
-    def test_cannot_update_question_without_state_data(self) -> None:
-        skill_id = skill_services.get_new_skill_id()
-        self.save_new_skill(skill_id, self.author_id, description='description')
-        suggestion_change: Dict[
-            str, Union[str, question_domain.QuestionSuggestionChangeDict, float]
-        ] = {
-            'cmd': question_domain.CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION,
-            'question_dict': {
-                'question_state_data': self._create_valid_question_data(
-                    'default_state').to_dict(),
-                'language_code': 'en',
-                'question_state_data_schema_version': (
-                    feconf.CURRENT_STATE_SCHEMA_VERSION),
-                'linked_skill_ids': ['skill_1'],
-                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
-                'id': None,
-                'version': 40
-            },
-            'skill_id': skill_id,
-            'skill_difficulty': 0.3
-        }
-        new_solution_dict: state_domain.SolutionDict = {
-            'answer_is_exclusive': False,
-            'correct_answer': 'Solution',
-            'explanation': {
-                'content_id': 'solution',
-                'html': '<p>This is the updated solution.</p>',
-            },
-        }
-        suggestion = suggestion_services.create_suggestion(
-            feconf.SUGGESTION_TYPE_ADD_QUESTION,
-            feconf.ENTITY_TYPE_SKILL, skill_id, 1,
-            self.author_id, suggestion_change, 'test description')
-
-        question_state_data = suggestion.change.question_dict[
-            'question_state_data']
-        question_state_data['content']['html'] = '<p>Updated question</p>'
-        question_state_data['interaction']['solution'] = new_solution_dict
-
-        self.login(self.CURRICULUM_ADMIN_EMAIL)
-        csrf_token = self.get_new_csrf_token()
-
-        response = self.post_json(
-            '%s/%s' % (
-                feconf.UPDATE_QUESTION_SUGGESTION_URL_PREFIX,
-                suggestion.suggestion_id
-            ),
-            {
-                'skill_difficulty': 0.6
-            },
-            csrf_token=csrf_token,
-            expected_status_int=400
-        )
-
-        self.assertEqual(
-            response['error'],
-            'Missing key in handler args: question_state_data.'
-        )
-        self.logout()
-
-    def test_cannot_update_question_without_skill_difficulty(self) -> None:
-        skill_id = skill_services.get_new_skill_id()
-        self.save_new_skill(
-            skill_id, self.author_id, description='description')
-        suggestion_change: Dict[
-            str, Union[str, question_domain.QuestionSuggestionChangeDict, float]
-        ] = {
-            'cmd': question_domain.CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION,
-            'question_dict': {
-                'question_state_data': self._create_valid_question_data(
-                    'default_state').to_dict(),
-                'language_code': 'en',
-                'question_state_data_schema_version': (
-                    feconf.CURRENT_STATE_SCHEMA_VERSION),
-                'linked_skill_ids': ['skill_1'],
-                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
-                'id': None,
-                'version': 40
-            },
-            'skill_id': skill_id,
-            'skill_difficulty': 0.3
-        }
-        new_solution_dict: state_domain.SolutionDict = {
-            'answer_is_exclusive': False,
-            'correct_answer': 'Solution',
-            'explanation': {
-                'content_id': 'solution',
-                'html': '<p>This is the updated solution.</p>',
-            },
-        }
-        suggestion = suggestion_services.create_suggestion(
-            feconf.SUGGESTION_TYPE_ADD_QUESTION,
-            feconf.ENTITY_TYPE_SKILL, skill_id, 1,
-            self.author_id, suggestion_change, 'test description')
-
-        question_state_data = suggestion.change.question_dict[
-            'question_state_data']
-        question_state_data['content']['html'] = '<p>Updated question</p>'
-        question_state_data['interaction']['solution'] = new_solution_dict
-
-        self.login(self.CURRICULUM_ADMIN_EMAIL)
-        csrf_token = self.get_new_csrf_token()
-
-        response = self.post_json(
-            '%s/%s' % (
-                feconf.UPDATE_QUESTION_SUGGESTION_URL_PREFIX,
-                suggestion.suggestion_id
-            ),
-            {
-                'question_state_data': question_state_data
-            },
-            csrf_token=csrf_token,
-            expected_status_int=400
-        )
-
-        self.assertEqual(
-            response['error'],
-            'Missing key in handler args: skill_difficulty.'
-        )
-
-        self.logout()
-
-    def test_cannot_update_already_handled_question(self) -> None:
-        skill_id = skill_services.get_new_skill_id()
-        self.save_new_skill(
-            skill_id, self.author_id, description='description')
-        suggestion_change: Dict[
-            str, Union[str, question_domain.QuestionSuggestionChangeDict, float]
-        ] = {
-            'cmd': question_domain.CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION,
-            'question_dict': {
-                'question_state_data': self._create_valid_question_data(
-                    'default_state').to_dict(),
-                'language_code': 'en',
-                'question_state_data_schema_version': (
-                    feconf.CURRENT_STATE_SCHEMA_VERSION),
-                'linked_skill_ids': ['skill_1'],
-                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
-                'id': None,
-                'version': 40
-            },
-            'skill_id': skill_id,
-            'skill_difficulty': 0.3
-        }
-        new_solution_dict: state_domain.SolutionDict = {
-            'answer_is_exclusive': False,
-            'correct_answer': 'Solution',
-            'explanation': {
-                'content_id': 'solution',
-                'html': '<p>This is the updated solution.</p>',
-            },
-        }
-        suggestion = suggestion_services.create_suggestion(
-            feconf.SUGGESTION_TYPE_ADD_QUESTION,
-            feconf.ENTITY_TYPE_SKILL, skill_id, 1,
-            self.author_id, suggestion_change, 'test description')
-        suggestion_services.accept_suggestion(
-            suggestion.suggestion_id, self.reviewer_id, 'Accepted', 'Done'
-        )
-
-        question_state_data = suggestion.change.question_dict[
-            'question_state_data']
-        question_state_data['content']['html'] = '<p>Updated question</p>'
-        question_state_data['interaction']['solution'] = new_solution_dict
-
-        self.login(self.CURRICULUM_ADMIN_EMAIL)
-        csrf_token = self.get_new_csrf_token()
-
-        response = self.post_json(
-            '%s/%s' % (
-                feconf.UPDATE_QUESTION_SUGGESTION_URL_PREFIX,
-                suggestion.suggestion_id
-            ),
-            {
-                'question_state_data': question_state_data,
-                'skill_difficulty': '0.6'
-            },
-            csrf_token=csrf_token,
-            expected_status_int=400
-        )
-
-        self.assertEqual(
-            response['error'],
-            'The suggestion with id %s has been accepted or rejected' % (
-                suggestion.suggestion_id
-            )
-        )
-        self.logout()
-
-    def test_cannot_update_question_when_provided_state_data_is_invalid(
-        self
-    ) -> None:
-        skill_id = skill_services.get_new_skill_id()
-        self.save_new_skill(
-            skill_id, self.author_id, description='description')
-        suggestion_change: Dict[
-            str, Union[str, question_domain.QuestionSuggestionChangeDict, float]
-        ] = {
-            'cmd': question_domain.CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION,
-            'question_dict': {
-                'question_state_data': self._create_valid_question_data(
-                    'default_state').to_dict(),
-                'language_code': 'en',
-                'question_state_data_schema_version': (
-                    feconf.CURRENT_STATE_SCHEMA_VERSION),
-                'linked_skill_ids': ['skill_1'],
-                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
-                'id': None,
-                'version': 40
-            },
-            'skill_id': skill_id,
-            'skill_difficulty': 0.3
-        }
-        suggestion = suggestion_services.create_suggestion(
-            feconf.SUGGESTION_TYPE_ADD_QUESTION,
-            feconf.ENTITY_TYPE_SKILL, skill_id, 1,
-            self.author_id, suggestion_change, 'test description')
-
-        invalid_question_state_data: Dict[str, str] = {}
-
-        self.login(self.CURRICULUM_ADMIN_EMAIL)
-        csrf_token = self.get_new_csrf_token()
-
-        self.post_json(
-            '%s/%s' % (
-                feconf.UPDATE_QUESTION_SUGGESTION_URL_PREFIX,
-                suggestion.suggestion_id
-            ),
-            {
-                'question_state_data': invalid_question_state_data,
-                'skill_difficulty': '0.6'
-            },
-            csrf_token=csrf_token,
-            expected_status_int=400
-        )
-        self.logout()
-
-    def test_suggestion_creation_when_images_are_not_provided(self) -> None:
         exp_id = '12345678exp1'
         exploration = (
             self.save_new_linear_exp_with_state_names_and_interactions(
@@ -1528,7 +1100,7 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
                 ['EndExploration'], category='Algebra'))
 
         state_content_dict = {
-            'content_id': 'content',
+            'content_id': 'content_0',
             'html': (
                 '<oppia-noninteractive-image filepath-with-value='
                 '"&quot;img.png&quot;" caption-with-value="&quot;&quot;" '
@@ -1578,10 +1150,10 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
                 'target_type': feconf.ENTITY_TYPE_EXPLORATION,
                 'target_id': exp_id,
                 'target_version_at_submission': exploration.version,
-                'change': {
+                'change_cmd': {
                     'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
                     'state_name': 'State 1',
-                    'content_id': 'content',
+                    'content_id': 'content_0',
                     'language_code': 'hi',
                     'content_html': text_to_translate,
                     'translation_html': valid_html,
@@ -1594,7 +1166,9 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
         self.assertIn('No image supplied', response_dict['error'])
         self.logout()
 
-    def test_suggestion_creation_when_images_are_not_valid(self) -> None:
+    def test_raises_exception_if_new_image_in_translation_exceeds_file_size_limit( # pylint: disable=line-too-long
+        self
+    ) -> None:
         exp_id = '12345678exp1'
         exploration = (
             self.save_new_linear_exp_with_state_names_and_interactions(
@@ -1602,7 +1176,7 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
                 ['EndExploration'], category='Algebra'))
 
         state_content_dict = {
-            'content_id': 'content',
+            'content_id': 'content_0',
             'html': (
                 '<oppia-noninteractive-image filepath-with-value='
                 '"&quot;img.png&quot;" caption-with-value="&quot;&quot;" '
@@ -1654,10 +1228,10 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
                 'target_type': feconf.ENTITY_TYPE_EXPLORATION,
                 'target_id': exp_id,
                 'target_version_at_submission': exploration.version,
-                'change': {
+                'change_cmd': {
                     'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
                     'state_name': 'State 1',
-                    'content_id': 'content',
+                    'content_id': 'content_0',
                     'language_code': 'hi',
                     'content_html': text_to_translate,
                     'translation_html': valid_html,
@@ -1671,6 +1245,906 @@ class SuggestionUnitTests(test_utils.GenericTestBase):
         self.assertIn(
             'Image exceeds file size limit of 100 KB.',
             response_dict['error'])
+        self.logout()
+
+    def test_saves_new_images_in_translation_that_were_copied_from_target_exploration( # pylint: disable=line-too-long
+        self
+    ) -> None:
+        exp_id = '12345678exp1'
+        exploration = (
+            self.save_new_linear_exp_with_state_names_and_interactions(
+                exp_id, self.editor_id, ['State 1'],
+                ['EndExploration'], category='Algebra'))
+
+        state_content_dict = {
+            'content_id': 'content_0',
+            'html': (
+                '<oppia-noninteractive-image filepath-with-value='
+                '"&quot;img.png&quot;" caption-with-value="&quot;&quot;" '
+                'alt-with-value="&quot;Image&quot;">'
+                '</oppia-noninteractive-image>')
+        }
+        self.login(self.EDITOR_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+
+        with utils.open_file(
+            os.path.join(feconf.TESTS_DATA_DIR, 'img.png'),
+            'rb', encoding=None
+        ) as f:
+            raw_image = f.read()
+        self.post_json(
+            '%s/exploration/%s' % (
+                feconf.EXPLORATION_IMAGE_UPLOAD_PREFIX, exp_id),
+            {'filename': 'img.png'},
+            csrf_token=csrf_token,
+            upload_files=[('image', 'unused_filename', raw_image)]
+        )
+        exp_services.update_exploration(
+            self.editor_id, exp_id, [exp_domain.ExplorationChange({
+                'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
+                'property_name': exp_domain.STATE_PROPERTY_CONTENT,
+                'state_name': 'State 1',
+                'new_value': state_content_dict
+            })], 'Changes content.')
+        rights_manager.publish_exploration(self.editor, exp_id)
+
+        story = story_domain.Story.create_default_story(
+            'story_123', 'A story', 'Description', self.TOPIC_ID, 'story-a')
+        story_services.save_new_story(self.owner_id, story)
+        topic_services.add_canonical_story(
+            self.owner_id, self.TOPIC_ID, 'story_123')
+        topic_services.publish_story(
+            self.TOPIC_ID, 'story_123', self.admin_id)
+
+        story_services.update_story(
+            self.owner_id, 'story_123', [story_domain.StoryChange({
+                'cmd': 'add_story_node',
+                'node_id': 'node_1',
+                'title': 'Node1',
+            }), story_domain.StoryChange({
+                'cmd': 'update_story_node_property',
+                'property_name': 'exploration_id',
+                'node_id': 'node_1',
+                'old_value': None,
+                'new_value': exp_id
+            })], 'Changes.')
+
+        exploration = exp_fetchers.get_exploration_by_id(exp_id)
+        text_to_translate = exploration.states['State 1'].content.html
+        self.logout()
+
+        self.login(self.TRANSLATOR_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+
+        self.post_json(
+            '%s/' % feconf.SUGGESTION_URL_PREFIX, {
+                'suggestion_type': (
+                    feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT),
+                'target_type': feconf.ENTITY_TYPE_EXPLORATION,
+                'target_id': exp_id,
+                'target_version_at_submission': exploration.version,
+                'change_cmd': {
+                    'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
+                    'state_name': 'State 1',
+                    'content_id': 'content_0',
+                    'language_code': 'hi',
+                    'content_html': text_to_translate,
+                    'translation_html': (
+                        '<oppia-noninteractive-image filepath-with-value='
+                        '"&quot;img.png&quot;" '
+                        'caption-with-value="&quot;&quot;" '
+                        'alt-with-value="&quot;Image&quot;">'
+                        '</oppia-noninteractive-image>'),
+                    'data_format': 'html'
+                },
+                'description': 'test',
+                'files': {},
+            },
+            csrf_token=csrf_token
+        )
+
+        fs = fs_services.GcsFileSystem(
+            feconf.IMAGE_CONTEXT_EXPLORATION_SUGGESTIONS, exp_id)
+
+        self.assertTrue(fs.isfile('image/img.png'))
+
+    def test_raises_exception_if_target_exploration_image_is_not_in_target_exploration_assets( # pylint: disable=line-too-long
+        self
+    ) -> None:
+        exp_id = '12345678exp1'
+        exploration = (
+            self.save_new_linear_exp_with_state_names_and_interactions(
+                exp_id, self.editor_id, ['State 1'],
+                ['EndExploration'], category='Algebra'))
+
+        state_content_dict = {
+            'content_id': 'content_0',
+            'html': (
+                '<oppia-noninteractive-image filepath-with-value='
+                '"&quot;img.png&quot;" caption-with-value="&quot;&quot;" '
+                'alt-with-value="&quot;Image&quot;">'
+                '</oppia-noninteractive-image>')
+        }
+        self.login(self.EDITOR_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+
+        with utils.open_file(
+            os.path.join(feconf.TESTS_DATA_DIR, 'img.png'),
+            'rb', encoding=None
+        ) as f:
+            raw_image = f.read()
+        self.post_json(
+            '%s/exploration/%s' % (
+                feconf.EXPLORATION_IMAGE_UPLOAD_PREFIX, exp_id),
+            {'filename': 'img.png'},
+            csrf_token=csrf_token,
+            upload_files=[('image', 'unused_filename', raw_image)]
+        )
+        exp_services.update_exploration(
+            self.editor_id, exp_id, [exp_domain.ExplorationChange({
+                'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
+                'property_name': exp_domain.STATE_PROPERTY_CONTENT,
+                'state_name': 'State 1',
+                'new_value': state_content_dict
+            })], 'Changes content.')
+        rights_manager.publish_exploration(self.editor, exp_id)
+
+        story = story_domain.Story.create_default_story(
+            'story_123', 'A story', 'Description', self.TOPIC_ID, 'story-a')
+        story_services.save_new_story(self.owner_id, story)
+        topic_services.add_canonical_story(
+            self.owner_id, self.TOPIC_ID, 'story_123')
+        topic_services.publish_story(
+            self.TOPIC_ID, 'story_123', self.admin_id)
+
+        story_services.update_story(
+            self.owner_id, 'story_123', [story_domain.StoryChange({
+                'cmd': 'add_story_node',
+                'node_id': 'node_1',
+                'title': 'Node1',
+            }), story_domain.StoryChange({
+                'cmd': 'update_story_node_property',
+                'property_name': 'exploration_id',
+                'node_id': 'node_1',
+                'old_value': None,
+                'new_value': exp_id
+            })], 'Changes.')
+
+        exploration = exp_fetchers.get_exploration_by_id(exp_id)
+        text_to_translate = exploration.states['State 1'].content.html
+        self.logout()
+
+        fs = fs_services.GcsFileSystem(
+            feconf.ENTITY_TYPE_EXPLORATION, exp_id
+        )
+        fs.delete('image/img.png')
+
+        self.login(self.TRANSLATOR_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+        request_body = {
+            'suggestion_type': (
+                feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT),
+            'target_type': feconf.ENTITY_TYPE_EXPLORATION,
+            'target_id': exp_id,
+            'target_version_at_submission': exploration.version,
+            'change_cmd': {
+                'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
+                'state_name': 'State 1',
+                'content_id': 'content_0',
+                'language_code': 'hi',
+                'content_html': text_to_translate,
+                'translation_html': (
+                    '<oppia-noninteractive-image filepath-with-value='
+                    '"&quot;img.png&quot;" '
+                    'caption-with-value="&quot;&quot;" '
+                    'alt-with-value="&quot;Image&quot;">'
+                    '</oppia-noninteractive-image>'),
+                'data_format': 'html'
+            },
+            'description': 'test',
+            'files': {},
+        }
+
+        response_dict = self.post_json(
+            '%s/' % feconf.SUGGESTION_URL_PREFIX, request_body,
+            csrf_token=csrf_token, expected_status_int=500
+        )
+
+        self.assertIn(
+            'An image in the submitted translation\'s original content '
+            'named "img.png" cannot be found. Please save it to the '
+            'backend file system at /exploration/%s/assets/image/ '  
+            'before submitting this translation again.' % exp_id,
+            response_dict['error']
+        )
+
+    def test_set_of_strings_translation_suggestion_creation(self) -> None:
+        self.login(self.TRANSLATOR_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+        self.post_json(
+            '%s/' % feconf.SUGGESTION_URL_PREFIX, {
+                'suggestion_type': (
+                    feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT),
+                'target_type': feconf.ENTITY_TYPE_EXPLORATION,
+                'target_id': self.EXP_ID,
+                'target_version_at_submission': self.exploration.version,
+                'change_cmd': {
+                    'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
+                    'state_name': 'State 1',
+                    'content_id': 'content_0',
+                    'language_code': 'hi',
+                    'content_html': '<p>old content html</p>',
+                    'translation_html': ['test1', 'test2'],
+                    'data_format': (
+                        translation_domain.WrittenTranslation
+                        .DATA_FORMAT_SET_OF_NORMALIZED_STRING
+                    ),
+                },
+                'description': 'description',
+            }, csrf_token=csrf_token)
+        self.logout()
+
+        suggestions = self.get_json(
+            '%s?author_id=%s&target_type=%s&target_id=%s' % (
+                feconf.SUGGESTION_LIST_URL_PREFIX, self.translator_id,
+                feconf.ENTITY_TYPE_EXPLORATION, self.EXP_ID)
+            )['suggestions']
+        self.assertEqual(len(suggestions), 2)
+
+    def test_set_of_strings_translation_suggestion_review(self) -> None:
+        self.login(self.STRINGS_TRANSLATOR_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+        self.post_json(
+            '%s/' % feconf.SUGGESTION_URL_PREFIX, {
+                'suggestion_type': (
+                    feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT),
+                'target_type': feconf.ENTITY_TYPE_EXPLORATION,
+                'target_id': self.EXP_ID,
+                'target_version_at_submission': self.exploration.version,
+                'change_cmd': {
+                    'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
+                    'state_name': 'State 1',
+                    'content_id': 'content_0',
+                    'language_code': 'hi',
+                    'content_html': '<p>old content html</p>',
+                    'translation_html': ['test1', 'test2'],
+                    'data_format': (
+                        translation_domain.WrittenTranslation
+                        .DATA_FORMAT_SET_OF_NORMALIZED_STRING
+                    ),
+                },
+                'description': 'description',
+            }, csrf_token=csrf_token)
+        self.logout()
+
+        suggestions = self.get_json(
+            '%s?author_id=%s&target_type=%s&target_id=%s' % (
+                feconf.SUGGESTION_LIST_URL_PREFIX, self.strings_translator_id,
+                feconf.ENTITY_TYPE_EXPLORATION, self.EXP_ID)
+            )['suggestions']
+        self.assertEqual(len(suggestions), 1)
+
+        # Test reviewer can accept successfully.
+        self.login(self.REVIEWER_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+
+        suggestion_to_accept = suggestions[0]
+
+        csrf_token = self.get_new_csrf_token()
+        self.put_json('%s/exploration/%s/%s' % (
+            feconf.SUGGESTION_ACTION_URL_PREFIX,
+            suggestion_to_accept['target_id'],
+            suggestion_to_accept['suggestion_id']), {
+                'action': 'accept',
+                'commit_message': 'commit message',
+                'review_message': 'Accepted'
+            }, csrf_token=csrf_token)
+        suggestion_post_accept = self.get_json(
+            '%s?author_id=%s' % (
+                feconf.SUGGESTION_LIST_URL_PREFIX,
+                self.strings_translator_id))['suggestions'][0]
+        self.assertEqual(
+            suggestion_post_accept['status'],
+            suggestion_models.STATUS_ACCEPTED)
+        self.logout()
+
+    def test_update_suggestion_updates_translation_html(self) -> None:
+        self.login(self.TRANSLATOR_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+
+        suggestion = suggestion_services.query_suggestions(
+            [('author_id', self.translator_id), ('target_id', self.EXP_ID)])[0]
+        self.logout()
+
+        self.login(self.CURRICULUM_ADMIN_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+
+        self.put_json('%s/%s' % (
+            feconf.UPDATE_TRANSLATION_SUGGESTION_URL_PREFIX,
+            suggestion.suggestion_id), {
+                'translation_html': '<p>Updated In Hindi</p>'
+            }, csrf_token=csrf_token)
+
+        suggestion = suggestion_services.query_suggestions(
+            [('author_id', self.translator_id), ('target_id', self.EXP_ID)])[0]
+        self.assertEqual(
+            suggestion.change_cmd.translation_html, '<p>Updated In Hindi</p>')
+        self.logout()
+
+    def test_cannot_update_already_handled_translation(self) -> None:
+        self.login(self.CURRICULUM_ADMIN_EMAIL)
+        change_dict = {
+            'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
+            'content_id': 'content_0',
+            'language_code': 'hi',
+            'content_html': '<p>old content html</p>',
+            'state_name': 'State 1',
+            'translation_html': '<p>Translation for content.</p>',
+            'data_format': 'html'
+        }
+
+        suggestion = suggestion_services.create_suggestion(
+            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+            feconf.ENTITY_TYPE_EXPLORATION,
+            'exp1', 1, self.translator_id, change_dict, 'description')
+        with self.swap(
+            opportunity_services,
+            'update_translation_opportunity_with_accepted_suggestion',
+            lambda x, _: x
+        ):
+            suggestion_services.accept_suggestion(
+                suggestion.suggestion_id, self.reviewer_id, 'Accepted', 'Done'
+            )
+
+        csrf_token = self.get_new_csrf_token()
+        response = self.put_json('%s/%s' % (
+            feconf.UPDATE_TRANSLATION_SUGGESTION_URL_PREFIX,
+            suggestion.suggestion_id), {
+                'translation_html': '<p>Updated In Hindi</p>'
+            }, csrf_token=csrf_token, expected_status_int=400)
+        self.assertEqual(
+            response['error'],
+            'The suggestion with id %s has been accepted or rejected' % (
+                suggestion.suggestion_id))
+        self.logout()
+
+    def test_cannot_update_translations_without_translation_html(self) -> None:
+        self.login(self.CURRICULUM_ADMIN_EMAIL)
+        change_dict = {
+            'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
+            'content_id': 'content_0',
+            'language_code': 'hi',
+            'content_html': '<p>old content html</p>',
+            'state_name': 'State 1',
+            'translation_html': '<p>Translation for content.</p>',
+            'data_format': 'html'
+        }
+
+        suggestion = suggestion_services.create_suggestion(
+            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+            feconf.ENTITY_TYPE_EXPLORATION,
+            'exp1', 1, self.translator_id, change_dict, 'description')
+
+        csrf_token = self.get_new_csrf_token()
+        response = self.put_json(
+            '%s/%s' % (
+                feconf.UPDATE_TRANSLATION_SUGGESTION_URL_PREFIX,
+                suggestion.suggestion_id), {},
+            csrf_token=csrf_token,
+            expected_status_int=400)
+        self.assertIn(
+            'Missing key in handler args: translation_html.',
+            response['error'],
+        )
+        self.logout()
+
+    def test_cannot_update_translation_with_invalid_translation_html(
+        self
+    ) -> None:
+        self.login(self.CURRICULUM_ADMIN_EMAIL)
+        change_dict = {
+            'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
+            'content_id': 'content_0',
+            'language_code': 'hi',
+            'content_html': '<p>old content html</p>',
+            'state_name': 'State 1',
+            'translation_html': '<p>Translation for content.</p>',
+            'data_format': 'html'
+        }
+
+        suggestion = suggestion_services.create_suggestion(
+            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+            feconf.ENTITY_TYPE_EXPLORATION,
+            'exp1', 1, self.translator_id, change_dict, 'description')
+
+        csrf_token = self.get_new_csrf_token()
+        response = self.put_json(
+            '%s/%s' % (
+                feconf.UPDATE_TRANSLATION_SUGGESTION_URL_PREFIX,
+                suggestion.suggestion_id), {
+                    'translation_html': 12
+                },
+            csrf_token=csrf_token,
+            expected_status_int=400)
+        self.assertIn(
+            'failed: Expected string, received 12',
+            response['error']
+        )
+        self.logout()
+
+    def test_update_suggestion_updates_question_suggestion_content(
+        self
+    ) -> None:
+        skill_id = skill_services.get_new_skill_id()
+        self.save_new_skill(skill_id, self.author_id, description='description')
+        content_id_generator = translation_domain.ContentIdGenerator()
+        suggestion_change: Dict[
+            str, Union[str, question_domain.QuestionSuggestionChangeDict, float]
+        ] = {
+            'cmd': question_domain.CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION,
+            'question_dict': {
+                'question_state_data': self._create_valid_question_data(
+                    'default_state', content_id_generator).to_dict(),
+                'language_code': 'en',
+                'question_state_data_schema_version': (
+                    feconf.CURRENT_STATE_SCHEMA_VERSION),
+                'linked_skill_ids': ['skill_1'],
+                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index),
+                'id': None,
+                'version': 40
+            },
+            'skill_id': skill_id,
+            'skill_difficulty': 0.3
+        }
+        new_solution_dict: state_domain.SolutionDict = {
+            'answer_is_exclusive': False,
+            'correct_answer': 'Solution',
+            'explanation': {
+                'content_id': 'solution_2',
+                'html': '<p>This is the updated solution.</p>',
+            },
+        }
+        suggestion = suggestion_services.create_suggestion(
+            feconf.SUGGESTION_TYPE_ADD_QUESTION,
+            feconf.ENTITY_TYPE_SKILL, skill_id, 1,
+            self.author_id, suggestion_change, 'test description')
+
+        question_state_data = suggestion.change_cmd.question_dict[
+            'question_state_data']
+        question_state_data['content']['html'] = (
+            '<p>Updated question</p>'
+            '<oppia-noninteractive-image filepath-with-value='
+            '"&quot;img.png&quot;" caption-with-value="&quot;&quot;" '
+            'alt-with-value="&quot;Image&quot;">'
+            '</oppia-noninteractive-image>')
+        question_state_data['interaction']['solution'] = new_solution_dict
+
+        self.login(self.CURRICULUM_ADMIN_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+
+        self.post_json(
+            '%s/%s' % (
+                feconf.UPDATE_QUESTION_SUGGESTION_URL_PREFIX,
+                suggestion.suggestion_id
+            ), {
+                'question_state_data': question_state_data,
+                'skill_difficulty': 0.6,
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index)
+            },
+            csrf_token=csrf_token
+        )
+
+        updated_suggestion = suggestion_services.get_suggestion_by_id(
+            suggestion.suggestion_id)
+        assert isinstance(
+            updated_suggestion, suggestion_registry.SuggestionAddQuestion
+        )
+        new_question_state_data = updated_suggestion.change_cmd.question_dict[
+            'question_state_data']
+
+        self.assertEqual(
+            new_question_state_data['content']['html'],
+            '<p>Updated question</p>'
+            '<oppia-noninteractive-image filepath-with-value='
+            '"&quot;img.png&quot;" caption-with-value="&quot;&quot;" '
+            'alt-with-value="&quot;Image&quot;">'
+            '</oppia-noninteractive-image>'
+        )
+        self.assertEqual(
+            new_question_state_data['interaction']['solution'],
+            new_solution_dict)
+        self.logout()
+
+    def test_cannot_update_question_with_invalid_skill_difficulty(self) -> None:
+        skill_id = skill_services.get_new_skill_id()
+        self.save_new_skill(skill_id, self.author_id, description='description')
+        content_id_generator = translation_domain.ContentIdGenerator()
+        suggestion_change: Dict[
+            str, Union[str, question_domain.QuestionSuggestionChangeDict, float]
+        ] = {
+            'cmd': question_domain.CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION,
+            'question_dict': {
+                'question_state_data': self._create_valid_question_data(
+                    'default_state', content_id_generator).to_dict(),
+                'language_code': 'en',
+                'question_state_data_schema_version': (
+                    feconf.CURRENT_STATE_SCHEMA_VERSION),
+                'linked_skill_ids': ['skill_1'],
+                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index),
+                'id': None,
+                'version': 40
+            },
+            'skill_id': skill_id,
+            'skill_difficulty': 0.3
+        }
+        suggestion = suggestion_services.create_suggestion(
+            feconf.SUGGESTION_TYPE_ADD_QUESTION,
+            feconf.ENTITY_TYPE_SKILL, skill_id, 1,
+            self.author_id, suggestion_change, 'test description')
+
+        question_state_data = suggestion.change_cmd.question_dict[
+            'question_state_data']
+        question_state_data['content']['html'] = '<p>Updated question</p>'
+        new_solution_dict: state_domain.SolutionDict = {
+            'answer_is_exclusive': False,
+            'correct_answer': 'Solution',
+            'explanation': {
+                'content_id': 'solution_2',
+                'html': '<p>This is the updated solution.</p>',
+            },
+        }
+        question_state_data['interaction']['solution'] = new_solution_dict
+
+        self.login(self.CURRICULUM_ADMIN_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+
+        response = self.post_json(
+            '%s/%s' % (
+                feconf.UPDATE_QUESTION_SUGGESTION_URL_PREFIX,
+                suggestion.suggestion_id
+            ),
+            {
+                'question_state_data': question_state_data,
+                'skill_difficulty': 'string_value',
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index)
+            },
+            csrf_token=csrf_token,
+            expected_status_int=400
+        )
+
+        self.assertIn(
+            'Schema validation for \'skill_difficulty\' failed: Could '
+            'not convert str to float',
+            response['error']
+        )
+        self.logout()
+
+    def test_cannot_update_question_without_state_data(self) -> None:
+        skill_id = skill_services.get_new_skill_id()
+        self.save_new_skill(skill_id, self.author_id, description='description')
+        content_id_generator = translation_domain.ContentIdGenerator()
+        suggestion_change: Dict[
+            str, Union[str, question_domain.QuestionSuggestionChangeDict, float]
+        ] = {
+            'cmd': question_domain.CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION,
+            'question_dict': {
+                'question_state_data': self._create_valid_question_data(
+                    'default_state', content_id_generator).to_dict(),
+                'language_code': 'en',
+                'question_state_data_schema_version': (
+                    feconf.CURRENT_STATE_SCHEMA_VERSION),
+                'linked_skill_ids': ['skill_1'],
+                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index),
+                'id': None,
+                'version': 40
+            },
+            'skill_id': skill_id,
+            'skill_difficulty': 0.3
+        }
+        new_solution_dict: state_domain.SolutionDict = {
+            'answer_is_exclusive': False,
+            'correct_answer': 'Solution',
+            'explanation': {
+                'content_id': 'solution_2',
+                'html': '<p>This is the updated solution.</p>',
+            },
+        }
+        suggestion = suggestion_services.create_suggestion(
+            feconf.SUGGESTION_TYPE_ADD_QUESTION,
+            feconf.ENTITY_TYPE_SKILL, skill_id, 1,
+            self.author_id, suggestion_change, 'test description')
+
+        question_state_data = suggestion.change_cmd.question_dict[
+            'question_state_data']
+        question_state_data['content']['html'] = '<p>Updated question</p>'
+        question_state_data['interaction']['solution'] = new_solution_dict
+
+        self.login(self.CURRICULUM_ADMIN_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+
+        response = self.post_json(
+            '%s/%s' % (
+                feconf.UPDATE_QUESTION_SUGGESTION_URL_PREFIX,
+                suggestion.suggestion_id
+            ),
+            {
+                'skill_difficulty': 0.6,
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index)
+            },
+            csrf_token=csrf_token,
+            expected_status_int=400
+        )
+
+        self.assertIn(
+            'Missing key in handler args: question_state_data.',
+            response['error'],
+        )
+        self.logout()
+
+    def test_cannot_update_question_without_skill_difficulty(self) -> None:
+        skill_id = skill_services.get_new_skill_id()
+        self.save_new_skill(
+            skill_id, self.author_id, description='description')
+        content_id_generator = translation_domain.ContentIdGenerator()
+        suggestion_change: Dict[
+            str, Union[str, question_domain.QuestionSuggestionChangeDict, float]
+        ] = {
+            'cmd': question_domain.CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION,
+            'question_dict': {
+                'question_state_data': self._create_valid_question_data(
+                    'default_state', content_id_generator).to_dict(),
+                'language_code': 'en',
+                'question_state_data_schema_version': (
+                    feconf.CURRENT_STATE_SCHEMA_VERSION),
+                'linked_skill_ids': ['skill_1'],
+                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index),
+                'id': None,
+                'version': 40
+            },
+            'skill_id': skill_id,
+            'skill_difficulty': 0.3
+        }
+        new_solution_dict: state_domain.SolutionDict = {
+            'answer_is_exclusive': False,
+            'correct_answer': 'Solution',
+            'explanation': {
+                'content_id': 'solution_2',
+                'html': '<p>This is the updated solution.</p>',
+            },
+        }
+        suggestion = suggestion_services.create_suggestion(
+            feconf.SUGGESTION_TYPE_ADD_QUESTION,
+            feconf.ENTITY_TYPE_SKILL, skill_id, 1,
+            self.author_id, suggestion_change, 'test description')
+
+        question_state_data = suggestion.change_cmd.question_dict[
+            'question_state_data']
+        question_state_data['content']['html'] = '<p>Updated question</p>'
+        question_state_data['interaction']['solution'] = new_solution_dict
+
+        self.login(self.CURRICULUM_ADMIN_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+
+        response = self.post_json(
+            '%s/%s' % (
+                feconf.UPDATE_QUESTION_SUGGESTION_URL_PREFIX,
+                suggestion.suggestion_id
+            ),
+            {
+                'question_state_data': question_state_data,
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index)
+            },
+            csrf_token=csrf_token,
+            expected_status_int=400
+        )
+
+        self.assertIn(
+            'Missing key in handler args: skill_difficulty.',
+            response['error'],
+        )
+
+        self.logout()
+
+    def test_cannot_update_question_without_next_content_id_index(self) -> None:
+        skill_id = skill_services.get_new_skill_id()
+        self.save_new_skill(
+            skill_id, self.author_id, description='description')
+        content_id_generator = translation_domain.ContentIdGenerator()
+        suggestion_change: Dict[
+            str, Union[str, question_domain.QuestionSuggestionChangeDict, float]
+        ] = {
+            'cmd': question_domain.CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION,
+            'question_dict': {
+                'question_state_data': self._create_valid_question_data(
+                    'default_state', content_id_generator).to_dict(),
+                'language_code': 'en',
+                'question_state_data_schema_version': (
+                    feconf.CURRENT_STATE_SCHEMA_VERSION),
+                'linked_skill_ids': ['skill_1'],
+                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index),
+                'id': None,
+                'version': 40
+            },
+            'skill_id': skill_id,
+            'skill_difficulty': 0.3
+        }
+        new_solution_dict: state_domain.SolutionDict = {
+            'answer_is_exclusive': False,
+            'correct_answer': 'Solution',
+            'explanation': {
+                'content_id': 'solution_2',
+                'html': '<p>This is the updated solution.</p>',
+            },
+        }
+        suggestion = suggestion_services.create_suggestion(
+            feconf.SUGGESTION_TYPE_ADD_QUESTION,
+            feconf.ENTITY_TYPE_SKILL, skill_id, 1,
+            self.author_id, suggestion_change, 'test description')
+
+        question_state_data = suggestion.change_cmd.question_dict[
+            'question_state_data']
+        question_state_data['content']['html'] = '<p>Updated question</p>'
+        question_state_data['interaction']['solution'] = new_solution_dict
+
+        self.login(self.CURRICULUM_ADMIN_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+
+        response = self.post_json(
+            '%s/%s' % (
+                feconf.UPDATE_QUESTION_SUGGESTION_URL_PREFIX,
+                suggestion.suggestion_id
+            ),
+            {
+                'question_state_data': question_state_data,
+                'skill_difficulty': 0.6
+            },
+            csrf_token=csrf_token,
+            expected_status_int=400
+        )
+
+        self.assertIn(
+            'Missing key in handler args: next_content_id_index.',
+            response['error'],
+        )
+        self.logout()
+
+    def test_cannot_update_already_handled_question(self) -> None:
+        skill_id = skill_services.get_new_skill_id()
+        self.save_new_skill(
+            skill_id, self.author_id, description='description')
+        content_id_generator = translation_domain.ContentIdGenerator()
+        suggestion_change: Dict[
+            str, Union[str, question_domain.QuestionSuggestionChangeDict, float]
+        ] = {
+            'cmd': question_domain.CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION,
+            'question_dict': {
+                'question_state_data': self._create_valid_question_data(
+                    'default_state', content_id_generator).to_dict(),
+                'language_code': 'en',
+                'question_state_data_schema_version': (
+                    feconf.CURRENT_STATE_SCHEMA_VERSION),
+                'linked_skill_ids': ['skill_1'],
+                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index),
+                'id': None,
+                'version': 40
+            },
+            'skill_id': skill_id,
+            'skill_difficulty': 0.3
+        }
+        new_solution_dict: state_domain.SolutionDict = {
+            'answer_is_exclusive': False,
+            'correct_answer': 'Solution',
+            'explanation': {
+                'content_id': 'solution_2',
+                'html': '<p>This is the updated solution.</p>',
+            },
+        }
+        suggestion = suggestion_services.create_suggestion(
+            feconf.SUGGESTION_TYPE_ADD_QUESTION,
+            feconf.ENTITY_TYPE_SKILL, skill_id, 1,
+            self.author_id, suggestion_change, 'test description')
+        suggestion_services.accept_suggestion(
+            suggestion.suggestion_id, self.reviewer_id, 'Accepted', 'Done'
+        )
+
+        question_state_data = suggestion.change_cmd.question_dict[
+            'question_state_data']
+        question_state_data['content']['html'] = '<p>Updated question</p>'
+        question_state_data['interaction']['solution'] = new_solution_dict
+
+        self.login(self.CURRICULUM_ADMIN_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+
+        response = self.post_json(
+            '%s/%s' % (
+                feconf.UPDATE_QUESTION_SUGGESTION_URL_PREFIX,
+                suggestion.suggestion_id
+            ),
+            {
+                'question_state_data': question_state_data,
+                'skill_difficulty': '0.6',
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index)
+            },
+            csrf_token=csrf_token,
+            expected_status_int=400
+        )
+
+        self.assertEqual(
+            response['error'],
+            'The suggestion with id %s has been accepted or rejected' % (
+                suggestion.suggestion_id
+            )
+        )
+        self.logout()
+
+    def test_cannot_update_question_when_provided_state_data_is_invalid(
+        self
+    ) -> None:
+        skill_id = skill_services.get_new_skill_id()
+        self.save_new_skill(
+            skill_id, self.author_id, description='description')
+        content_id_generator = translation_domain.ContentIdGenerator()
+        suggestion_change: Dict[
+            str, Union[str, question_domain.QuestionSuggestionChangeDict, float]
+        ] = {
+            'cmd': question_domain.CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION,
+            'question_dict': {
+                'question_state_data': self._create_valid_question_data(
+                    'default_state', content_id_generator).to_dict(),
+                'language_code': 'en',
+                'question_state_data_schema_version': (
+                    feconf.CURRENT_STATE_SCHEMA_VERSION),
+                'linked_skill_ids': ['skill_1'],
+                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index),
+                'id': None,
+                'version': 40
+            },
+            'skill_id': skill_id,
+            'skill_difficulty': 0.3
+        }
+        suggestion = suggestion_services.create_suggestion(
+            feconf.SUGGESTION_TYPE_ADD_QUESTION,
+            feconf.ENTITY_TYPE_SKILL, skill_id, 1,
+            self.author_id, suggestion_change, 'test description')
+
+        invalid_question_state_data: Dict[str, str] = {}
+
+        self.login(self.CURRICULUM_ADMIN_EMAIL)
+        csrf_token = self.get_new_csrf_token()
+
+        self.post_json(
+            '%s/%s' % (
+                feconf.UPDATE_QUESTION_SUGGESTION_URL_PREFIX,
+                suggestion.suggestion_id
+            ),
+            {
+                'question_state_data': invalid_question_state_data,
+                'skill_difficulty': '0.6',
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index)
+            },
+            csrf_token=csrf_token,
+            expected_status_int=400
+        )
         self.logout()
 
 
@@ -1692,14 +2166,16 @@ class QuestionSuggestionTests(test_utils.GenericTestBase):
         self.set_curriculum_admins([self.CURRICULUM_ADMIN_USERNAME])
         self.save_new_skill(
             self.SKILL_ID, self.admin_id, description=self.SKILL_DESCRIPTION)
+        content_id_generator = translation_domain.ContentIdGenerator()
         self.question_dict: question_domain.QuestionSuggestionChangeDict = {
             'question_state_data': self._create_valid_question_data(
-                'default_state').to_dict(),
+                'default_state', content_id_generator).to_dict(),
             'language_code': 'en',
             'question_state_data_schema_version': (
                 feconf.CURRENT_STATE_SCHEMA_VERSION),
             'linked_skill_ids': [self.SKILL_ID],
             'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+            'next_content_id_index': content_id_generator.next_content_id_index,
             'id': None,
             'version': 40
         }
@@ -1713,7 +2189,7 @@ class QuestionSuggestionTests(test_utils.GenericTestBase):
                 'target_type': feconf.ENTITY_TYPE_SKILL,
                 'target_id': self.SKILL_ID,
                 'target_version_at_submission': 1,
-                'change': {
+                'change_cmd': {
                     'cmd': (
                         question_domain
                         .CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION),
@@ -1749,7 +2225,7 @@ class QuestionSuggestionTests(test_utils.GenericTestBase):
         self.assertEqual(
             suggestion['target_type'], feconf.ENTITY_TYPE_SKILL)
         self.assertEqual(
-            suggestion['change']['cmd'],
+            suggestion['change_cmd']['cmd'],
             question_domain.CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION)
 
     def test_accept_question_suggestion(self) -> None:
@@ -1761,14 +2237,13 @@ class QuestionSuggestionTests(test_utils.GenericTestBase):
 
         self.login(self.CURRICULUM_ADMIN_EMAIL)
         csrf_token = self.get_new_csrf_token()
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            self.put_json('%s/skill/%s/%s' % (
-                feconf.SUGGESTION_ACTION_URL_PREFIX,
-                suggestion_to_accept['target_id'],
-                suggestion_to_accept['suggestion_id']), {
-                    'action': u'accept',
-                    'review_message': u'This looks good!',
-                }, csrf_token=csrf_token)
+        self.put_json('%s/skill/%s/%s' % (
+            feconf.SUGGESTION_ACTION_URL_PREFIX,
+            suggestion_to_accept['target_id'],
+            suggestion_to_accept['suggestion_id']), {
+                'action': 'accept',
+                'review_message': 'This looks good!',
+            }, csrf_token=csrf_token)
 
         suggestion_post_accept = self.get_json(
             '%s?suggestion_type=%s' % (
@@ -1817,7 +2292,7 @@ class QuestionSuggestionTests(test_utils.GenericTestBase):
         question_state_dict: state_domain.StateDict = {
             'content': {
                 'html': '<p>Text</p>',
-                'content_id': 'content'
+                'content_id': 'content_0'
             },
             'classifier_model_id': None,
             'linked_skill_id': None,
@@ -1835,7 +2310,7 @@ class QuestionSuggestionTests(test_utils.GenericTestBase):
                             'dest_if_really_stuck': None,
                             'feedback': {
                                 'html': '<p>assas</p>',
-                                'content_id': 'feedback_0'
+                                'content_id': 'feedback_2'
                             },
                             'labelled_as_correct': True,
                             'param_changes': [],
@@ -1880,7 +2355,7 @@ class QuestionSuggestionTests(test_utils.GenericTestBase):
                     'dest_if_really_stuck': None,
                     'feedback': {
                         'html': '<p>wer</p>',
-                        'content_id': 'default_outcome'
+                        'content_id': 'default_outcome_1'
                     },
                     'labelled_as_correct': False,
                     'param_changes': [],
@@ -1891,7 +2366,7 @@ class QuestionSuggestionTests(test_utils.GenericTestBase):
                     {
                         'hint_content': {
                             'html': '<p>assaas</p>',
-                            'content_id': 'hint_1'
+                            'content_id': 'hint_3'
                         }
                     }
                 ],
@@ -1900,23 +2375,15 @@ class QuestionSuggestionTests(test_utils.GenericTestBase):
             'param_changes': [],
             'recorded_voiceovers': {
                 'voiceovers_mapping': {
-                    'content': {},
-                    'default_outcome': {},
-                    'feedback_0': {},
-                    'hint_1': {}
+                    'content_0': {},
+                    'default_outcome_1': {},
+                    'feedback_2': {},
+                    'hint_3': {}
                 }
             },
             'solicit_answer_details': False,
             'card_is_checkpoint': False,
-            'written_translations': {
-                'translations_mapping': {
-                    'content': {},
-                    'default_outcome': {},
-                    'feedback_0': {},
-                    'hint_1': {}
-                }
-            },
-            'next_content_id_index': 2
+            'inapplicable_skill_misconception_ids': []
         }
         question_dict: question_domain.QuestionSuggestionChangeDict = {
             'question_state_data': question_state_dict,
@@ -1925,6 +2392,7 @@ class QuestionSuggestionTests(test_utils.GenericTestBase):
                 feconf.CURRENT_STATE_SCHEMA_VERSION),
             'linked_skill_ids': [skill_id],
             'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+            'next_content_id_index': 4,
             'id': None,
             'version': 40
         }
@@ -1951,14 +2419,13 @@ class QuestionSuggestionTests(test_utils.GenericTestBase):
         self.login(self.CURRICULUM_ADMIN_EMAIL)
         csrf_token = self.get_new_csrf_token()
 
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            self.put_json('%s/skill/%s/%s' % (
-                feconf.SUGGESTION_ACTION_URL_PREFIX,
-                suggestion.target_id,
-                suggestion.suggestion_id), {
-                    'action': u'accept',
-                    'review_message': u'This looks good!',
-                }, csrf_token=csrf_token)
+        self.put_json('%s/skill/%s/%s' % (
+            feconf.SUGGESTION_ACTION_URL_PREFIX,
+            suggestion.target_id,
+            suggestion.suggestion_id), {
+                'action': 'accept',
+                'review_message': 'This looks good!',
+            }, csrf_token=csrf_token)
 
         self.logout()
 
@@ -1989,7 +2456,7 @@ class QuestionSuggestionTests(test_utils.GenericTestBase):
                 'target_type': feconf.ENTITY_TYPE_SKILL,
                 'target_id': self.SKILL_ID,
                 'target_version_at_submission': 'invalid_target_version',
-                'change': {
+                'change_cmd': {
                     'cmd': (
                         question_domain
                         .CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION),
@@ -2004,10 +2471,10 @@ class QuestionSuggestionTests(test_utils.GenericTestBase):
                 feconf.SUGGESTION_LIST_URL_PREFIX,
                 self.author_id))['suggestions']
 
-        self.assertEqual(
-            response['error'],
+        self.assertIn(
             'Schema validation for \'target_version_at_submission\' failed: '
-            'Could not convert str to int: invalid_target_version'
+            'Could not convert str to int: invalid_target_version',
+            response['error'],
         )
         self.assertEqual(len(suggestions), 1)
         self.logout()
@@ -2015,8 +2482,9 @@ class QuestionSuggestionTests(test_utils.GenericTestBase):
     def test_suggestion_creation_with_valid_images(self) -> None:
         self.save_new_skill(
             'skill_id2', self.admin_id, description='description')
+        content_id_generator = translation_domain.ContentIdGenerator()
         question_state_data_dict = self._create_valid_question_data(
-            'default_state').to_dict()
+            'default_state', content_id_generator).to_dict()
         valid_html = (
             '<oppia-noninteractive-math math_content-with-value="{&amp;q'
             'uot;raw_latex&amp;quot;: &amp;quot;(x - a_1)(x - a_2)(x - a'
@@ -2032,6 +2500,8 @@ class QuestionSuggestionTests(test_utils.GenericTestBase):
                 feconf.CURRENT_STATE_SCHEMA_VERSION),
             'linked_skill_ids': ['skill_id2'],
             'inapplicable_skill_misconception_ids': [],
+            'next_content_id_index': (
+                content_id_generator.next_content_id_index),
             'id': None,
             'version': 40
         }
@@ -2051,7 +2521,7 @@ class QuestionSuggestionTests(test_utils.GenericTestBase):
                 'target_type': feconf.ENTITY_TYPE_SKILL,
                 'target_id': self.SKILL_ID,
                 'target_version_at_submission': 1,
-                'change': {
+                'change_cmd': {
                     'cmd': (
                         question_domain
                         .CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION),
@@ -2088,15 +2558,16 @@ class SkillSuggestionTests(test_utils.GenericTestBase):
         self.skill_id = skill_services.get_new_skill_id()
         self.save_new_skill(
             self.skill_id, self.admin_id, description='Description')
-
+        content_id_generator = translation_domain.ContentIdGenerator()
         self.question_dict = {
             'question_state_data': self._create_valid_question_data(
-                'default_state').to_dict(),
+                'default_state', content_id_generator).to_dict(),
             'language_code': 'en',
             'question_state_data_schema_version': (
                 feconf.CURRENT_STATE_SCHEMA_VERSION),
             'linked_skill_ids': [self.skill_id],
-            'inapplicable_skill_misconception_ids': ['skillid12345-1']
+            'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+            'next_content_id_index': content_id_generator.next_content_id_index
         }
 
         self.login(self.AUTHOR_EMAIL)
@@ -2109,7 +2580,7 @@ class SkillSuggestionTests(test_utils.GenericTestBase):
                 'target_type': feconf.ENTITY_TYPE_SKILL,
                 'target_id': self.skill_id,
                 'target_version_at_submission': 1,
-                'change': {
+                'change_cmd': {
                     'cmd': (
                         question_domain
                         .CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION),
@@ -2135,8 +2606,8 @@ class SkillSuggestionTests(test_utils.GenericTestBase):
             '%s/skill/%s/%s' % (
                 feconf.SUGGESTION_ACTION_URL_PREFIX, self.skill_id,
                 thread_id), {
-                    'action': u'reject',
-                    'review_message': u'Rejected!'
+                    'action': 'reject',
+                    'review_message': 'Rejected!'
                 }, csrf_token=csrf_token, expected_status_int=400)
 
         self.logout()
@@ -2168,14 +2639,13 @@ class SkillSuggestionTests(test_utils.GenericTestBase):
 
         csrf_token = self.get_new_csrf_token()
 
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            response = self.put_json(
-                '%s/skill/%s/%s' % (
-                    feconf.SUGGESTION_ACTION_URL_PREFIX,
-                    self.skill_id, suggestion_id), {
-                        'action': u'reject',
-                        'review_message': u'Rejected!'
-                    }, csrf_token=csrf_token, expected_status_int=400)
+        response = self.put_json('%s/skill/%s/%s' % (
+            feconf.SUGGESTION_ACTION_URL_PREFIX,
+            self.skill_id, suggestion_id
+        ), {
+            'action': 'reject',
+            'review_message': 'Rejected!'
+        }, csrf_token=csrf_token, expected_status_int=400)
 
         self.assertEqual(
             response['error'],
@@ -2195,16 +2665,13 @@ class SkillSuggestionTests(test_utils.GenericTestBase):
 
         csrf_token = self.get_new_csrf_token()
 
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            response = self.put_json(
-                '%s/skill/%s/%s' % (
-                    feconf.SUGGESTION_ACTION_URL_PREFIX,
-                    'skill_id', suggestion_to_accept['suggestion_id']),
-                {
-                    'action': u'reject',
-                    'review_message': u'Rejected!'
-                },
-                csrf_token=csrf_token, expected_status_int=400)
+        response = self.put_json('%s/skill/%s/%s' % (
+            feconf.SUGGESTION_ACTION_URL_PREFIX,
+            'skill_id', suggestion_to_accept['suggestion_id']
+        ), {
+            'action': 'reject',
+            'review_message': 'Rejected!'
+        }, csrf_token=csrf_token, expected_status_int=400)
 
         self.assertEqual(
             response['error'],
@@ -2222,14 +2689,13 @@ class SkillSuggestionTests(test_utils.GenericTestBase):
                 self.author_id))['suggestions'][0]
 
         csrf_token = self.get_new_csrf_token()
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            response = self.put_json(
-                '%s/skill/%s/%s' % (
-                    feconf.SUGGESTION_ACTION_URL_PREFIX,
-                    suggestion_to_accept['target_id'],
-                    suggestion_to_accept['suggestion_id']),
-                {'action': 'invalid_action'}, csrf_token=csrf_token,
-                expected_status_int=400)
+        response = self.put_json(
+            '%s/skill/%s/%s' % (
+                feconf.SUGGESTION_ACTION_URL_PREFIX,
+                suggestion_to_accept['target_id'],
+                suggestion_to_accept['suggestion_id']),
+            {'action': 'invalid_action'}, csrf_token=csrf_token,
+            expected_status_int=400)
 
         self.assertIn(
             'Received invalid_action which is not in the allowed range '
@@ -2252,14 +2718,13 @@ class SkillSuggestionTests(test_utils.GenericTestBase):
             suggestion.status, suggestion_models.STATUS_IN_REVIEW)
 
         csrf_token = self.get_new_csrf_token()
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            self.put_json('%s/skill/%s/%s' % (
-                feconf.SUGGESTION_ACTION_URL_PREFIX,
-                suggestion_to_reject['target_id'],
-                suggestion_to_reject['suggestion_id']), {
-                    'action': u'reject',
-                    'review_message': u'Rejected!'
-                }, csrf_token=csrf_token)
+        self.put_json('%s/skill/%s/%s' % (
+            feconf.SUGGESTION_ACTION_URL_PREFIX,
+            suggestion_to_reject['target_id'],
+            suggestion_to_reject['suggestion_id']), {
+                'action': 'reject',
+                'review_message': 'Rejected!'
+            }, csrf_token=csrf_token)
 
         suggestion = suggestion_services.get_suggestion_by_id(
             suggestion_to_reject['suggestion_id'])
@@ -2281,14 +2746,13 @@ class SkillSuggestionTests(test_utils.GenericTestBase):
             suggestion.status, suggestion_models.STATUS_IN_REVIEW)
 
         csrf_token = self.get_new_csrf_token()
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            self.put_json('%s/skill/%s/%s' % (
-                feconf.SUGGESTION_ACTION_URL_PREFIX,
-                suggestion_to_accept['target_id'],
-                suggestion_to_accept['suggestion_id']), {
-                    'action': u'accept',
-                    'review_message': u'Accepted!',
-                }, csrf_token=csrf_token)
+        self.put_json('%s/skill/%s/%s' % (
+            feconf.SUGGESTION_ACTION_URL_PREFIX,
+            suggestion_to_accept['target_id'],
+            suggestion_to_accept['suggestion_id']), {
+                'action': 'accept',
+                'review_message': 'Accepted!',
+            }, csrf_token=csrf_token)
 
         suggestion = suggestion_services.get_suggestion_by_id(
             suggestion_to_accept['suggestion_id'])
@@ -2311,14 +2775,13 @@ class SkillSuggestionTests(test_utils.GenericTestBase):
             suggestion.status, suggestion_models.STATUS_IN_REVIEW)
 
         csrf_token = self.get_new_csrf_token()
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            self.put_json('%s/skill/%s/%s' % (
-                feconf.SUGGESTION_ACTION_URL_PREFIX,
-                suggestion_to_accept['target_id'],
-                suggestion_to_accept['suggestion_id']), {
-                    'action': u'accept',
-                    'review_message': u'Accepted!'
-                }, csrf_token=csrf_token)
+        self.put_json('%s/skill/%s/%s' % (
+            feconf.SUGGESTION_ACTION_URL_PREFIX,
+            suggestion_to_accept['target_id'],
+            suggestion_to_accept['suggestion_id']), {
+                'action': 'accept',
+                'review_message': 'Accepted!'
+            }, csrf_token=csrf_token)
 
         suggestion = suggestion_services.get_suggestion_by_id(
             suggestion_to_accept['suggestion_id'])
@@ -2350,8 +2813,7 @@ class UserSubmittedSuggestionsHandlerTest(test_utils.GenericTestBase):
         self.SKILL_DESCRIPTION = 'skill to link question to'
         exploration = self.save_new_valid_exploration(
             self.EXP_ID, self.owner_id, title='Exploration title',
-            category='Algebra', end_state_name='End State',
-            correctness_feedback_enabled=True)
+            category='Algebra', end_state_name='End State')
         self.publish_exploration(self.owner_id, self.EXP_ID)
 
         topic = topic_domain.Topic.create_default_topic(
@@ -2409,7 +2871,7 @@ class UserSubmittedSuggestionsHandlerTest(test_utils.GenericTestBase):
                     'property_name': exp_domain.STATE_PROPERTY_CONTENT,
                     'state_name': 'Introduction',
                     'new_value': {
-                        'content_id': 'content',
+                        'content_id': 'content_0',
                         'html': '<p>new content html</p>'
                     }
                 })], 'Add content')
@@ -2426,10 +2888,10 @@ class UserSubmittedSuggestionsHandlerTest(test_utils.GenericTestBase):
                 'target_type': (feconf.ENTITY_TYPE_EXPLORATION),
                 'target_id': self.EXP_ID,
                 'target_version_at_submission': exploration.version,
-                'change': {
+                'change_cmd': {
                     'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
                     'state_name': 'Introduction',
-                    'content_id': 'content',
+                    'content_id': 'content_0',
                     'language_code': 'hi',
                     'content_html': '<p>new content html</p>',
                     'translation_html': '<p>new content html in Hindi</p>',
@@ -2437,15 +2899,17 @@ class UserSubmittedSuggestionsHandlerTest(test_utils.GenericTestBase):
                 },
                 'description': 'Adds translation',
             }, csrf_token=csrf_token)
-
+        content_id_generator = translation_domain.ContentIdGenerator()
         self.question_dict = {
             'question_state_data': self._create_valid_question_data(
-                'default_state').to_dict(),
+                'default_state', content_id_generator).to_dict(),
             'language_code': 'en',
             'question_state_data_schema_version': (
                 feconf.CURRENT_STATE_SCHEMA_VERSION),
             'linked_skill_ids': [self.SKILL_ID],
-            'inapplicable_skill_misconception_ids': ['skillid12345-1']
+            'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+            'next_content_id_index': (
+                content_id_generator.next_content_id_index)
         }
 
         self.post_json(
@@ -2455,7 +2919,7 @@ class UserSubmittedSuggestionsHandlerTest(test_utils.GenericTestBase):
                 'target_type': feconf.ENTITY_TYPE_SKILL,
                 'target_id': self.SKILL_ID,
                 'target_version_at_submission': 1,
-                'change': {
+                'change_cmd': {
                     'cmd': (
                         question_domain
                         .CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION),
@@ -2570,6 +3034,97 @@ class UserSubmittedSuggestionsHandlerTest(test_utils.GenericTestBase):
         self.assertEqual(
             response['target_id_to_opportunity_dict'][self.EXP_ID], None)
 
+    def test_get_translation_suggestions_returns_null_exploration_content_html_for_obsolete_suggestions( # pylint: disable=line-too-long
+        self
+    ) -> None:
+        # Create a new exploration and linked story.
+        self.login(self.EDITOR_EMAIL)
+        continue_state_name = 'continue state'
+        exp_100 = self.save_new_linear_exp_with_state_names_and_interactions(
+            '100',
+            self.owner_id,
+            ['Introduction', continue_state_name, 'End state'],
+            ['TextInput', 'Continue'],
+            category='Algebra'
+        )
+        self.publish_exploration(self.owner_id, exp_100.id)
+        self.create_story_for_translation_opportunity(
+            self.owner_id, self.admin_id, 'story_id_100', self.TOPIC_ID,
+            exp_100.id)
+        self.logout()
+
+        # Create a translation suggestion for the Continue button text.
+        self.login(self.AUTHOR_EMAIL)
+        continue_state = exp_100.states['continue state']
+        # Here we use cast because we are narrowing down the type from various
+        # customization args value types to 'SubtitledUnicode' type, and this
+        # is done because here we are accessing 'buttontext' key from continue
+        # customization arg whose value is always of SubtitledUnicode type.
+        subtitled_unicode_of_continue_button_text = cast(
+            state_domain.SubtitledUnicode,
+            continue_state.interaction.customization_args['buttonText'].value
+        )
+        content_id_of_continue_button_text = (
+            subtitled_unicode_of_continue_button_text.content_id
+        )
+        change_dict = {
+            'cmd': 'add_translation',
+            'content_id': content_id_of_continue_button_text,
+            'language_code': 'hi',
+            'content_html': 'Continue',
+            'state_name': continue_state_name,
+            'translation_html': '<p>Translation for content.</p>'
+        }
+        suggestion_services.create_suggestion(
+            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+            feconf.ENTITY_TYPE_EXPLORATION,
+            exp_100.id, 1, self.author_id, change_dict, 'description')
+
+        # Handler should return the new suggestion.
+        response = self.get_json(
+            '/getsubmittedsuggestions/exploration/translate_content', {
+                'limit': constants.OPPORTUNITIES_PAGE_SIZE,
+                'offset': 0,
+                'sort_key': constants.SUGGESTIONS_SORT_KEY_DATE
+            })
+        self.assertEqual(len(response['suggestions']), 2)
+        self.assertEqual(response['next_offset'], 2)
+        suggestion = response['suggestions'][0]
+        self.assertEqual(suggestion['exploration_content_html'], 'Continue')
+        self.logout()
+
+        # Replace the Continue button text content ID.
+        self.login(self.EDITOR_EMAIL)
+        exp_services.update_exploration(
+            self.owner_id, exp_100.id, [
+                exp_domain.ExplorationChange({
+                    'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
+                    'property_name':
+                        exp_domain.STATE_PROPERTY_INTERACTION_CUST_ARGS,
+                    'state_name': continue_state_name,
+                    'new_value': {
+                        'buttonText': {
+                            'value': {
+                                'content_id': 'new_content_id',
+                                'unicode_str': 'Continua'
+                            }
+                        }
+                    }
+                })], 'Change continue button content ID')
+        self.logout()
+
+        self.login(self.AUTHOR_EMAIL)
+        response = self.get_json(
+            '/getsubmittedsuggestions/exploration/translate_content', {
+                'limit': constants.OPPORTUNITIES_PAGE_SIZE,
+                'offset': 0,
+                'sort_key': constants.SUGGESTIONS_SORT_KEY_DATE
+            })
+        self.assertEqual(len(response['suggestions']), 2)
+        self.assertEqual(response['next_offset'], 2)
+        suggestion = response['suggestions'][0]
+        self.assertIsNone(suggestion['exploration_content_html'])
+
     def test_translation_suggestions_fetches_extra_page_if_filtered_result_is_empty( # pylint: disable=line-too-long
         self
     ) -> None:
@@ -2579,15 +3134,14 @@ class UserSubmittedSuggestionsHandlerTest(test_utils.GenericTestBase):
         exp_id = 'exp2'
         self.save_new_valid_exploration(
             exp_id, self.owner_id, title='Exploration title',
-            category='Algebra', end_state_name='End State',
-            correctness_feedback_enabled=True)
+            category='Algebra', end_state_name='End State')
         self.publish_exploration(self.owner_id, exp_id)
         self.create_story_for_translation_opportunity(
             self.owner_id, self.admin_id, 'story_id_2', self.TOPIC_ID, exp_id)
         add_translation_change_dict = {
             'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
             'state_name': 'Introduction',
-            'content_id': 'content',
+            'content_id': 'content_0',
             'language_code': 'hi',
             'content_html': '',
             'translation_html': 'translation2',
@@ -2613,7 +3167,7 @@ class UserSubmittedSuggestionsHandlerTest(test_utils.GenericTestBase):
         # filtered out, the controller performs another fetch.
         self.assertEqual(len(response['suggestions']), 1)
         self.assertEqual(
-            response['suggestions'][0]['change']['translation_html'],
+            response['suggestions'][0]['change_cmd']['translation_html'],
             '<p>new content html in Hindi</p>')
         # Offset reflects the extra fetch.
         self.assertEqual(response['next_offset'], 2)
@@ -2685,8 +3239,7 @@ class ReviewableSuggestionsHandlerTest(test_utils.GenericTestBase):
         self.SKILL_DESCRIPTION = 'skill to link question to'
         exploration = self.save_new_valid_exploration(
             self.EXP_ID, self.owner_id, title='Exploration title',
-            category='Algebra', end_state_name='End State',
-            correctness_feedback_enabled=True)
+            category='Algebra', end_state_name='End State')
         self.publish_exploration(self.owner_id, self.EXP_ID)
 
         topic = topic_domain.Topic.create_default_topic(
@@ -2695,11 +3248,11 @@ class ReviewableSuggestionsHandlerTest(test_utils.GenericTestBase):
         topic.thumbnail_bg_color = '#C6DCDA'
         topic.subtopics = [
             topic_domain.Subtopic(
-                1, 'Title', ['skill_id_333'], 'image.svg',
+                1, 'Title', [self.SKILL_ID], 'image.svg',
                 constants.ALLOWED_THUMBNAIL_BG_COLORS['subtopic'][0], 21131,
                 'dummy-subtopic-three')]
         topic.next_subtopic_id = 2
-        topic.skill_ids_for_diagnostic_test = ['skill_id_333']
+        topic.skill_ids_for_diagnostic_test = [self.SKILL_ID]
         topic_services.save_new_topic(self.owner_id, topic)
         topic_services.publish_topic(self.TOPIC_ID, self.admin_id)
 
@@ -2740,7 +3293,7 @@ class ReviewableSuggestionsHandlerTest(test_utils.GenericTestBase):
                     'property_name': exp_domain.STATE_PROPERTY_CONTENT,
                     'state_name': 'Introduction',
                     'new_value': {
-                        'content_id': 'content',
+                        'content_id': 'content_0',
                         'html': '<p>new content html</p>'
                     }
                 })], 'Add content')
@@ -2753,7 +3306,7 @@ class ReviewableSuggestionsHandlerTest(test_utils.GenericTestBase):
         self.translate_suggestion_change = {
             'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
             'state_name': 'Introduction',
-            'content_id': 'content',
+            'content_id': 'content_0',
             'language_code': 'hi',
             'content_html': '<p>new content html</p>',
             'translation_html': '<p>new content html in Hindi</p>',
@@ -2766,19 +3319,21 @@ class ReviewableSuggestionsHandlerTest(test_utils.GenericTestBase):
                 'target_type': feconf.ENTITY_TYPE_EXPLORATION,
                 'target_id': self.EXP_ID,
                 'target_version_at_submission': exploration.version,
-                'change': self.translate_suggestion_change,
+                'change_cmd': self.translate_suggestion_change,
                 'description': 'Adds translation',
             }, csrf_token=csrf_token
         )
-
+        content_id_generator = translation_domain.ContentIdGenerator()
         self.question_dict = {
             'question_state_data': self._create_valid_question_data(
-                'default_state').to_dict(),
+                'default_state', content_id_generator).to_dict(),
             'language_code': 'en',
             'question_state_data_schema_version': (
                 feconf.CURRENT_STATE_SCHEMA_VERSION),
             'linked_skill_ids': [self.SKILL_ID],
-            'inapplicable_skill_misconception_ids': ['skillid12345-1']
+            'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+            'next_content_id_index': (
+                content_id_generator.next_content_id_index)
         }
         self.translate_question_change = {
             'cmd': question_domain.CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION,
@@ -2791,10 +3346,20 @@ class ReviewableSuggestionsHandlerTest(test_utils.GenericTestBase):
                 'suggestion_type': (
                     feconf.SUGGESTION_TYPE_ADD_QUESTION),
                 'target_type': feconf.ENTITY_TYPE_SKILL,
+                'target_id': 'skill_without_topic',
+                'target_version_at_submission': 1,
+                'change_cmd': self.translate_question_change,
+                'description': 'Add question for a skill without topic'
+            }, csrf_token=csrf_token)
+        self.post_json(
+            '%s/' % feconf.SUGGESTION_URL_PREFIX, {
+                'suggestion_type': (
+                    feconf.SUGGESTION_TYPE_ADD_QUESTION),
+                'target_type': feconf.ENTITY_TYPE_SKILL,
                 'target_id': self.SKILL_ID,
                 'target_version_at_submission': 1,
-                'change': self.translate_question_change,
-                'description': 'Add new question to skill'
+                'change_cmd': self.translate_question_change,
+                'description': 'Add new question for a skill with topic'
             }, csrf_token=csrf_token)
 
         self.logout()
@@ -2827,7 +3392,7 @@ class ReviewableSuggestionsHandlerTest(test_utils.GenericTestBase):
         self.assertEqual(response['next_offset'], 1)
         suggestion = response['suggestions'][0]
         self.assertDictEqual(
-            suggestion['change'], self.translate_suggestion_change)
+            suggestion['change_cmd'], self.translate_suggestion_change)
         self.assertEqual(
             suggestion['suggestion_type'],
             feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT
@@ -2843,8 +3408,9 @@ class ReviewableSuggestionsHandlerTest(test_utils.GenericTestBase):
             {
                 'exp1': {
                     'chapter_title': 'Node1',
-                    'content_count': 2,
+                    'content_count': 1,
                     'id': 'exp1',
+                    'is_pinned': False,
                     'story_title': 'A story',
                     'topic_name': 'topic',
                     'translation_counts': {},
@@ -2852,100 +3418,6 @@ class ReviewableSuggestionsHandlerTest(test_utils.GenericTestBase):
                 }
             }
         )
-        self.assertEqual(response['next_offset'], 1)
-
-    def test_exploration_handler_does_not_return_obsolete_suggestions(
-        self
-    ) -> None:
-        # Create a new exploration and linked story.
-        self.login(self.EDITOR_EMAIL)
-        continue_state_name = 'continue state'
-        exp_100 = self.save_new_linear_exp_with_state_names_and_interactions(
-            '100',
-            self.owner_id,
-            ['Introduction', continue_state_name, 'End state'],
-            ['TextInput', 'Continue'],
-            category='Algebra',
-            correctness_feedback_enabled=True
-        )
-        self.publish_exploration(self.owner_id, exp_100.id)
-        self.create_story_for_translation_opportunity(
-            self.owner_id, self.admin_id, 'story_id_100', self.TOPIC_ID,
-            exp_100.id)
-        self.logout()
-
-        # Create a translation suggestion for the Continue button text.
-        self.login(self.AUTHOR_EMAIL)
-        continue_state = exp_100.states['continue state']
-        # Here we use cast because we are narrowing down the type from various
-        # customization args value types to 'SubtitledUnicode' type, and this
-        # is done because here we are accessing 'buttontext' key from continue
-        # customization arg whose value is always of SubtitledUnicode type.
-        subtitled_unicode_of_continue_button_text = cast(
-            state_domain.SubtitledUnicode,
-            continue_state.interaction.customization_args['buttonText'].value
-        )
-        content_id_of_continue_button_text = (
-            subtitled_unicode_of_continue_button_text.content_id
-        )
-        change_dict = {
-            'cmd': 'add_translation',
-            'content_id': content_id_of_continue_button_text,
-            'language_code': 'hi',
-            'content_html': 'Continue',
-            'state_name': continue_state_name,
-            'translation_html': '<p>Translation for content.</p>'
-        }
-        suggestion_services.create_suggestion(
-            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
-            feconf.ENTITY_TYPE_EXPLORATION,
-            exp_100.id, 1, self.owner_id, change_dict, 'description')
-        self.logout()
-
-        self.login(self.REVIEWER_EMAIL)
-        # Handler should return the new suggestion.
-        response = self.get_json(
-            '/getreviewablesuggestions/exploration/translate_content', params={
-                'exploration_id': exp_100.id,
-                'limit': constants.OPPORTUNITIES_PAGE_SIZE,
-                'offset': 0,
-                'sort_key': constants.SUGGESTIONS_SORT_KEY_DATE
-            })
-        self.assertEqual(len(response['suggestions']), 1)
-        self.assertEqual(response['next_offset'], 1)
-        self.logout()
-
-        # Replace the Continue button text content ID.
-        self.login(self.EDITOR_EMAIL)
-        exp_services.update_exploration(
-            self.owner_id, exp_100.id, [
-                exp_domain.ExplorationChange({
-                    'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
-                    'property_name':
-                        exp_domain.STATE_PROPERTY_INTERACTION_CUST_ARGS,
-                    'state_name': continue_state_name,
-                    'new_value': {
-                        'buttonText': {
-                            'value': {
-                                'content_id': 'new_content_id',
-                                'unicode_str': 'Continua'
-                            }
-                        }
-                    }
-                })], 'Change continue button content ID')
-        self.logout()
-
-        self.login(self.REVIEWER_EMAIL)
-        # After the new suggestion's content was deleted, handler should not
-        # return the obsolete suggestion.
-        response = self.get_json(
-            '/getreviewablesuggestions/exploration/translate_content', params={
-                'exploration_id': exp_100.id,
-                'limit': constants.OPPORTUNITIES_PAGE_SIZE,
-                'offset': 0,
-                'sort_key': constants.SUGGESTIONS_SORT_KEY_DATE
-            })
-        self.assertEqual(len(response['suggestions']), 0)
         self.assertEqual(response['next_offset'], 1)
 
     def test_topic_translate_handler_returns_no_data(self) -> None:
@@ -2962,12 +3434,12 @@ class ReviewableSuggestionsHandlerTest(test_utils.GenericTestBase):
             '/getreviewablesuggestions/skill/add_question', {
                 'limit': constants.OPPORTUNITIES_PAGE_SIZE,
                 'offset': 0,
-                'sort_key': constants.SUGGESTIONS_SORT_KEY_DATE
+                'sort_key': constants.SUGGESTIONS_SORT_KEY_DATE,
             })
-        self.assertEqual(len(response['suggestions']), 1)
+        self.assertEqual(len(response['suggestions']), 2)
         suggestion = response['suggestions'][0]
         self.assertDictEqual(
-            suggestion['change'], self.translate_question_change)
+            suggestion['change_cmd'], self.translate_question_change)
         self.assertEqual(
             suggestion['suggestion_type'], feconf.SUGGESTION_TYPE_ADD_QUESTION)
         self.assertEqual(
@@ -2977,27 +3449,47 @@ class ReviewableSuggestionsHandlerTest(test_utils.GenericTestBase):
         self.assertEqual(suggestion['author_name'], 'author')
         self.assertEqual(suggestion['status'], 'review')
         self.assertDictEqual(
-            response['target_id_to_opportunity_dict'],
+            response['target_id_to_opportunity_dict'][self.SKILL_ID],
             {
-                'skill1234567': {
-                    'id': 'skill1234567',
-                    'question_count': 0,
-                    'skill_description': 'skill to link question to',
-                    'skill_rubrics': [
-                        {
-                            'difficulty': 'Easy',
-                            'explanations': ['Explanation 1']
-                        }, {
-                            'difficulty': 'Medium',
-                            'explanations': ['Explanation 2']
-                        }, {
-                            'difficulty': 'Hard',
-                            'explanations': ['Explanation 3']
-                        }
-                    ]
-                }
+                'id': self.SKILL_ID,
+                'question_count': 0,
+                'skill_description': 'skill to link question to',
+                'skill_rubrics': [
+                    {
+                        'difficulty': 'Easy',
+                        'explanations': ['Explanation 1']
+                    }, {
+                        'difficulty': 'Medium',
+                        'explanations': ['Explanation 2']
+                    }, {
+                        'difficulty': 'Hard',
+                        'explanations': ['Explanation 3']
+                    }
+                ]
             }
         )
+
+    def test_skill_handler_with_topic_filter_returns_one_question(self) -> None:
+        response = self.get_json(
+            '/getreviewablesuggestions/skill/add_question', {
+                'limit': constants.OPPORTUNITIES_PAGE_SIZE,
+                'offset': 0,
+                'sort_key': constants.SUGGESTIONS_SORT_KEY_DATE,
+                'topic_name': self.TOPIC_ID,
+            })
+        self.assertEqual(len(response['suggestions']), 1)
+
+    def test_skill_handler_with_all_topics_filter_returns_one_question(
+            self
+        ) -> None:
+        response = self.get_json(
+            '/getreviewablesuggestions/skill/add_question', {
+                'limit': constants.OPPORTUNITIES_PAGE_SIZE,
+                'offset': 0,
+                'sort_key': constants.SUGGESTIONS_SORT_KEY_DATE,
+                'topic_name': 'All',
+            })
+        self.assertEqual(len(response['suggestions']), 2)
 
     def test_topic_question_handler_returns_no_data(self) -> None:
         response = self.get_json(
@@ -3008,6 +3500,17 @@ class ReviewableSuggestionsHandlerTest(test_utils.GenericTestBase):
             })
         self.assertEqual(response, {})
 
+    def test_handler_with_non_existent_topic_raise_error(self) -> None:
+        self.get_json(
+            '/getreviewablesuggestions/topic/add_question', {
+                'limit': constants.OPPORTUNITIES_PAGE_SIZE,
+                'offset': 0,
+                'sort_key': constants.SUGGESTIONS_SORT_KEY_DATE,
+                'topic_name': 'non_existent_topic'
+            },
+            expected_status_int=400
+        )
+
     def test_handler_with_invalid_suggestion_type_raise_error(self) -> None:
         self.get_json(
             '/getreviewablesuggestions/exploration/invalid_suggestion_type', {
@@ -3016,6 +3519,29 @@ class ReviewableSuggestionsHandlerTest(test_utils.GenericTestBase):
                 'sort_key': constants.SUGGESTIONS_SORT_KEY_DATE
             },
             expected_status_int=404
+        )
+
+    def test_exploration_handler_returns_data_with_no_limit(self) -> None:
+        user_settings = user_services.get_user_settings(self.reviewer_id)
+        user_settings.preferred_translation_language_code = 'hi'
+        user_services.save_user_settings(user_settings)
+
+        response = self.get_json(
+            '/getreviewablesuggestions/exploration/translate_content', params={
+                'exploration_id': self.EXP_ID,
+                'offset': 0,
+                'sort_key': constants.SUGGESTIONS_SORT_KEY_DATE
+            })
+
+        self.assertEqual(len(response['suggestions']), 1)
+
+    def test_skill_handler_with_no_limit_raise_error(self) -> None:
+        self.get_json(
+            '/getreviewablesuggestions/skill/add_question', {
+                'offset': 0,
+                'sort_key': constants.SUGGESTIONS_SORT_KEY_DATE
+            },
+            expected_status_int=500
         )
 
     def test_handler_with_invalid_target_type_raise_error(self) -> None:

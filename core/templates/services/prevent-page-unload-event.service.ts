@@ -16,18 +16,20 @@
  * @fileoverview Service to handle prevent reload events.
  */
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { WindowRef } from 'services/contextual/window-ref.service';
+import {Injectable} from '@angular/core';
+
+import {WindowRef} from 'services/contextual/window-ref.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class PreventPageUnloadEventService {
   private listenerActive: boolean;
   validationCallback: undefined | (() => boolean);
   _preventPageUnloadEventHandlerBind?: (
-    this: Window, ev: BeforeUnloadEvent) => void;
+    this: Window,
+    ev: BeforeUnloadEvent
+  ) => void;
 
   constructor(private windowRef: WindowRef) {
     this.listenerActive = false;
@@ -44,7 +46,10 @@ export class PreventPageUnloadEventService {
     this._preventPageUnloadEventHandlerBind =
       this._preventPageUnloadEventHandler.bind(null, this.validationCallback);
     this.windowRef.nativeWindow.addEventListener(
-      'beforeunload', this._preventPageUnloadEventHandlerBind, true);
+      'beforeunload',
+      this._preventPageUnloadEventHandlerBind,
+      true
+    );
     this.listenerActive = true;
   }
 
@@ -53,12 +58,17 @@ export class PreventPageUnloadEventService {
       return;
     }
     this.windowRef.nativeWindow.removeEventListener(
-      'beforeunload', this._preventPageUnloadEventHandlerBind, true);
+      'beforeunload',
+      this._preventPageUnloadEventHandlerBind,
+      true
+    );
     this.listenerActive = false;
   }
 
   private _preventPageUnloadEventHandler(
-      validationCallback: () => boolean, e: BeforeUnloadEvent): void {
+    validationCallback: () => boolean,
+    e: BeforeUnloadEvent
+  ): void {
     if (validationCallback()) {
       // The preventDefault call is used to trigger a confirmation
       // before leaving.
@@ -80,7 +90,3 @@ export class PreventPageUnloadEventService {
     this.removeListener();
   }
 }
-
-angular.module('oppia').factory(
-  'PreventPageUnloadEventService',
-  downgradeInjectable(PreventPageUnloadEventService));

@@ -1,9 +1,13 @@
 <div class="modal-header">
-  <div class="oppia-modal-info">
-    <h3 class="oppia-modal-info-header">Review Translation Contributions</h3>
+  <div class="oppia-modal-info" tabindex="0">
+    <h1 title="{{ heading }}"
+        class="oppia-modal-info-header">
+      {{ heading }}
+    </h1>
     <span title="{{ subheading }}"
           class="oppia-translation-modal-subheading e2e-translation-suggestion-review-subheading"
-          aria-hidden="false"> {{ subheading }}
+          aria-hidden="false">
+      {{ subheading }}
     </span>
     <span title="{{ activeContribution.details.chapter_title }}"
           class="oppia-translation-modal-subheading-lesson protractor-translation-suggestion-review-subheading"
@@ -23,6 +27,9 @@
 </div>
 
 <div class="modal-body">
+  <div *ngIf="status == 'rejected'" class="translation-suggestion-review-message alert alert-danger">
+    <p>See your submitted translation below. Please submit a new translation to address the requested revisions.</p>
+  </div>
   <section class="oppia-suggestion-review-container">
     <div class="oppia-suggestion-review-panel-container float-left">
       <div class="oppia-suggestion-review-panel-header-container">
@@ -32,12 +39,12 @@
            [ngClass]="isContentExpanded ? 'oppia-content-expanded' : 'oppia-content-collapsed'"
            #contentContainer>
         <ul *ngIf="contentTypeIsSetOfStrings">
-          <li *ngFor="let item of displayExplorationContent(); index as idx">
+          <li *ngFor="let item of contentHtml; index as idx">
             {{ item }}
           </li>
         </ul>
         <oppia-rte-output-display *ngIf="!contentTypeIsSetOfStrings"
-                                  [rteString]="displayExplorationContent()"
+                                  [rteString]="contentHtml"
                                   #contentPanel>
         </oppia-rte-output-display>
       </div>
@@ -83,24 +90,24 @@
                                [(ngModel)]="editedContent.html">
           </schema-based-editor>
         </div>
-        <div class="oppia-translation-review-edit-buttons">
-          <button class="btn btn-secondary mr-2"
-                  *ngIf="startedEditing"
-                  (click)="cancelEdit()">
-            Cancel
-          </button>
-          <button class="btn btn-success ml-2"
-                  *ngIf="startedEditing"
-                  (click)="updateSuggestion()">
-            Update
-          </button>
-        </div>
         <div class="oppia-translation-error-section"
              *ngIf="startedEditing && errorFound">
           <p>
             {{ errorMessage }}
           </p>
         </div>
+      </div>
+      <div class="oppia-translation-review-edit-buttons">
+        <button class="btn btn-secondary mr-2"
+                *ngIf="startedEditing"
+                (click)="cancelEdit()">
+          Cancel
+        </button>
+        <button class="btn btn-success ml-2"
+                *ngIf="startedEditing"
+                (click)="updateSuggestion()">
+          Update
+        </button>
       </div>
       <div class="oppia-collapse-content"
            *ngIf="isTranslationOverflowing"
@@ -110,29 +117,53 @@
     </div>
   </section>
   <section class="oppia-suggestion-review-exploration-change"
-           *ngIf="hasExplorationContentChanged()">
+           *ngIf="reviewable && hasExplorationContentChanged()">
     <p class="oppia-suggestion-review-exploration-change-note">
       <strong>
         NOTE: The content has been modified since this translation has been submitted.
         Please edit the translation as necessary.
-        The original content at the time of submission was:
+        The current content is:
       </strong>
     </p>
     <div class="oppia-suggestion-review-panel">
       <ul *ngIf="contentTypeIsSetOfStrings">
-        <li *ngFor="let item of contentHtml; index as idx">
+        <li *ngFor="let item of explorationContentHtml; index as idx">
           {{ item }}
         </li>
       </ul>
       <oppia-rte-output-display *ngIf="!contentTypeIsSetOfStrings"
-                                [rteString]="contentHtml">
+                                [rteString]="explorationContentHtml">
       </oppia-rte-output-display>
+    </div>
+  </section>
+  <a [href]="'/create/' + activeSuggestion.target_id + '#/translation/' + activeSuggestion.change_cmd.state_name + '/'+ activeSuggestion.change_cmd.content_id + '/' + languageCode" target="_blank" rel="noopener">
+    See Lesson Card
+  </a>
+  <section [hidden]="!reviewable"
+           class="oppia-image-review-panel"
+           *ngIf="explorationImagesString">
+    <div class="oppia-common-scroll-container">
+      <div class="oppia-exploration-image-container float-left">
+        <oppia-rte-output-display *ngIf="!contentTypeIsSetOfStrings"
+                                    [rteString]="explorationImagesString"
+                                    [altTextIsDisplayed]="altTextIsDisplayed"
+                                    #contentPanelWithAltText>
+        </oppia-rte-output-display>
+      </div>
+      <div class="oppia-suggestion-image-container float-right">
+        <oppia-rte-output-display *ngIf="!contentTypeIsSetOfStrings"
+                                    [rteString]="suggestionImagesString"
+                                    [altTextIsDisplayed]="altTextIsDisplayed"
+                                    #contentPanelWithAltText>
+        </oppia-rte-output-display>
+      </div>
     </div>
   </section>
   <div [hidden]="!reviewable"
        class="oppia-suggestion-review-message">
-    Review message (required if rejecting):
-    <textarea class="e2e-test-suggestion-review-message w-100"
+    <label for="reviewMessage">Review message (required if rejecting):</label>
+    <textarea id="reviewMessage"
+              class="e2e-test-suggestion-review-message w-100"
               rows="3"
               [(ngModel)]="reviewMessage"
               [attr.maxlength]="MAX_REVIEW_MESSAGE_LENGTH">
@@ -142,8 +173,11 @@
       Review message should be at most {{ MAX_REVIEW_MESSAGE_LENGTH }} characters.
     </div>
   </div>
-  <div [hidden]="reviewable || !reviewMessage"
+  <div [hidden]="reviewable || !reviewMessage || !reviewer"
        class="oppia-suggestion-review-message">
+    <strong>Reviewer:</strong>
+    {{reviewer}}
+    <br>
     <strong>Review message: </strong>
     <div class="oppia-review-message"
          [ngClass]="{ 'oppia-reviewable-message': reviewable }">
@@ -159,8 +193,8 @@
           [disableTooltip]="reviewMessage.length !== 0">
       <button class="btn btn-danger oppia-suggestion-resolve-button"
               *ngIf="reviewable"
-              [disabled]="reviewMessage.length == 0 || reviewMessage.length > MAX_REVIEW_MESSAGE_LENGTH || resolvingSuggestion"
-              (click)="rejectAndReviewNext()">
+              [disabled]="reviewMessage.length == 0 || reviewMessage.length > MAX_REVIEW_MESSAGE_LENGTH || resolvingSuggestion || startedEditing"
+              (click)="rejectAndReviewNext(reviewMessage)">
         <i [hidden]="!resolvingSuggestion"
            class="fa fa-spinner">
         </i>
@@ -170,8 +204,8 @@
       </button>
     </span>
     <span>
-      <button class="btn btn-success oppia-suggestion-resolve-button"
-              [disabled]="resolvingSuggestion || reviewMessage.length > MAX_REVIEW_MESSAGE_LENGTH"
+      <button class="btn btn-success oppia-suggestion-resolve-button e2e-test-translation-accept-button"
+              [disabled]="resolvingSuggestion || reviewMessage.length > MAX_REVIEW_MESSAGE_LENGTH || startedEditing"
               *ngIf="reviewable"
               (click)="acceptAndReviewNext()">
         <i [hidden]="!resolvingSuggestion"
@@ -200,12 +234,36 @@
 </div>
 
 <style>
+  .oppia-common-scroll-container {
+    border: 1px solid #ccc;
+    display: flex;
+    flex-direction: row;
+    gap: 1px;
+    overflow-x: auto;
+    width: 100%;
+  }
+  .oppia-image-review-panel {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    overflow-x: auto;
+    padding: 10px;
+  }
+  .oppia-exploration-image-container,
+  .oppia-suggestion-image-container {
+    max-height: 250px;
+    padding: 8px;
+    width: 49%;
+  }
+  oppia-rte-output-display oppia-noninteractive-image {
+    max-height: 50px;
+    max-width: 50px;
+  }
   .oppia-reviewable-message {
     border: 1px solid #ccc;
   }
   .oppia-review-message {
     margin-top: 10px;
-    min-height: 100px;
     padding: 10px;
   }
   .oppia-review-buttons {
@@ -277,7 +335,7 @@
   }
   .oppia-suggestion-resolve-button {
     margin-left: 10px;
-    min-width: 165px;
+    min-width: 130px;
   }
   .oppia-suggestion-review-panel-header-container {
     height: 12%;
@@ -326,6 +384,11 @@
   }
 
   @media only screen and (max-width: 700px) {
+    .oppia-exploration-image-container,
+    .oppia-suggestion-image-container {
+      padding: 1px;
+      width: 50%;
+    }
     .oppia-translation-panel {
       margin-top: 12px;
     }
@@ -379,10 +442,14 @@
       height: fit-content;
       padding: 0;
     }
+    .oppia-image-review-panel {
+      padding: 0;
+    }
     .oppia-modal-info-header {
       font-size: 16px;
       font-weight: normal;
-      margin: 0;
+      margin-bottom: 18.7px;
+      margin-top: 18.7px;
     }
     .oppia-translation-modal-subheading {
       display: none;

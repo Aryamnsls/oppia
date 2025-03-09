@@ -20,40 +20,40 @@
  * followed by the name of the arg.
  */
 
-import { downgradeComponent } from '@angular/upgrade/static';
-import { Component, Input, OnDestroy, OnInit, ElementRef } from '@angular/core';
-import { CurrentInteractionService } from 'pages/exploration-player-page/services/current-interaction.service';
-import { FocusManagerService } from 'services/stateful/focus-manager.service';
-import { InteractionAttributesExtractorService } from 'interactions/interaction-attributes-extractor.service';
-import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { PencilCodeEditorCustomizationArgs } from 'interactions/customization-args-defs';
-import { PencilCodeEditorRulesService } from './pencil-code-editor-rules.service';
-import { PencilCodeResetConfirmation } from './pencil-code-reset-confirmation.component';
-import { PlayerPositionService } from 'pages/exploration-player-page/services/player-position.service';
-import { Subscription } from 'rxjs';
+import {Component, Input, OnDestroy, OnInit, ElementRef} from '@angular/core';
+import {CurrentInteractionService} from 'pages/exploration-player-page/services/current-interaction.service';
+import {FocusManagerService} from 'services/stateful/focus-manager.service';
+import {InteractionAttributesExtractorService} from 'interactions/interaction-attributes-extractor.service';
+import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
+import {PencilCodeEditorCustomizationArgs} from 'interactions/customization-args-defs';
+import {PencilCodeEditorRulesService} from './pencil-code-editor-rules.service';
+import {PencilCodeResetConfirmation} from './pencil-code-reset-confirmation.component';
+import {PlayerPositionService} from 'pages/exploration-player-page/services/player-position.service';
+import {Subscription} from 'rxjs';
 
 @Component({
   selector: 'oppia-interactive-pencil-code-editor',
-  templateUrl: './pencil-code-editor-interaction.component.html'
+  templateUrl: './pencil-code-editor-interaction.component.html',
 })
 export class PencilCodeEditor implements OnInit, OnDestroy {
+  // `lastAnswer` stores the last submitted code and is always `{code: string} | null`. It is `null` if no previous answer exists.
+  @Input() lastAnswer: {code: string} | null = null;
   // These properties are initialized using Angular lifecycle hooks
   // and we need to do non-null assertion. For more information, see
   // https://github.com/oppia/oppia/wiki/Guide-on-defining-types#ts-7-1
-  @Input() lastAnswer!: { code: string };
   @Input() initialCodeWithValue!: string;
-  iframeDiv!: NodeListOf<Element>;
+  iframeDiv!: HTMLElement;
   pce!: PencilCodeEmbed;
   someInitialCode!: string;
   interactionIsActive: boolean = false;
   directiveSubscriptions = new Subscription();
+  pencilCodeEditorIsLoaded: boolean = false;
 
   constructor(
     private currentInteractionService: CurrentInteractionService,
     private elementRef: ElementRef,
     private focusManagerService: FocusManagerService,
-    private interactionAttributesExtractorService:
-      InteractionAttributesExtractorService,
+    private interactionAttributesExtractorService: InteractionAttributesExtractorService,
     private ngbModal: NgbModal,
     private playerPositionService: PlayerPositionService,
     private pencilCodeEditorRulesService: PencilCodeEditorRulesService
@@ -61,21 +61,26 @@ export class PencilCodeEditor implements OnInit, OnDestroy {
 
   private _getAttributes() {
     return {
-      initialCodeWithValue: this.initialCodeWithValue
+      initialCodeWithValue: this.initialCodeWithValue,
     };
   }
 
   reset(): void {
-    this.ngbModal.open(PencilCodeResetConfirmation, {
-      backdrop: 'static',
-      keyboard: false,
-    }).result.then(() => {
-      this.pce.setCode(this.someInitialCode);
-    }, () => {
-      // Note to developers:
-      // This callback is triggered when the Cancel button is clicked.
-      // No further action is needed.
-    });
+    this.ngbModal
+      .open(PencilCodeResetConfirmation, {
+        backdrop: 'static',
+        keyboard: false,
+      })
+      .result.then(
+        () => {
+          this.pce.setCode(this.someInitialCode);
+        },
+        () => {
+          // Note to developers:
+          // This callback is triggered when the Cancel button is clicked.
+          // No further action is needed.
+        }
+      );
   }
 
   getNormalizedCode(): string {
@@ -84,29 +89,52 @@ export class PencilCodeEditor implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Ensure lastAnswer is never undefined.
+    this.lastAnswer = this.lastAnswer ?? null;
     this.directiveSubscriptions.add(
-      this.playerPositionService.onNewCardAvailable.subscribe(
-        () => {
-          this.interactionIsActive = false;
-          this.pce.hideMiddleButton();
-          this.pce.hideToggleButton();
-          this.pce.setReadOnly();
-        }
-      )
+      this.playerPositionService.onNewCardAvailable.subscribe(() => {
+        this.interactionIsActive = false;
+        this.pce.hideMiddleButton();
+        this.pce.hideToggleButton();
+        this.pce.setReadOnly();
+      })
     );
 
-    this.iframeDiv = this.elementRef.nativeElement.querySelectorAll(
-      '.pencil-code-editor-iframe')[0];
-    this.pce = new PencilCodeEmbed(this.iframeDiv);
-    this.interactionIsActive = (this.lastAnswer === null);
+    // The iframe may not be immediately available due to asynchronous rendering.
+    // To handle this, we retry checking for its presence up to `maxRetries` times.
+    // If the iframe does not appear within the retry limit, we display an error message.
 
-    const { initialCode } = (
+    const maxRetries = 10;
+    let retryCount = 0;
+
+    const checkIframe = () => {
+      let iframeElements = this.elementRef.nativeElement.querySelectorAll(
+        '.pencil-code-editor-iframe'
+      );
+
+      if (iframeElements.length > 0) {
+        this.iframeDiv = iframeElements[0] as HTMLElement;
+        this.pce = new PencilCodeEmbed(this.iframeDiv);
+      } else if (retryCount < maxRetries) {
+        retryCount++;
+        setTimeout(checkIframe, 200);
+      } else {
+        this.pencilCodeEditorIsLoaded = true;
+      }
+    };
+
+    checkIframe();
+
+    this.interactionIsActive = this.lastAnswer === null;
+
+    const {initialCode} =
       this.interactionAttributesExtractorService.getValuesFromAttributes(
         'PencilCodeEditor',
         this._getAttributes()
-      ) as PencilCodeEditorCustomizationArgs);
-    this.someInitialCode = (
-      this.interactionIsActive ? initialCode.value : this.lastAnswer.code);
+      ) as PencilCodeEditorCustomizationArgs;
+    this.someInitialCode = this.interactionIsActive
+      ? initialCode.value
+      : this.lastAnswer?.code || '';
 
     this.pce.beginLoad(this.someInitialCode);
     this.pce.on('load', () => {
@@ -114,24 +142,26 @@ export class PencilCodeEditor implements OnInit, OnDestroy {
       // from showing up even if the code has an error. Also, hides the
       // turtle, and redefines say() to also write the text on the
       // screen.
-      this.pce.setupScript([{
-        code: [
-          'window.onerror = function() {',
-          '  return true;',
-          '};',
-          'debug.hide();',
-          'window.removeEventListener("error", debug)',
-          '',
-          'ht();',
-          '',
-          'oldsay = window.say',
-          'say = function(x) {',
-          '  write(x);',
-          '  oldsay(x);',
-          '};'
-        ].join('\n'),
-        type: 'text/javascript'
-      }]);
+      this.pce.setupScript([
+        {
+          code: [
+            'window.onerror = function() {',
+            '  return true;',
+            '};',
+            'debug.hide();',
+            'window.removeEventListener("error", debug)',
+            '',
+            'ht();',
+            '',
+            'oldsay = window.say',
+            'say = function(x) {',
+            '  write(x);',
+            '  oldsay(x);',
+            '};',
+          ].join('\n'),
+          type: 'text/javascript',
+        },
+      ]);
 
       this.pce.showEditor();
       this.pce.hideToggleButton();
@@ -154,47 +184,65 @@ export class PencilCodeEditor implements OnInit, OnDestroy {
       hasSubmittedAnswer = false;
     });
 
-    this.pce.on('execute', () => {
+    // Handles submission of the user's code execution result.
+    // Used in both 'execute' and 'registerCurrentInteraction()' to ensure consistency.
+    let submitInteractionAnswer = () => {
+      // Prevents submission if an error has occurred or an answer has already been submitted.
       if (errorIsHappening || hasSubmittedAnswer) {
         return;
       }
-      // The first argument in the method below gets executed in the
-      // pencilcode output-frame iframe context. The code input by the
-      // user is sanitized by pencilcode so there is no security
-      // issue in this case.
+
+      // Evaluates the code inside the Pencil Code iframe's context.
+      // The first argument 'document.body.innerHTML' retrieves the current
+      // HTML output generated by the user's code execution.
+      // PencilCode sanitizes user input, ensuring security.
       this.pce.eval(
         'document.body.innerHTML', // disable-bad-pattern-check
         (pencilCodeHtml: string) => {
+          // Normalize the user's inputted code (e.g., replace tabs with spaces).
           let normalizedCode = this.getNormalizedCode();
 
-          // Get all the divs, and extract their textual content.
+          // Extract all div elements from the executed output to get the textual content.
           let temp = document.createElement('div');
-          // 'pencilCodeHtml' here is a string of raw code for div of
-          // 'pencil-code-editor-iframe' in template. In order to extract all
-          // divs from raw code we are converting it first into an element
-          // thereby selecting all the divs inside it and then extracting all
-          // the content inside them for which 'innerHTML' is used.
+
+          // `pencilCodeHtml` is a string representing the raw HTML content inside
+          // the output frame. We convert it into an element to access and extract
+          // textual content from all the `div` elements present.
           // eslint-disable-next-line oppia/no-inner-html
           temp.innerHTML = pencilCodeHtml;
+
           let output: string = '';
           let htmlObject = temp.querySelectorAll('div');
+
+          // Loop through each div element to extract its inner text.
           for (let i = 0; i < htmlObject.length; i++) {
             // eslint-disable-next-line oppia/no-inner-html
             output += htmlObject[i].innerHTML + '\n';
           }
 
+          // Mark the answer as submitted to prevent duplicate submissions.
           hasSubmittedAnswer = true;
-          // TODO(#13015): Remove use of unknown as a type.
-          this.currentInteractionService.onSubmit({
-            code: normalizedCode,
-            output: output || '',
-            evaluation: '',
-            error: ''
-          }, this.pencilCodeEditorRulesService);
-        }, true);
-    });
 
-    this.pce.on('error', (error: { message: string }) => {
+          // Submit the extracted code and its output to the current interaction service,
+          // which handles storing the response and validating it against rules.
+          this.currentInteractionService.onSubmit(
+            {
+              code: normalizedCode,
+              output: output || '',
+              evaluation: '',
+              error: '',
+            },
+            this.pencilCodeEditorRulesService
+          );
+        },
+        // Execute evaluation within the iframe context.
+        true
+      );
+    };
+
+    this.pce.on('execute', submitInteractionAnswer);
+
+    this.pce.on('error', (error: {message: string}) => {
       if (hasSubmittedAnswer) {
         return;
       }
@@ -203,28 +251,28 @@ export class PencilCodeEditor implements OnInit, OnDestroy {
       errorIsHappening = true;
       hasSubmittedAnswer = true;
 
-      // TODO(#13015): Remove use of unknown as a type.
-      this.currentInteractionService.onSubmit({
-        code: normalizedCode,
-        output: '',
-        evaluation: '',
-        error: error.message
-      }, this.pencilCodeEditorRulesService);
+      this.currentInteractionService.onSubmit(
+        {
+          code: normalizedCode,
+          output: '',
+          evaluation: '',
+          error: error.message,
+        },
+        this.pencilCodeEditorRulesService
+      );
 
       setTimeout(() => {
         errorIsHappening = false;
       }, 1000);
     });
 
-    this.currentInteractionService.registerCurrentInteraction(null, null);
+    this.currentInteractionService.registerCurrentInteraction(
+      submitInteractionAnswer,
+      null
+    );
   }
 
   ngOnDestroy(): void {
     this.directiveSubscriptions.unsubscribe();
   }
 }
-
-angular.module('oppia').directive(
-  'oppiaInteractivePencilCodeEditor', downgradeComponent(
-    {component: PencilCodeEditor}
-  ) as angular.IDirectiveFactory);

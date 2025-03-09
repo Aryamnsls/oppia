@@ -48,26 +48,6 @@ def _require_valid_version(
             % (collection_version, version_from_payload))
 
 
-class CollectionEditorPage(
-    base.BaseHandler[Dict[str, str], Dict[str, str]]
-):
-    """The editor page for a single collection."""
-
-    URL_PATH_ARGS_SCHEMAS = {
-        'collection_id': {
-            'schema': {
-                'type': 'basestring'
-            }
-        }
-    }
-    HANDLER_ARGS_SCHEMAS: Dict[str, Dict[str, str]] = {'GET': {}}
-
-    @acl_decorators.can_edit_collection
-    def get(self, _: str) -> None:
-        """Handles GET requests."""
-        self.render_template('collection-editor-page.mainpage.html')
-
-
 class EditableCollectionDataHandlerNormalizedPayloadDict(TypedDict):
     """Dict representation of EditableCollectionDataHandler's normalized_payload
     dictionary.
@@ -127,7 +107,11 @@ class EditableCollectionDataHandler(
 
     @acl_decorators.can_edit_collection
     def get(self, collection_id: str) -> None:
-        """Populates the data on the individual collection page."""
+        """Populates the data on the individual collection page.
+
+        Args:
+            collection_id: str. The ID of the collection.
+        """
 
         collection_dict = (
             summary_services.get_learner_collection_dict_by_id(
@@ -142,7 +126,11 @@ class EditableCollectionDataHandler(
 
     @acl_decorators.can_edit_collection
     def put(self, collection_id: str) -> None:
-        """Updates properties of the given collection."""
+        """Updates properties of the given collection.
+
+        Args:
+            collection_id: str. The ID of the collection.
+        """
         assert self.user_id is not None
         assert self.normalized_payload is not None
         collection = collection_services.get_collection_by_id(collection_id)
@@ -256,7 +244,11 @@ class CollectionPublishHandler(
 
     @acl_decorators.can_publish_collection
     def put(self, collection_id: str) -> None:
-        """Publishes the given collection."""
+        """Publishes the given collection.
+
+        Args:
+            collection_id: str. The ID of the collection.
+        """
         assert self.normalized_payload is not None
         collection = collection_services.get_collection_by_id(
             collection_id, strict=True
@@ -324,7 +316,11 @@ class CollectionUnpublishHandler(
 
     @acl_decorators.can_unpublish_collection
     def put(self, collection_id: str) -> None:
-        """Unpublishes the given collection."""
+        """Unpublishes the given collection.
+
+        Args:
+            collection_id: str. The ID of the collection.
+        """
         assert self.normalized_payload is not None
         collection = collection_services.get_collection_by_id(collection_id)
         version = self.normalized_payload.get('version')

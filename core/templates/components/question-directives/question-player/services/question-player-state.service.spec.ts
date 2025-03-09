@@ -16,10 +16,10 @@
  * @fileoverview Unit tests for question player state service.
  */
 
-import { TestBed, waitForAsync } from '@angular/core/testing';
-import { Question } from 'domain/question/QuestionObjectFactory';
-import { StateObjectFactory } from 'domain/state/StateObjectFactory';
-import { QuestionPlayerStateService } from './question-player-state.service';
+import {TestBed, waitForAsync} from '@angular/core/testing';
+import {Question} from 'domain/question/QuestionObjectFactory';
+import {StateObjectFactory} from 'domain/state/StateObjectFactory';
+import {QuestionPlayerStateService} from './question-player-state.service';
 
 describe('Question player state service', () => {
   let qpss: QuestionPlayerStateService;
@@ -31,7 +31,13 @@ describe('Question player state service', () => {
     TestBed.configureTestingModule({}).compileComponents();
     stateObject = TestBed.inject(StateObjectFactory);
     question = new Question(
-      questionId, stateObject.createDefaultState('state'), '', 7, [], []
+      questionId,
+      stateObject.createDefaultState('state', 'content_0', 'default_outcome_1'),
+      '',
+      7,
+      [],
+      [],
+      2
     );
   }));
 

@@ -17,18 +17,25 @@
  */
 
 import {
-  Component, OnInit, Input, Output, EventEmitter, HostListener, ViewChild,
-  ElementRef
+  Component,
+  OnInit,
+  Input,
+  Output,
+  EventEmitter,
+  HostListener,
+  ViewChild,
+  ElementRef,
 } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
 
-import { ContributionOpportunitiesBackendApiService } from
+import {AppConstants} from 'app.constants';
+import {
+  ContributionOpportunitiesBackendApiService,
   // eslint-disable-next-line max-len
-  'pages/contributor-dashboard-page/services/contribution-opportunities-backend-api.service';
+} from 'pages/contributor-dashboard-page/services/contribution-opportunities-backend-api.service';
 
 @Component({
   selector: 'translation-topic-selector',
-  templateUrl: './translation-topic-selector.component.html'
+  templateUrl: './translation-topic-selector.component.html',
 })
 export class TranslationTopicSelectorComponent implements OnInit {
   // These properties are initialized using Angular lifecycle hooks
@@ -36,22 +43,28 @@ export class TranslationTopicSelectorComponent implements OnInit {
   // https://github.com/oppia/oppia/wiki/Guide-on-defining-types#ts-7-1
   @Input() activeTopicName!: string;
   @Output() setActiveTopicName: EventEmitter<string> = new EventEmitter();
-  @ViewChild('dropdown', {'static': false}) dropdownRef!: ElementRef;
+  @ViewChild('dropdown', {static: false}) dropdownRef!: ElementRef;
 
   options!: string[];
   dropdownShown = false;
+  topicsPerClassroomMap: Record<string, string[]> = {};
 
   constructor(
-    private contributionOpportunitiesBackendApiService:
-      ContributionOpportunitiesBackendApiService
+    private contributionOpportunitiesBackendApiService: ContributionOpportunitiesBackendApiService
   ) {}
 
   ngOnInit(): void {
     this.contributionOpportunitiesBackendApiService
-      .fetchTranslatableTopicNamesAsync()
-      .then((topicNames) => {
-        this.options = topicNames;
+      .fetchTranslatableTopicNamesPerClassroomAsync()
+      .then(topicsPerClassroom => {
+        topicsPerClassroom.forEach(({classroom, topics}) => {
+          this.topicsPerClassroomMap[classroom] = topics;
+        });
       });
+
+    // Set initial value for activeTopicName to "ALL".
+    this.activeTopicName = AppConstants.TOPIC_SENTINEL_NAME_ALL;
+    this.setActiveTopicName.emit(this.activeTopicName);
   }
 
   toggleDropdown(): void {
@@ -78,11 +91,3 @@ export class TranslationTopicSelectorComponent implements OnInit {
     }
   }
 }
-
-angular.module('oppia').directive(
-  'translationTopicSelector',
-  downgradeComponent({
-    component: TranslationTopicSelectorComponent,
-    inputs: ['activeTopicName'],
-    outputs: ['setActiveTopicName']
-  }));

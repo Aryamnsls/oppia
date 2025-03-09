@@ -16,16 +16,26 @@
  * @fileoverview Component for a schema-based editor for lists.
  */
 
-import { Component, forwardRef, Input } from '@angular/core';
-import { AbstractControl, ControlValueAccessor, NG_VALIDATORS, NG_VALUE_ACCESSOR, ValidationErrors, Validator } from '@angular/forms';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { Subscription } from 'rxjs';
-import { Validator as OppiaValidator } from 'interactions/TextInput/directives/text-input-validation.service';
-import { IdGenerationService } from 'services/id-generation.service';
-import { Schema, SchemaDefaultValue, SchemaDefaultValueService } from 'services/schema-default-value.service';
-import { SchemaFormSubmittedService } from 'services/schema-form-submitted.service';
-import { SchemaUndefinedLastElementService } from 'services/schema-undefined-last-element.service';
-import { FocusManagerService } from 'services/stateful/focus-manager.service';
+import {Component, forwardRef, Input} from '@angular/core';
+import {
+  AbstractControl,
+  ControlValueAccessor,
+  NG_VALIDATORS,
+  NG_VALUE_ACCESSOR,
+  ValidationErrors,
+  Validator,
+} from '@angular/forms';
+import {Subscription} from 'rxjs';
+import {Validator as OppiaValidator} from 'interactions/TextInput/directives/text-input-validation.service';
+import {IdGenerationService} from 'services/id-generation.service';
+import {
+  Schema,
+  SchemaDefaultValue,
+  SchemaDefaultValueService,
+} from 'services/schema-default-value.service';
+import {SchemaFormSubmittedService} from 'services/schema-form-submitted.service';
+import {SchemaUndefinedLastElementService} from 'services/schema-undefined-last-element.service';
+import {FocusManagerService} from 'services/stateful/focus-manager.service';
 @Component({
   selector: 'schema-based-list-editor',
   templateUrl: './schema-based-list-editor.component.html',
@@ -33,17 +43,18 @@ import { FocusManagerService } from 'services/stateful/focus-manager.service';
     {
       provide: NG_VALUE_ACCESSOR,
       useExisting: forwardRef(() => SchemaBasedListEditorComponent),
-      multi: true
+      multi: true,
     },
     {
       provide: NG_VALIDATORS,
       useExisting: forwardRef(() => SchemaBasedListEditorComponent),
-      multi: true
+      multi: true,
     },
-  ]
+  ],
 })
 export class SchemaBasedListEditorComponent
-implements ControlValueAccessor, Validator {
+  implements ControlValueAccessor, Validator
+{
   _localValue: SchemaDefaultValue[] = [];
   @Input() set localValue(val: SchemaDefaultValue[]) {
     this._localValue = val;
@@ -60,14 +71,13 @@ implements ControlValueAccessor, Validator {
   @Input() disabled!: boolean;
   // Read-only property. The schema definition for each item in the list.
   @Input() itemSchema!: {
-    'ui_config': {'coding_mode': unknown; rows: number};
+    ui_config: {coding_mode: boolean; rows: number};
   } & Schema;
   // The length of the list. If not specified, the list is of arbitrary
   // length.
 
   @Input() len!: number;
-  // UI configuration. May be undefined.
-  @Input() uiConfig!: {'add_element_text': string};
+  @Input() uiConfig!: {add_element_text: string};
   @Input() validators!: OppiaValidator[];
   @Input() labelForFocusTarget!: string;
   addElementText!: string;
@@ -78,7 +88,8 @@ implements ControlValueAccessor, Validator {
   // length.
   maxListLength!: number | null;
   onChange: (value: SchemaDefaultValue[]) => void = (
-    (_: SchemaDefaultValue[]) => {});
+    _: SchemaDefaultValue[]
+  ) => {};
 
   isAddItemButtonPresent: boolean = false;
   isOneLineInput: boolean = false;
@@ -101,8 +112,7 @@ implements ControlValueAccessor, Validator {
     this.onChange = fn;
   }
 
-  registerOnTouched(fn: () => void): void {
-  }
+  registerOnTouched(fn: () => void): void {}
 
   validate(control: AbstractControl): ValidationErrors {
     return {};
@@ -118,9 +128,9 @@ implements ControlValueAccessor, Validator {
     // sub-element 0 > 1 will have the same label as sub-element 1 > 0.
     // But we will assume (for now) that nested lists won't be used -- if
     // they are, this will need to be changed.
-    return (
-      index === 0 ? this.baseFocusLabel : this.baseFocusLabel + index.toString()
-    );
+    return index === 0
+      ? this.baseFocusLabel
+      : this.baseFocusLabel + index.toString();
   }
 
   private _deleteEmptyElements(): void {
@@ -134,7 +144,7 @@ implements ControlValueAccessor, Validator {
   }
 
   hasDuplicates(): boolean {
-    let valuesSoFar: Record<string | number, unknown> = {};
+    let valuesSoFar: Record<string | number, SchemaDefaultValue> = {};
     for (let i = 0; i < this.localValue.length; i++) {
       const value = this.localValue[i];
       if (!valuesSoFar.hasOwnProperty(value as string)) {
@@ -157,9 +167,11 @@ implements ControlValueAccessor, Validator {
     }
 
     this.localValue.push(
-      this.schemaDefaultValueService.getDefaultValue(this.itemSchema));
+      this.schemaDefaultValueService.getDefaultValue(this.itemSchema)
+    );
     this.focusManagerService.setFocus(
-      this.getFocusLabel(this.localValue.length - 1));
+      this.getFocusLabel(this.localValue.length - 1)
+    );
     // This is to prevent the autofocus behaviour of the input field to scroll
     // to top of the page when the user is adding a new element.
     this.focusManagerService.schemaBasedListEditorIsActive = true;
@@ -167,12 +179,12 @@ implements ControlValueAccessor, Validator {
 
   private _deleteLastElementIfUndefined(): void {
     const lastValueIndex = this.localValue.length - 1;
-    const valueToConsiderUndefined = (
-      this.schemaUndefinedLastElementService.getUndefinedValue(
-        this.itemSchema));
-    if (this.localValue[lastValueIndex] ===
-              valueToConsiderUndefined &&
-              this.localValue[lastValueIndex] !== '') {
+    const valueToConsiderUndefined =
+      this.schemaUndefinedLastElementService.getUndefinedValue(this.itemSchema);
+    if (
+      this.localValue[lastValueIndex] === valueToConsiderUndefined &&
+      this.localValue[lastValueIndex] !== ''
+    ) {
       this.deleteElement(lastValueIndex);
     }
   }
@@ -193,9 +205,11 @@ implements ControlValueAccessor, Validator {
        * the add item button is absent) then automatically add the
        * element to the list.
        */
-      if ((this.maxListLength === null ||
-                 this.localValue.length < this.maxListLength) &&
-                !!this.localValue[this.localValue.length - 1]) {
+      if (
+        (this.maxListLength === null ||
+          this.localValue.length < this.maxListLength) &&
+        !!this.localValue[this.localValue.length - 1]
+      ) {
         this.addElement();
       }
     } else {
@@ -221,10 +235,14 @@ implements ControlValueAccessor, Validator {
     this.onChange(this.localValue);
   }
 
+  trackByIndex(index: number): number {
+    return index;
+  }
+
   ngOnInit(): void {
-    this.baseFocusLabel = (
+    this.baseFocusLabel =
       this.labelForFocusTarget ||
-      this.idGenerationService.generateNewId() + '-');
+      this.idGenerationService.generateNewId() + '-';
     this.isAddItemButtonPresent = true;
     this.addElementText = 'Add element';
     if (this.uiConfig && this.uiConfig.add_element_text) {
@@ -244,7 +262,8 @@ implements ControlValueAccessor, Validator {
         this.isOneLineInput = false;
       } else if (
         this.itemSchema.ui_config.hasOwnProperty('rows') &&
-              this.itemSchema.ui_config.rows > 2) {
+        this.itemSchema.ui_config.rows > 2
+      ) {
         this.isOneLineInput = false;
       }
     }
@@ -272,7 +291,8 @@ implements ControlValueAccessor, Validator {
       this.localValue.length < this.minListLength
     ) {
       this.localValue.push(
-        this.schemaDefaultValueService.getDefaultValue(this.itemSchema));
+        this.schemaDefaultValueService.getDefaultValue(this.itemSchema)
+      );
     }
 
     if (this.len === undefined) {
@@ -289,18 +309,16 @@ implements ControlValueAccessor, Validator {
       );
     } else {
       if (this.len <= 0) {
-        throw new Error(
-          'Invalid length for list editor: ' + this.len);
+        throw new Error('Invalid length for list editor: ' + this.len);
       }
       if (this.len !== this.localValue.length) {
         throw new Error(
           'List editor length does not match length of input value: ' +
-          this.len + ' ' + this.localValue);
+            this.len +
+            ' ' +
+            this.localValue
+        );
       }
     }
   }
 }
-
-angular.module('oppia').directive('schemaBasedListEditor', downgradeComponent({
-  component: SchemaBasedListEditorComponent
-}) as angular.IDirectiveFactory);

@@ -16,22 +16,22 @@
  * @fileoverview Unit test for State Hints Editor Component.
  */
 
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
-import { NO_ERRORS_SCHEMA } from '@angular/core';
-import { StateHintsEditorComponent } from './state-hints-editor.component';
-import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
-import { fakeAsync, tick } from '@angular/core/testing';
-import { WindowDimensionsService } from 'services/contextual/window-dimensions.service';
-import { EditabilityService } from 'services/editability.service';
-import { StateHintsService } from '../state-editor-properties-services/state-hints.service';
-import { ExternalSaveService } from 'services/external-save.service';
-import { StateInteractionIdService } from '../state-editor-properties-services/state-interaction-id.service';
-import { StateSolutionService } from '../state-editor-properties-services/state-solution.service';
-import { AlertsService } from 'services/alerts.service';
-import { SubtitledHtml } from 'domain/exploration/subtitled-html.model';
-import { Hint, HintBackendDict, HintObjectFactory } from 'domain/exploration/HintObjectFactory';
-import { SolutionObjectFactory } from 'domain/exploration/SolutionObjectFactory';
-import { CdkDragSortEvent } from '@angular/cdk/drag-drop';
+import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
+import {NO_ERRORS_SCHEMA} from '@angular/core';
+import {StateHintsEditorComponent} from './state-hints-editor.component';
+import {NgbModal, NgbModalRef} from '@ng-bootstrap/ng-bootstrap';
+import {fakeAsync, tick} from '@angular/core/testing';
+import {WindowDimensionsService} from 'services/contextual/window-dimensions.service';
+import {EditabilityService} from 'services/editability.service';
+import {StateHintsService} from '../state-editor-properties-services/state-hints.service';
+import {ExternalSaveService} from 'services/external-save.service';
+import {StateInteractionIdService} from '../state-editor-properties-services/state-interaction-id.service';
+import {StateSolutionService} from '../state-editor-properties-services/state-solution.service';
+import {AlertsService} from 'services/alerts.service';
+import {SubtitledHtml} from 'domain/exploration/subtitled-html.model';
+import {Hint, HintBackendDict} from 'domain/exploration/hint-object.model';
+import {SolutionObjectFactory} from 'domain/exploration/SolutionObjectFactory';
+import {CdkDragSortEvent} from '@angular/cdk/drag-drop';
 
 class MockStateHintsService {
   displayed = [
@@ -39,58 +39,56 @@ class MockStateHintsService {
       hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
       toBackendDict(): HintBackendDict {
         return {
-          hint_content: this.hintContent.toBackendDict()
+          hint_content: this.hintContent.toBackendDict(),
         };
-      }
+      },
     },
     {
       hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
       toBackendDict(): HintBackendDict {
         return {
-          hint_content: this.hintContent.toBackendDict()
+          hint_content: this.hintContent.toBackendDict(),
         };
-      }
+      },
     },
     {
       hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
       toBackendDict(): HintBackendDict {
         return {
-          hint_content: this.hintContent.toBackendDict()
+          hint_content: this.hintContent.toBackendDict(),
         };
-      }
+      },
     },
     {
       hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
       toBackendDict(): HintBackendDict {
         return {
-          hint_content: this.hintContent.toBackendDict()
+          hint_content: this.hintContent.toBackendDict(),
         };
-      }
-    }
+      },
+    },
   ];
 
   getActiveHintIndex(): number {
     return 1;
   }
 
-  saveDisplayedValue(): void {
-  }
+  saveDisplayedValue(): void {}
 
   savedMemento = [
     {
       hintContent: {
-        html: null
-      }
+        html: null,
+      },
     },
     {
       hintContent: {
-        html: '<p> Hint </p>'
-      }
-    }
+        html: '<p> Hint </p>',
+      },
+    },
   ];
 
-  setActiveHintIndex(): void {
-  }
+  setActiveHintIndex(): void {}
 }
 
 describe('StateHintsEditorComponent', () => {
@@ -105,19 +103,16 @@ describe('StateHintsEditorComponent', () => {
   let alertsService: AlertsService;
   let solutionObjectFactory: SolutionObjectFactory;
   let ngbModalSpy: jasmine.Spy;
-  let hintObjectFactory: HintObjectFactory;
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      declarations: [
-        StateHintsEditorComponent
-      ],
+      declarations: [StateHintsEditorComponent],
       providers: [
         WindowDimensionsService,
         EditabilityService,
         {
           provide: StateHintsService,
-          useClass: MockStateHintsService
+          useClass: MockStateHintsService,
         },
         NgbModal,
         ExternalSaveService,
@@ -125,9 +120,8 @@ describe('StateHintsEditorComponent', () => {
         StateSolutionService,
         AlertsService,
         SolutionObjectFactory,
-        HintObjectFactory
       ],
-      schemas: [NO_ERRORS_SCHEMA]
+      schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents();
   }));
 
@@ -143,32 +137,24 @@ describe('StateHintsEditorComponent', () => {
     ngbModal = TestBed.inject(NgbModal);
     alertsService = TestBed.inject(AlertsService);
     solutionObjectFactory = TestBed.inject(SolutionObjectFactory);
-    hintObjectFactory = TestBed.inject(HintObjectFactory);
 
     stateSolutionService.savedMemento = solutionObjectFactory.createNew(
-      true, 'correct_answer', '<p> Hint Index 0 </p>', '0'
+      true,
+      'correct_answer',
+      '<p> Hint Index 0 </p>',
+      '0'
     );
 
     spyOn(windowDimensionsService, 'isWindowNarrow').and.returnValue(true);
     spyOn(editabilityService, 'isEditable').and.returnValue(true);
     ngbModalSpy = spyOn(ngbModal, 'open').and.callFake(() => {
-      return ({
-        result: Promise.resolve()
-      }) as NgbModalRef;
+      return {
+        result: Promise.resolve(),
+      } as NgbModalRef;
     });
 
     fixture.detectChanges();
     component.ngOnInit();
-  });
-
-  it('should emit showMarkAllAudioAsNeedingUpdateModalIfRequired', () => {
-    spyOn(component.showMarkAllAudioAsNeedingUpdateModalIfRequired, 'emit');
-
-    component.sendShowMarkAllAudioAsNeedingUpdateModalIfRequired(
-      ['data', 'data']);
-
-    expect(component.showMarkAllAudioAsNeedingUpdateModalIfRequired.emit)
-      .toHaveBeenCalled();
   });
 
   it('should change list oder', () => {
@@ -188,8 +174,9 @@ describe('StateHintsEditorComponent', () => {
   it('should set component properties on initialization', () => {
     expect(component.hintCardIsShown).toBe(true);
     expect(component.canEdit).toBe(true);
-    expect(component.getStaticImageUrl('/demo/img'))
-      .toBe('/assets/images/demo/img');
+    expect(component.getStaticImageUrl('/demo/img')).toBe(
+      '/assets/images/demo/img'
+    );
   });
 
   it('should toggle hint card when user clicks on hint header', () => {
@@ -224,109 +211,56 @@ describe('StateHintsEditorComponent', () => {
     expect(component.getHintButtonText()).toBe('+ ADD HINT');
 
     stateHintsService.displayed = [
-      {
-        hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
-        toBackendDict(): HintBackendDict {
-          return {
-            hint_content: this.hintContent.toBackendDict()
-          };
-        }
-      },
-      {
-        hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
-        toBackendDict(): HintBackendDict {
-          return {
-            hint_content: this.hintContent.toBackendDict()
-          };
-        }
-      },
-      {
-        hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
-        toBackendDict(): HintBackendDict {
-          return {
-            hint_content: this.hintContent.toBackendDict()
-          };
-        }
-      },
-      {
-        hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
-        toBackendDict(): HintBackendDict {
-          return {
-            hint_content: this.hintContent.toBackendDict()
-          };
-        }
-      },
-      {
-        hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
-        toBackendDict(): HintBackendDict {
-          return {
-            hint_content: this.hintContent.toBackendDict()
-          };
-        }
-      }
+      new Hint(SubtitledHtml.createDefault('<h1>work</h1>', '1')),
+      new Hint(SubtitledHtml.createDefault('<h1>work</h1>', '1')),
+      new Hint(SubtitledHtml.createDefault('<h1>work</h1>', '1')),
+      new Hint(SubtitledHtml.createDefault('<h1>work</h1>', '1')),
+      new Hint(SubtitledHtml.createDefault('<h1>work</h1>', '1')),
     ];
 
     expect(component.getHintButtonText()).toBe('Limit Reached');
   });
 
   it('should get hint summary when hint is given', () => {
-    let hint = hintObjectFactory.createNew('id', 'Hint');
+    let hint = Hint.createNew('id', 'Hint');
 
     expect(component.getHintSummary(hint)).toBe('Hint');
   });
 
-  it('should open delete last hint modal if only one hint exists while' +
-    ' changing active hint index', fakeAsync(() => {
-    spyOn(stateHintsService, 'getActiveHintIndex').and.returnValue(0);
-    stateHintsService.displayed = [
-      {
-        hintContent: SubtitledHtml.createDefault('', '1'),
-        toBackendDict(): HintBackendDict {
-          return {
-            hint_content: this.hintContent.toBackendDict()
-          };
-        }
-      }
-    ];
-
-    component.changeActiveHintIndex(0);
-    tick();
-
-    expect(stateSolutionService.displayed).toBe(null);
-    expect(stateHintsService.displayed).toEqual([]);
-  }));
-
-  it('should delete empty hint when changing active hint index',
+  it(
+    'should open delete last hint modal if only one hint exists while' +
+      ' changing active hint index',
     fakeAsync(() => {
       spyOn(stateHintsService, 'getActiveHintIndex').and.returnValue(0);
-      spyOn(alertsService, 'addInfoMessage');
       stateHintsService.displayed = [
-        {
-          hintContent: SubtitledHtml.createDefault('', '1'),
-          toBackendDict(): HintBackendDict {
-            return {
-              hint_content: this.hintContent.toBackendDict()
-            };
-          }
-        },
-        {
-          hintContent: SubtitledHtml.createDefault('', '1'),
-          toBackendDict(): HintBackendDict {
-            return {
-              hint_content: this.hintContent.toBackendDict()
-            };
-          }
-        }
+        new Hint(SubtitledHtml.createDefault('', '1')),
       ];
-      stateSolutionService.savedMemento = null;
 
       component.changeActiveHintIndex(0);
       tick();
 
-      expect(alertsService.addInfoMessage)
-        .toHaveBeenCalledWith('Deleting empty hint.');
-      expect(stateHintsService.displayed.length).toEqual(1);
-    }));
+      expect(stateSolutionService.displayed).toBe(null);
+      expect(stateHintsService.displayed).toEqual([]);
+    })
+  );
+
+  it('should delete empty hint when changing active hint index', fakeAsync(() => {
+    spyOn(stateHintsService, 'getActiveHintIndex').and.returnValue(0);
+    spyOn(alertsService, 'addInfoMessage');
+    stateHintsService.displayed = [
+      new Hint(SubtitledHtml.createDefault('', '1')),
+      new Hint(SubtitledHtml.createDefault('', '1')),
+    ];
+    stateSolutionService.savedMemento = null;
+
+    component.changeActiveHintIndex(0);
+    tick();
+
+    expect(alertsService.addInfoMessage).toHaveBeenCalledWith(
+      'Deleting empty hint.'
+    );
+    expect(stateHintsService.displayed.length).toEqual(1);
+  }));
 
   it('should set new hint index if no hint is opened', () => {
     spyOn(stateHintsService, 'getActiveHintIndex').and.returnValue(null);
@@ -337,101 +271,54 @@ describe('StateHintsEditorComponent', () => {
     expect(stateHintsService.setActiveHintIndex).toHaveBeenCalledWith(0);
   });
 
-  it('should not open add hints modal if number of hint is greater than' +
-    ' or equal to 5', () => {
-    stateHintsService.displayed = [
-      {
-        hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
-        toBackendDict(): HintBackendDict {
-          return {
-            hint_content: this.hintContent.toBackendDict()
-          };
-        }
-      },
-      {
-        hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
-        toBackendDict(): HintBackendDict {
-          return {
-            hint_content: this.hintContent.toBackendDict()
-          };
-        }
-      },
-      {
-        hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
-        toBackendDict(): HintBackendDict {
-          return {
-            hint_content: this.hintContent.toBackendDict()
-          };
-        }
-      },
-      {
-        hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
-        toBackendDict(): HintBackendDict {
-          return {
-            hint_content: this.hintContent.toBackendDict()
-          };
-        }
-      },
-      {
-        hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
-        toBackendDict(): HintBackendDict {
-          return {
-            hint_content: this.hintContent.toBackendDict()
-          };
-        }
-      }
-    ];
-
-    component.openAddHintModal();
-
-    expect(ngbModal.open).not.toHaveBeenCalled();
-  });
-
-  it('should open add hints modal when user clicks on add hint button',
-    fakeAsync(() => {
+  it(
+    'should not open add hints modal if number of hint is greater than' +
+      ' or equal to 5',
+    () => {
       stateHintsService.displayed = [
-        {
+        new Hint(SubtitledHtml.createDefault('<h1>work</h1>', '1')),
+        new Hint(SubtitledHtml.createDefault('<h1>work</h1>', '1')),
+        new Hint(SubtitledHtml.createDefault('<h1>work</h1>', '1')),
+        new Hint(SubtitledHtml.createDefault('<h1>work</h1>', '1')),
+        new Hint(SubtitledHtml.createDefault('<h1>work</h1>', '1')),
+      ];
+
+      component.openAddHintModal();
+
+      expect(ngbModal.open).not.toHaveBeenCalled();
+    }
+  );
+
+  it('should open add hints modal when user clicks on add hint button', fakeAsync(() => {
+    stateHintsService.displayed = [
+      new Hint(SubtitledHtml.createDefault('<h1>work</h1>', '1')),
+    ];
+    ngbModalSpy.and.returnValue({
+      result: Promise.resolve({
+        hint: {
           hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
           toBackendDict(): HintBackendDict {
             return {
-              hint_content: this.hintContent.toBackendDict()
+              hint_content: this.hintContent.toBackendDict(),
             };
-          }
-        }
-      ];
-      ngbModalSpy.and.returnValue({
-        result: Promise.resolve({
-          hint: {
-            hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
-            toBackendDict(): HintBackendDict {
-              return {
-                hint_content: this.hintContent.toBackendDict()
-              };
-            }
-          }
-        })
-      } as NgbModalRef);
+          },
+        },
+      }),
+    } as NgbModalRef);
 
-      component.openAddHintModal();
-      tick();
+    component.openAddHintModal();
+    tick();
 
-      expect(stateHintsService.displayed.length).toEqual(2);
-    }));
+    expect(stateHintsService.displayed.length).toEqual(2);
+  }));
 
   it('should close add hint modal when user clicks cancel', () => {
     stateHintsService.displayed = [
-      {
-        hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
-        toBackendDict(): HintBackendDict {
-          return {
-            hint_content: this.hintContent.toBackendDict()
-          };
-        }
-      }
+      new Hint(SubtitledHtml.createDefault('<h1>work</h1>', '1')),
     ];
 
     ngbModalSpy.and.returnValue({
-      result: Promise.reject()
+      result: Promise.reject(),
     } as NgbModalRef);
 
     component.openAddHintModal();
@@ -439,78 +326,59 @@ describe('StateHintsEditorComponent', () => {
     expect(ngbModal.open).toHaveBeenCalled();
   });
 
-  it('should open delete hint modal when user clicks on' +
-    ' delete hint button', fakeAsync(() => {
-    spyOn(stateHintsService, 'getActiveHintIndex').and.returnValue(0);
-    stateHintsService.displayed = [
-      {
-        hintContent: SubtitledHtml.createDefault('<h1>work</h1>', '1'),
-        toBackendDict(): HintBackendDict {
-          return {
-            hint_content: this.hintContent.toBackendDict()
-          };
-        }
-      }
-    ];
-    stateHintsService.savedMemento = stateHintsService.displayed;
+  it(
+    'should open delete hint modal when user clicks on' + ' delete hint button',
+    fakeAsync(() => {
+      spyOn(stateHintsService, 'getActiveHintIndex').and.returnValue(0);
+      stateHintsService.displayed = [
+        new Hint(SubtitledHtml.createDefault('<h1>work</h1>', '1')),
+      ];
+      stateHintsService.savedMemento = stateHintsService.displayed;
 
-    const value = {
-      index: 0,
-      evt: new Event('')
-    };
+      const value = {
+        index: 0,
+        evt: new Event(''),
+      };
 
-    component.deleteHint(value);
-    tick();
+      component.deleteHint(value);
+      tick();
 
-    expect(ngbModal.open).toHaveBeenCalled();
-    expect(stateHintsService.displayed).toEqual([]);
-  }));
+      expect(ngbModal.open).toHaveBeenCalled();
+      expect(stateHintsService.displayed).toEqual([]);
+    })
+  );
 
-  it('should delete hint when user clicks on' +
-    ' delete hint button', fakeAsync(() => {
-    spyOn(stateHintsService, 'getActiveHintIndex').and.returnValue(0);
-    stateHintsService.displayed = [
-      {
-        hintContent: SubtitledHtml.createDefault('<p> Hint Index 0 </p>', '0'),
-        toBackendDict(): HintBackendDict {
-          return {
-            hint_content: this.hintContent.toBackendDict()
-          };
-        }
-      },
-      {
-        hintContent: SubtitledHtml.createDefault('<p> Hint Index 1 </p>', '1'),
-        toBackendDict(): HintBackendDict {
-          return {
-            hint_content: this.hintContent.toBackendDict()
-          };
-        }
-      }
-    ];
-    stateHintsService.savedMemento = stateHintsService.displayed;
+  it(
+    'should delete hint when user clicks on' + ' delete hint button',
+    fakeAsync(() => {
+      spyOn(stateHintsService, 'getActiveHintIndex').and.returnValue(0);
+      stateHintsService.displayed = [
+        new Hint(SubtitledHtml.createDefault('<h1>work</h1>', '0')),
+        new Hint(SubtitledHtml.createDefault('<h1>work</h1>', '1')),
+      ];
+      stateHintsService.savedMemento = stateHintsService.displayed;
 
-    const value = {
-      index: 0,
-      evt: new Event('')
-    };
+      const value = {
+        index: 0,
+        evt: new Event(''),
+      };
 
-    component.deleteHint(value);
-    tick();
+      component.deleteHint(value);
+      tick();
 
-    expect(stateHintsService.displayed.length).toEqual(1);
-  }));
+      expect(stateHintsService.displayed.length).toEqual(1);
+    })
+  );
 
   it('should close delete hint modal when user clicks on cancel', () => {
     spyOn(alertsService, 'clearWarnings').and.callThrough();
-    ngbModalSpy.and.returnValue(
-      {
-        result: Promise.reject()
-      } as NgbModalRef
-    );
+    ngbModalSpy.and.returnValue({
+      result: Promise.reject(),
+    } as NgbModalRef);
 
     const value = {
       index: 0,
-      evt: new Event('')
+      evt: new Event(''),
     };
 
     component.deleteHint(value);
@@ -520,11 +388,9 @@ describe('StateHintsEditorComponent', () => {
 
   it('should close delete last hint modal when user clicks on cancel', () => {
     spyOn(alertsService, 'clearWarnings').and.callThrough();
-    ngbModalSpy.and.returnValue(
-      {
-        result: Promise.reject()
-      } as NgbModalRef
-    );
+    ngbModalSpy.and.returnValue({
+      result: Promise.reject(),
+    } as NgbModalRef);
 
     component.openDeleteLastHintModal();
 

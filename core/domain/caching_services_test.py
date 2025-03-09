@@ -49,7 +49,7 @@ class CachingServicesUnitTests(test_utils.GenericTestBase):
         'objective': '',
         'init_state_name': 'Introduction',
         'author_notes': '',
-        'states_schema_version': 51,
+        'states_schema_version': 56,
         'param_specs': {},
         'param_changes': [],
         'id': 'h51Bu72rDIqO',
@@ -59,38 +59,28 @@ class CachingServicesUnitTests(test_utils.GenericTestBase):
             'Introduction': {
                 'card_is_checkpoint': True,
                 'solicit_answer_details': False,
-                'written_translations': {
-                    'translations_mapping': {
-                        'hint_3': {},
-                        'feedback_2': {},
-                        'content': {},
-                        'ca_placeholder_0': {},
-                        'default_outcome': {},
-                        'rule_input_4': {}
-                    }
-                },
                 'recorded_voiceovers': {
                     'voiceovers_mapping': {
-                        'hint_3': {},
-                        'feedback_2': {},
-                        'content': {},
-                        'ca_placeholder_0': {},
-                        'default_outcome': {},
-                        'rule_input_4': {}
+                        'hint_5': {},
+                        'feedback_4': {},
+                        'content_0': {},
+                        'ca_placeholder_3': {},
+                        'default_outcome_1': {},
+                        'rule_input_6': {}
                     }
                 },
                 'param_changes': [],
                 'classifier_model_id': None,
                 'content': {
-                    'content_id': 'content',
+                    'content_id': 'content_0',
                     'html': '<p>Unicode Characters 😍😍😍😍</p>'
                 },
                 'linked_skill_id': None,
-                'next_content_id_index': 5,
+                'inapplicable_skill_misconception_ids': [],
                 'interaction': {
                     'hints': [{
                         'hint_content': {
-                            'content_id': 'hint_3',
+                            'content_id': 'hint_5',
                             'html': '<p>This is a copyright character ©.</p>'
                         }
                     }],
@@ -103,7 +93,7 @@ class CachingServicesUnitTests(test_utils.GenericTestBase):
                         },
                         'placeholder': {
                             'value': {
-                                'content_id': 'ca_placeholder_0',
+                                'content_id': 'ca_placeholder_3',
                                 'unicode_str': '😍😍😍😍'
                             }
                         },
@@ -118,7 +108,7 @@ class CachingServicesUnitTests(test_utils.GenericTestBase):
                         'dest_if_really_stuck': None,
                         'missing_prerequisite_skill_id': None,
                         'feedback': {
-                            'content_id': 'default_outcome',
+                            'content_id': 'default_outcome_1',
                             'html': ''
                         },
                         'labelled_as_correct': False
@@ -132,7 +122,7 @@ class CachingServicesUnitTests(test_utils.GenericTestBase):
                             'dest_if_really_stuck': None,
                             'missing_prerequisite_skill_id': None,
                             'feedback': {
-                                'content_id': 'feedback_2',
+                                'content_id': 'feedback_4',
                                 'html': '<p>This is great! ®®</p>'
                             },
                             'labelled_as_correct': False
@@ -141,7 +131,7 @@ class CachingServicesUnitTests(test_utils.GenericTestBase):
                             'rule_type': 'Contains',
                             'inputs': {
                                 'x': {
-                                    'contentId': 'rule_input_4',
+                                    'contentId': 'rule_input_6',
                                     'normalizedStrSet': ['®®']
                                 }
                             }
@@ -151,47 +141,49 @@ class CachingServicesUnitTests(test_utils.GenericTestBase):
                 }
             }
         },
-        'correctness_feedback_enabled': False,
+        'next_content_id_index': 7,
         'edits_allowed': True,
         'language_code': 'en',
-        'blurb': ''
+        'blurb': '',
+        'version': 1
     }
 
     # The correct json encoded version of the above exploration containing
     # unicode characters that is set to the memory cache.
     json_encoded_string_representing_an_exploration = (
-        '{"param_changes": [], "category": "", "auto_tts_enabled": true, "tags"'
-        ': [], "states_schema_version": 51, "title": "", "param_specs": {}, "id'
+        '{"param_changes": [], "category": "", "auto_tts_enabled": true, '
+        '"next_content_id_index": 7, "tags"'
+        ': [], "states_schema_version": 56, "title": "", "param_specs": {}, "id'
         '": "h51Bu72rDIqO", "states": {"Introduction": {"param_changes": [], "c'
-        'ard_is_checkpoint": true, "interaction": {"solution": null, "answer_gr'
+        'ard_is_checkpoint": true, "inapplicable_skill_misconception_ids": [], '
+        '"interaction": {"solution": null, "answer_gr'
         'oups": [{"tagged_skill_misconception_id": null, "outcome": {"param_cha'
-        'nges": [], "feedback": {"content_id": "feedback_2", "html": "<p>This i'
+        'nges": [], "feedback": {"content_id": "feedback_4", "html": "<p>This i'
         's great! \\u00ae\\u00ae</p>"}, "dest": "Introduction", "dest_if_really'
         '_stuck": null, "refresher_exploration_id": null, "missing_prerequisite'
         '_skill_id": null, "labelled_as_correct": false}, "training_data": [], '
         '"rule_specs": [{"rule_type": "Contains", "inputs": {"x": {"normalizedS'
-        'trSet": ["\\u00ae\\u00ae"], "contentId": "rule_input_4"}}}]}], "defaul'
-        't_outcome": {"param_changes": [], "feedback": {"content_id": "default_'
-        'outcome", "html": ""}, "dest": "Introduction", "dest_if_really_stuck":'
+        'trSet": ["\\u00ae\\u00ae"], "contentId": "rule_input_6"}}}]}], "defaul'
+        't_outcome": {"param_changes": [], "feedback": '
+        '{"content_id": "default_outcome_1", "html": ""}, '
+        '"dest": "Introduction", "dest_if_really_stuck":'
         ' null, "refresher_exploration_id": null, "missing_prerequisite_skill_i'
         'd": null, "labelled_as_correct": false}, "customization_args": {"rows"'
         ': {"value": 1}, "placeholder": {"value": {"unicode_str": "\\ud83d\\ude'
         '0d\\ud83d\\ude0d\\ud83d\\ude0d\\ud83d\\ude0d", "content_id": "ca_place'
-        'holder_0"}}, "catchMisspellings": {"value": false}}, "confirmed_unclas'
-        'sified_answers": [], "id": "TextInput", "hints": [{"hint_content": {"c'
-        'ontent_id": "hint_3", "html": "<p>This is a copyright character \\u00a'
-        '9.</p>"}}]}, "linked_skill_id": null, "recorded_voiceovers": {"voiceov'
-        'ers_mapping": {"feedback_2": {}, "rule_input_4": {}, "content": {}, "h'
-        'int_3": {}, "default_outcome": {}, "ca_placeholder_0": {}}}, "classifi'
-        'er_model_id": null, "content": {"content_id": "content", "html": "<p>U'
-        'nicode Characters \\ud83d\\ude0d\\ud83d\\ude0d\\ud83d\\ude0d\\ud83d\\u'
-        'de0d</p>"}, "written_translations": {"translations_mapping": {"feedbac'
-        'k_2": {}, "rule_input_4": {}, "content": {}, "hint_3": {}, "default_ou'
-        'tcome": {}, "ca_placeholder_0": {}}}, "next_content_id_index": 5, "sol'
-        'icit_answer_details": false}}, "version": 0, "correctness_feedback_ena'
-        'bled": false, "edits_allowed": true, "language_code": "en", "objective'
-        '": "", "init_state_name": "Introduction", "blurb": "", "author_notes":'
-        '""}'
+        'holder_3"}}, "catchMisspellings": {"value": false}}, '
+        '"confirmed_unclassified_answers": [], "id": "TextInput",'
+        ' "hints": [{"hint_content": {"content_id": "hint_5", "html": "<p>This '
+        'is a copyright character \\u00a9.</p>"}}]}, "linked_skill_id": null, "'
+        'recorded_voiceovers": {"voiceovers_mapping": {"feedback_4": {}, "rule_'
+        'input_6": {}, "content_0": {}, "hint_5": {}, "default_outcome_1": {}, '
+        '"ca_placeholder_3": {}}}, "classifier_model_id": null, "content": '
+        '{"content_id": "content_0", "html": "<p>Unicode Characters '
+        '\\ud83d\\ude0d\\ud83d\\ude0d\\ud83d\\ude0d\\ud83d\\ude0d</p>"}, '
+        '"solicit_answer_details": false}}, "version": 0, '
+        '"edits_allowed": true, "l'
+        'anguage_code": "en", "objective": "", "init_state_name": "Introduction'
+        '", "blurb": "", "author_notes": ""}'
     )
 
     def test_retrieved_memory_profile_contains_correct_elements(self) -> None:
@@ -583,75 +575,6 @@ class CachingServicesUnitTests(test_utils.GenericTestBase):
         for namespace in caching_services.SERIALIZATION_FUNCTIONS:
             self.assertNotIn(caching_services.MEMCACHE_KEY_DELIMITER, namespace)
 
-    def test_config_properties_identically_cached_in_dev_and_test_environment(
-        self
-    ) -> None:
-        """Test to make sure that caching in the test environment is in sync
-        with caching in the main development server. More specifically, when a
-        config property is created with fields that contain unicode characters,
-        the resulting string that is set to the memory cache on the development
-        server should be the same as the string that is set to the testing cache
-        on the testing server.
-        """
-        def mock_memory_cache_services_set_multi(
-            id_value_mapping: Dict[str, str]
-        ) -> None:
-            # This mock asserts that for the same config domain attribute
-            # containing unicode characters, the string that is set to the cache
-            # in the testing environment is the same as the string set to the
-            # cache in the development environment.
-            for key, value in id_value_mapping.items():
-                self.assertEqual(key, 'config::email_footer')
-                self.assertEqual(
-                    value,
-                    '"You can change your email preferences via the <a href'
-                    '=\\"https://www.example.com\\">Preferences</a> page. '
-                    '\\u00a9\\u00a9\\u00ae\\u00ae"'
-                )
-
-        config_id = 'email_footer'
-
-        self.assertEqual(
-            caching_services.get_multi(
-                caching_services.CACHE_NAMESPACE_CONFIG, None,
-                [config_id]),
-            {})
-
-        with self.swap(
-            memory_cache_services, 'set_multi',
-            mock_memory_cache_services_set_multi
-        ):
-            caching_services.set_multi(
-                caching_services.CACHE_NAMESPACE_CONFIG, None,
-                {
-                    config_id: (
-                        'You can change your email preferences via the <a href'
-                        '="https://www.example.com">Preferences</a> page. ©©®®'
-                    )
-                })
-
-        cache_strings_response = caching_services.set_multi(
-            caching_services.CACHE_NAMESPACE_CONFIG, None,
-            {
-                config_id: (
-                    'You can change your email preferences via the <a href'
-                    '="https://www.example.com">Preferences</a> page. ©©®®'
-                )
-            })
-
-        self.assertTrue(cache_strings_response)
-
-        self.assertEqual(
-            caching_services.get_multi(
-                caching_services.CACHE_NAMESPACE_CONFIG, None,
-                [config_id]),
-            {
-                config_id: (
-                    'You can change your email preferences via the <a href'
-                    '="https://www.example.com">Preferences</a> page. ©©®®'
-                )
-            })
-
     def test_explorations_identically_cached_in_dev_and_test_environment(
         self
     ) -> None:
@@ -948,15 +871,17 @@ class CachingServicesUnitTests(test_utils.GenericTestBase):
             'rules': [
                 {
                     'filters': [
-                        {'type': 'server_mode', 'conditions': [['=', 'prod']]}],
+                        {
+                            'type': 'platform_type',
+                            'conditions': [['=', 'Backend']]
+                        }
+                    ],
                     'value_when_matched': True
                 }
             ],
             'rule_schema_version': (
                 feconf.CURRENT_PLATFORM_PARAMETER_RULE_SCHEMA_VERSION),
-            'default_value': False,
-            'is_feature': True,
-            'feature_stage': 'test 😍',
+            'default_value': False
         })
 
         caching_services.set_multi(

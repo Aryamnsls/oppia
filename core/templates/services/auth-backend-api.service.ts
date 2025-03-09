@@ -16,26 +16,24 @@
  * @fileoverview Service for user data.
  */
 
-import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {HttpClient} from '@angular/common/http';
+import {Injectable} from '@angular/core';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AuthBackendApiService {
   constructor(private httpClient: HttpClient) {}
 
   async beginSessionAsync(idToken: string): Promise<void> {
-    await this.httpClient.get('/session_begin', {
-      headers: {Authorization: `Bearer ${idToken}`}
-    }).toPromise();
+    await this.httpClient
+      .get('/session_begin', {
+        headers: {Authorization: `Bearer ${idToken}`},
+      })
+      .toPromise();
   }
 
   async endSessionAsync(): Promise<void> {
     await this.httpClient.get('/session_end').toPromise();
   }
 }
-
-angular.module('oppia').factory(
-  'AuthBackendApiService', downgradeInjectable(AuthBackendApiService));

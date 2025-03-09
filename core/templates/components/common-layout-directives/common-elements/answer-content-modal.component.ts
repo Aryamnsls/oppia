@@ -16,21 +16,18 @@
  * @fileoverview Component for answer content modal.
  */
 
-import { Component, Input } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
-import { ConfirmOrCancelModal } from './confirm-or-cancel-modal.component';
+import {Component, Input} from '@angular/core';
+import {NgbActiveModal} from '@ng-bootstrap/ng-bootstrap';
+import {ConfirmOrCancelModal} from './confirm-or-cancel-modal.component';
 
 @Component({
   selector: 'oppia-answer-content-modal',
-  templateUrl: './answer-content-modal.component.html'
+  templateUrl: './answer-content-modal.component.html',
 })
 export class AnswerContentModalComponent extends ConfirmOrCancelModal {
   @Input() answerHtml: string = '';
 
-  constructor(
-    private ngbActiveModal: NgbActiveModal,
-  ) {
+  constructor(private ngbActiveModal: NgbActiveModal) {
     super(ngbActiveModal);
   }
 
@@ -38,8 +35,3 @@ export class AnswerContentModalComponent extends ConfirmOrCancelModal {
     this.ngbActiveModal.close();
   }
 }
-
-angular.module('oppia').directive('oppiaAnswerContentModal',
-  downgradeComponent({
-    component: AnswerContentModalComponent
-  }) as angular.IDirectiveFactory);

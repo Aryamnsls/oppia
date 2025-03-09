@@ -16,14 +16,13 @@
  * @fileoverview Component for the solution editor.
  */
 
-import { Component, EventEmitter, OnInit, Output } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { StateCustomizationArgsService } from 'components/state-editor/state-editor-properties-services/state-customization-args.service';
-import { EditabilityService } from 'services/editability.service';
-import { ExplorationHtmlFormatterService } from 'services/exploration-html-formatter.service';
-import { StateInteractionIdService } from 'components/state-editor/state-editor-properties-services/state-interaction-id.service';
-import { StateSolutionService } from 'components/state-editor/state-editor-properties-services/state-solution.service';
-import { Solution } from 'domain/exploration/SolutionObjectFactory';
+import {Component, EventEmitter, OnInit, Output} from '@angular/core';
+import {StateCustomizationArgsService} from 'components/state-editor/state-editor-properties-services/state-customization-args.service';
+import {EditabilityService} from 'services/editability.service';
+import {ExplorationHtmlFormatterService} from 'services/exploration-html-formatter.service';
+import {StateInteractionIdService} from 'components/state-editor/state-editor-properties-services/state-interaction-id.service';
+import {StateSolutionService} from 'components/state-editor/state-editor-properties-services/state-solution.service';
+import {Solution} from 'domain/exploration/SolutionObjectFactory';
 
 interface ExplanationFormSchema {
   type: string;
@@ -32,12 +31,10 @@ interface ExplanationFormSchema {
 
 @Component({
   selector: 'oppia-solution-editor',
-  templateUrl: './solution-editor.component.html'
+  templateUrl: './solution-editor.component.html',
 })
 export class SolutionEditor implements OnInit {
   @Output() saveSolution: EventEmitter<Solution> = new EventEmitter();
-  @Output() showMarkAllAudioAsNeedingUpdateModalIfRequired:
-    EventEmitter<string[]> = new EventEmitter();
 
   @Output() openSolutionEditorModal: EventEmitter<void> = new EventEmitter();
 
@@ -52,7 +49,7 @@ export class SolutionEditor implements OnInit {
     private explorationHtmlFormatterService: ExplorationHtmlFormatterService,
     private stateCustomizationArgsService: StateCustomizationArgsService,
     private stateInteractionIdService: StateInteractionIdService,
-    public stateSolutionService: StateSolutionService,
+    public stateSolutionService: StateSolutionService
   ) {}
 
   getAnswerHtml(): string {
@@ -62,15 +59,12 @@ export class SolutionEditor implements OnInit {
     return this.explorationHtmlFormatterService.getAnswerHtml(
       this.stateSolutionService.savedMemento.correctAnswer,
       this.stateInteractionIdService.savedMemento,
-      this.stateCustomizationArgsService.savedMemento);
+      this.stateCustomizationArgsService.savedMemento
+    );
   }
 
   updateNewSolution(value: Solution): void {
     this.saveSolution.emit(value);
-  }
-
-  openMarkAllAudioAsNeedingUpdateModalIfRequired(value: string[]): void {
-    this.showMarkAllAudioAsNeedingUpdateModalIfRequired.emit(value);
   }
 
   openEditorModal(): void {
@@ -82,12 +76,7 @@ export class SolutionEditor implements OnInit {
 
     this.EXPLANATION_FORM_SCHEMA = {
       type: 'html',
-      ui_config: {}
+      ui_config: {},
     };
   }
 }
-
-angular.module('oppia').directive('oppiaSolutionEditor',
-  downgradeComponent({
-    component: SolutionEditor
-  }) as angular.IDirectiveFactory);

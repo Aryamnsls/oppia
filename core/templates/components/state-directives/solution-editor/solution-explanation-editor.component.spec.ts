@@ -16,14 +16,23 @@
  * @fileoverview Unit test for Solution Explanation Editor Component.
  */
 
-import { ComponentFixture, fakeAsync, TestBed, tick, waitForAsync } from '@angular/core/testing';
-import { EventEmitter, NO_ERRORS_SCHEMA } from '@angular/core';
-import { EditabilityService } from 'services/editability.service';
-import { ContextService } from 'services/context.service';
-import { SolutionExplanationEditor } from './solution-explanation-editor.component';
-import { ExternalSaveService } from 'services/external-save.service';
-import { StateSolutionService } from 'components/state-editor/state-editor-properties-services/state-solution.service';
-import { Solution, SolutionObjectFactory } from 'domain/exploration/SolutionObjectFactory';
+import {
+  ComponentFixture,
+  fakeAsync,
+  TestBed,
+  tick,
+  waitForAsync,
+} from '@angular/core/testing';
+import {EventEmitter, NO_ERRORS_SCHEMA} from '@angular/core';
+import {EditabilityService} from 'services/editability.service';
+import {ContextService} from 'services/context.service';
+import {SolutionExplanationEditor} from './solution-explanation-editor.component';
+import {ExternalSaveService} from 'services/external-save.service';
+import {StateSolutionService} from 'components/state-editor/state-editor-properties-services/state-solution.service';
+import {
+  Solution,
+  SolutionObjectFactory,
+} from 'domain/exploration/SolutionObjectFactory';
 
 class MockStateSolutionService {
   displayed = {
@@ -31,9 +40,9 @@ class MockStateSolutionService {
       _html: 'Hello world',
       contentId: 'contentId',
       get html(): string {
-        return 'Hello world';
-      }
-    }
+        return '<p>Hello world</p>';
+      },
+    },
   };
 
   savedMemento = {
@@ -41,9 +50,9 @@ class MockStateSolutionService {
       _html: 'Hello world 2',
       contentId: 'xyz',
       get html(): string {
-        return 'Hello world 2';
-      }
-    }
+        return '<p>Hello world 2</p>';
+      },
+    },
   };
 
   saveDisplayedValue() {}
@@ -55,16 +64,13 @@ describe('Solution explanation editor', () => {
 
   let contextService: ContextService;
   let editabilityService: EditabilityService;
-  let solutionObjectFactory: SolutionObjectFactory;
   let stateSolutionService: StateSolutionService;
   let externalSaveService: ExternalSaveService;
   let externalSaveServiceEmitter = new EventEmitter<void>();
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      declarations: [
-        SolutionExplanationEditor
-      ],
+      declarations: [SolutionExplanationEditor],
       providers: [
         ContextService,
         EditabilityService,
@@ -72,10 +78,10 @@ describe('Solution explanation editor', () => {
         SolutionObjectFactory,
         {
           provide: StateSolutionService,
-          useClass: MockStateSolutionService
-        }
+          useClass: MockStateSolutionService,
+        },
       ],
-      schemas: [NO_ERRORS_SCHEMA]
+      schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents();
   }));
 
@@ -85,13 +91,12 @@ describe('Solution explanation editor', () => {
 
     contextService = TestBed.inject(ContextService);
     editabilityService = TestBed.inject(EditabilityService);
-    solutionObjectFactory = TestBed.inject(SolutionObjectFactory);
     stateSolutionService = TestBed.inject(StateSolutionService);
     externalSaveService = TestBed.inject(ExternalSaveService);
 
-
-    spyOnProperty(externalSaveService, 'onExternalSave')
-      .and.returnValue(externalSaveServiceEmitter);
+    spyOnProperty(externalSaveService, 'onExternalSave').and.returnValue(
+      externalSaveServiceEmitter
+    );
     spyOn(contextService, 'getEntityType').and.returnValue('question');
     spyOn(editabilityService, 'isEditable').and.returnValue(true);
 
@@ -107,8 +112,8 @@ describe('Solution explanation editor', () => {
     const schema = {
       type: 'html',
       ui_config: {
-        hide_complex_extensions: true
-      }
+        hide_complex_extensions: true,
+      },
     };
 
     expect(component.isEditable).toEqual(true);
@@ -128,8 +133,8 @@ describe('Solution explanation editor', () => {
     const schema = {
       type: 'html',
       ui_config: {
-        hide_complex_extensions: true
-      }
+        hide_complex_extensions: true,
+      },
     };
 
     component.openExplanationEditor();
@@ -147,16 +152,12 @@ describe('Solution explanation editor', () => {
   });
 
   it('should save the explanation', fakeAsync(() => {
-    spyOn(component.showMarkAllAudioAsNeedingUpdateModalIfRequired, 'emit')
-      .and.stub();
     spyOn(component.saveSolution, 'emit').and.stub();
 
     component.explanationEditorIsOpen = true;
     externalSaveServiceEmitter.emit();
     tick();
 
-    expect(component.showMarkAllAudioAsNeedingUpdateModalIfRequired.emit)
-      .toHaveBeenCalled();
     expect(component.saveSolution.emit).toHaveBeenCalled();
     expect(component.explanationEditorIsOpen).toBe(false);
   }));
@@ -173,22 +174,5 @@ describe('Solution explanation editor', () => {
     expect(() => {
       component.saveThisExplanation();
     }).toThrowError('Solution is undefined');
-  });
-
-  it('should throw error if solution content id is invalid', () => {
-    stateSolutionService.displayed = solutionObjectFactory.createNew(
-      true, 'correct_answer', '<p> Hint Index 0 </p>', '0'
-    );
-    stateSolutionService.savedMemento = solutionObjectFactory.createNew(
-      true, 'correct_answer', '<p> Hint Index 0 </p>', '0'
-    );
-
-    stateSolutionService.displayed.explanation.html = '<p> Hint Index 0 </p>';
-    stateSolutionService.savedMemento.explanation.html = 'invalid_id';
-    stateSolutionService.displayed.explanation.contentId = null;
-
-    expect(() => {
-      component.saveThisExplanation();
-    }).toThrowError('Solution content id is undefined');
   });
 });

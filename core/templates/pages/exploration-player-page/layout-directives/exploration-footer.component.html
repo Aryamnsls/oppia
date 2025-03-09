@@ -1,15 +1,17 @@
-<div class="footer navbar-fixed-bottom oppia-exploration-footer" *ngIf="!iframed">
-  <div *ngIf="CHECKPOINTS_FEATURE_IS_ENABLED && !footerIsInQuestionPlayerMode && !hasLearnerHasViewedLessonInfoTooltip() && getMostRecentlyReachedCheckpointIndex() == 2">
-    <div class="close-tooltip e2e-test-close-lesson-info-tooltip" (click)="learnerHasViewedLessonInfo()"></div>
+<div class="footer navbar-fixed-bottom oppia-exploration-footer">
+  <div *ngIf="!iframed && shouldRenderLessonInfoTooltip()" aria-live="assertive">
+    <div class="close-tooltip e2e-test-close-lesson-info-tooltip" (click)="learnerHasViewedLessonInfo()" (keydown.enter)="learnerHasViewedLessonInfo()" tabindex="0"></div>
     <div class="lesson-info-tooltip lesson-info-tooltip-add-ons"
          [innerHTML]="'I18N_LESSON_INFO_TOOLTIP_MESSAGE' | translate">
     </div>
   </div>
   <div class="row">
-    <div [ngClass]="{'col-sm-5': isLanguageRTL(), 'col-sm-3': !isLanguageRTL()}">
+    <div class="col-sm-5">
       <button class="oppia-lesson-info"
+              #lessonInfoButton
+              (keydown.escape)="learnerHasViewedLessonInfo()"
               (click)="showInformationCard()"
-              *ngIf="CHECKPOINTS_FEATURE_IS_ENABLED && !footerIsInQuestionPlayerMode">
+              *ngIf="!footerIsInQuestionPlayerMode && !iframed">
         <img [src]="getStaticImageUrl('/general/apple.svg')"
              class="exploration-footer-img"
              alt=""
@@ -19,33 +21,31 @@
               {{ 'I18N_LESSON_INFO_HEADER' | translate }}
           </span>
         </h1>
-        <li class="oppia-exploration-info-icon e2e-test-exploration-info-icon">
+        <div class="oppia-exploration-info-icon e2e-test-exploration-info-icon">
           <i class="fas fa-info-circle oppia-navbar-breadcrumb-icon oppia-footer-info-icon"></i>
           <span class="oppia-icon-accessibility-label">{{ 'I18N_PLAYER_INFO_TOOLTIP' | translate }}</span>
-        </li>
+        </div>
       </button>
-      <oppia-hint-and-solution-buttons *ngIf="windowIsNarrow && hintsAndSolutionsAreSupported">
-      </oppia-hint-and-solution-buttons>
     </div>
-    <div [ngClass]="{'col-sm-7': isLanguageRTL(), 'col-sm-9': !isLanguageRTL()}">
+    <div class="col-sm-7">
       <div [ngClass]="{'float-left': isLanguageRTL(), 'float-right': !isLanguageRTL()}">
-        <oppia-hint-and-solution-buttons *ngIf="!windowIsNarrow && hintsAndSolutionsAreSupported">
+        <oppia-hint-and-solution-buttons *ngIf="hintsAndSolutionsAreSupported">
         </oppia-hint-and-solution-buttons>
+        <div class="hint-container">
+          <div class="hint-box hint-box-add-ons" *ngIf="isVisible && isTooltipVisible()">
+            <span [innerHTML]="'I18N_CONCEPT_CARD_NEED_HELP' | translate"></span>
+            <button type="button"
+                    class="btn close"
+                    aria-label="Close Concept Card Button"
+                    (click)="isVisible = !isVisible">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+        </div>
         <button *ngIf="isConceptCardButtonVisible()"
                 class="oppia-learner-hint-solution-button md-button md-default-theme e2e-test-view-hint"
                 (click)="showConceptCard()">
           <mat-icon>description</mat-icon>
-        </button>
-      </div>
-    </div>
-    <div class="hint-container">
-      <div class="hint-box hint-box-add-ons" *ngIf="isVisible && isTooltipVisible()">
-        <span [innerHTML]="'I18N_CONCEPT_CARD_NEED_HELP' | translate"></span>
-        <button type="button"
-                class="btn close"
-                aria-label="Close"
-                (click)="isVisible = !isVisible">
-          <span aria-hidden="true">&times;</span>
         </button>
       </div>
     </div>
@@ -119,7 +119,8 @@
     display: flex;
     font-size: 17px;
     height: 40px;
-    min-width: 395px;
+    margin-right: 10px;
+    min-width: 350px;
     padding: 20px 10px 20px 10px;
     position: relative;
     text-align: center;
@@ -180,4 +181,18 @@
       -webkit-transform: translateY(0);
     }
   }
+
+  @media (max-width: 475px) {
+
+    .hint-box-add-ons::after {
+    margin-left: 141px;
+  }
+  .hint-box-add-ons::before {
+    margin-left: 139px;
+  }
+
+  .hint-box {
+    font-size: 14px;
+  }
+}
 </style>
