@@ -20,23 +20,33 @@
 // build to not complain.
 // TODO(#16309): Fix relative imports.
 import '../../../third-party-imports/ui-codemirror.import';
-import { Component, EventEmitter, forwardRef, Input, OnInit, Output } from '@angular/core';
-import { AbstractControl, ControlValueAccessor, NG_VALIDATORS, NG_VALUE_ACCESSOR, ValidationErrors, Validator } from '@angular/forms';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { TranslateService } from '@ngx-translate/core';
+import {
+  Component,
+  EventEmitter,
+  forwardRef,
+  Input,
+  OnInit,
+  Output,
+} from '@angular/core';
+import {
+  AbstractControl,
+  ControlValueAccessor,
+  NG_VALIDATORS,
+  NG_VALUE_ACCESSOR,
+  ValidationErrors,
+  Validator,
+} from '@angular/forms';
+import {TranslateService} from '@ngx-translate/core';
 import CodeMirror from 'codemirror';
 import 'components/code-mirror/codemirror.component';
-import { StateCustomizationArgsService } from 'components/state-editor/state-editor-properties-services/state-customization-args.service';
-import { Subscription } from 'rxjs';
-import { DeviceInfoService } from 'services/contextual/device-info.service';
-import { SchemaFormSubmittedService } from 'services/schema-form-submitted.service';
-import { FocusManagerService } from 'services/stateful/focus-manager.service';
-
-interface OppiaValidator {
-  id: string;
-  'min_value': number;
-  'max_value': number;
-}
+import {StateCustomizationArgsService} from 'components/state-editor/state-editor-properties-services/state-customization-args.service';
+import {Subscription} from 'rxjs';
+import {DeviceInfoService} from 'services/contextual/device-info.service';
+import {SchemaDefaultValue} from 'services/schema-default-value.service';
+import {SchemaFormSubmittedService} from 'services/schema-form-submitted.service';
+import {FocusManagerService} from 'services/stateful/focus-manager.service';
+import {validate} from 'components/forms/validators/schema-validators';
+import {Validator as OppiaValidator} from 'interactions/TextInput/directives/text-input-validation.service';
 
 @Component({
   selector: 'schema-based-unicode-editor',
@@ -45,27 +55,31 @@ interface OppiaValidator {
     {
       provide: NG_VALUE_ACCESSOR,
       useExisting: forwardRef(() => SchemaBasedUnicodeEditor),
-      multi: true
+      multi: true,
     },
     {
       provide: NG_VALIDATORS,
       useExisting: forwardRef(() => SchemaBasedUnicodeEditor),
-      multi: true
+      multi: true,
     },
-  ]
+  ],
 })
 export class SchemaBasedUnicodeEditor
-implements ControlValueAccessor, OnInit, Validator {
+  implements ControlValueAccessor, OnInit, Validator
+{
   @Output() inputBlur: EventEmitter<void> = new EventEmitter();
   @Output() inputFocus: EventEmitter<void> = new EventEmitter();
   // These properties are initialized using Angular lifecycle hooks
   // and we need to do non-null assertion. For more information, see
   // https://github.com/oppia/oppia/wiki/Guide-on-defining-types#ts-7-1
   @Input() disabled!: boolean;
-  // UI configuration. May be undefined if the schema does not specify it.
-  @Input() uiConfig!: {
-    rows: string[]; placeholder: string; 'coding_mode': unknown;
-  } | undefined;
+  @Input() uiConfig!:
+    | {
+        rows: string[];
+        placeholder: string;
+        coding_mode: string;
+      }
+    | undefined;
 
   @Input() validators!: OppiaValidator[];
   @Input() labelForFocusTarget!: string;
@@ -74,29 +88,31 @@ implements ControlValueAccessor, OnInit, Validator {
   directiveSubscriptions = new Subscription();
   codemirrorStatus: boolean = false;
   codemirrorOptions: {
-    extraKeys: { Tab: (cm: CodeMirror.Editor) => void };
+    extraKeys: {Tab: (cm: CodeMirror.Editor) => void};
     indentWithTabs: boolean;
     lineNumbers: boolean;
-    readOnly?: string; mode?: unknown;
+    readOnly?: string;
+    mode?: string;
   } = {
     // Convert tabs to spaces.
-      extraKeys: {
-        Tab: (cm) => {
-          var spaces = Array(
-            // This throws "Object is possibly undefined." The type undefined
-            // comes here from code mirror dependency. We need to suppress this
-            // error because of strict type checking.
-            // @ts-ignore
-            cm.getOption('indentUnit') + 1).join(' ');
-          cm.replaceSelection(spaces);
-          // Move the cursor to the end of the selection.
-          var endSelectionPos = cm.getDoc().getCursor('head');
-          cm.getDoc().setCursor(endSelectionPos);
-        }
+    extraKeys: {
+      Tab: cm => {
+        var spaces = Array(
+          // This throws "Object is possibly undefined." The type undefined
+          // comes here from code mirror dependency. We need to suppress this
+          // error because of strict type checking.
+          // @ts-ignore
+          cm.getOption('indentUnit') + 1
+        ).join(' ');
+        cm.replaceSelection(spaces);
+        // Move the cursor to the end of the selection.
+        var endSelectionPos = cm.getDoc().getCursor('head');
+        cm.getDoc().setCursor(endSelectionPos);
       },
-      indentWithTabs: false,
-      lineNumbers: true
-    };
+    },
+    indentWithTabs: false,
+    lineNumbers: true,
+  };
 
   constructor(
     private deviceInfoService: DeviceInfoService,
@@ -120,11 +136,10 @@ implements ControlValueAccessor, OnInit, Validator {
     this.onChange = fn;
   }
 
-  registerOnTouched(fn: unknown): void {
-  }
+  registerOnTouched(fn: SchemaDefaultValue): void {}
 
-  validate(control: AbstractControl): ValidationErrors {
-    return {};
+  validate(control: AbstractControl): ValidationErrors | null {
+    return validate(control, this.validators);
   }
 
   ngOnInit(): void {
@@ -159,14 +174,10 @@ implements ControlValueAccessor, OnInit, Validator {
             setTimeout(() => {
               this.codemirrorStatus = !this.codemirrorStatus;
             }, 200);
-          })
+          }
+        )
       );
     }
-    // So that focus is applied after all the functions in
-    // main thread have executed.
-    setTimeout(() => {
-      this.focusManagerService.setFocusWithoutScroll(this.labelForFocusTarget);
-    }, 5);
   }
 
   onKeypress(evt: KeyboardEvent): void {
@@ -179,10 +190,13 @@ implements ControlValueAccessor, OnInit, Validator {
     if (!this.uiConfig) {
       return '';
     } else {
-      if (!this.uiConfig.placeholder &&
-          this.deviceInfoService.hasTouchEvents()) {
+      if (
+        !this.uiConfig.placeholder &&
+        this.deviceInfoService.hasTouchEvents()
+      ) {
         return this.translateService.instant(
-          'I18N_PLAYER_DEFAULT_MOBILE_PLACEHOLDER');
+          'I18N_PLAYER_DEFAULT_MOBILE_PLACEHOLDER'
+        );
       }
       return this.uiConfig.placeholder;
     }
@@ -196,7 +210,7 @@ implements ControlValueAccessor, OnInit, Validator {
     }
   }
 
-  getCodingMode(): unknown {
+  getCodingMode(): string | null {
     if (!this.uiConfig) {
       return null;
     } else {
@@ -208,10 +222,3 @@ implements ControlValueAccessor, OnInit, Validator {
     this.directiveSubscriptions.unsubscribe();
   }
 }
-
-angular.module('oppia').directive(
-  'schemaBasedUnicodeEditor',
-  downgradeComponent({
-    component: SchemaBasedUnicodeEditor
-  })
-);

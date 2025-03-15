@@ -21,7 +21,7 @@ import binascii
 import collections
 import datetime
 import hashlib
-import imghdr
+import io
 import itertools
 import json
 import os
@@ -33,12 +33,13 @@ import time
 import unicodedata
 import urllib.parse
 import urllib.request
-import zlib
 
 from core import feconf
 from core.constants import constants
 
+from PIL import Image
 import certifi
+import filetype
 import yaml
 
 from typing import ( # isort:skip
@@ -48,6 +49,7 @@ from typing import ( # isort:skip
 DATETIME_FORMAT = '%m/%d/%Y, %H:%M:%S:%f'
 ISO_8601_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%fz'
 PNG_DATA_URL_PREFIX = 'data:image/png;base64,'
+DATA_URL_FORMAT_PREFIX = 'data:image/%s;base64,'
 SECONDS_IN_HOUR = 60 * 60
 SECONDS_IN_MINUTE = 60
 
@@ -55,10 +57,6 @@ T = TypeVar('T')
 
 TextModeTypes = Literal['r', 'w', 'a', 'x', 'r+', 'w+', 'a+']
 BinaryModeTypes = Literal['rb', 'wb', 'ab', 'xb', 'r+b', 'w+b', 'a+b', 'x+b']
-
-# TODO(#13059): We will be ignoring no-untyped-call and no-any-return here
-# These will be removed after python3 migration and adding stubs for new python3
-# libraries.
 
 
 class InvalidInputException(Exception):
@@ -326,32 +324,6 @@ def yaml_from_dict(dictionary: Mapping[str, Any], width: int = 80) -> str:
     return yaml_str
 
 
-# Here we use type Any because here obj has a recursive structure. The list
-# element or dictionary value could recursively be the same structure, hence
-# we use Any as their types.
-def recursively_remove_key(
-        obj: Union[Dict[str, Any], List[Any]], key_to_remove: str
-) -> None:
-    """Recursively removes keys from a list or dict.
-
-    Args:
-        obj: *. List or dict passed for which the keys has to
-            be removed.
-        key_to_remove: str. Key value that has to be removed.
-
-    Returns:
-        *. Dict or list with a particular key value removed.
-    """
-    if isinstance(obj, list):
-        for item in obj:
-            recursively_remove_key(item, key_to_remove)
-    elif isinstance(obj, dict):
-        if key_to_remove in obj:
-            del obj[key_to_remove]
-        for key, unused_value in obj.items():
-            recursively_remove_key(obj[key], key_to_remove)
-
-
 def get_random_int(upper_bound: int) -> int:
     """Returns a random integer in [0, upper_bound).
 
@@ -397,45 +369,73 @@ def get_url_scheme(url: str) -> str:
     return urllib.parse.urlparse(url).scheme
 
 
-def convert_png_data_url_to_binary(image_data_url: str) -> bytes:
-    """Converts a PNG base64 data URL to a PNG binary data.
+def convert_png_binary_to_webp_binary(png_binary: bytes) -> bytes:
+    """Convert png binary to webp binary.
+
+    Args:
+        png_binary: bytes. The binary content of png.
+
+    Returns:
+        bytes. The binary content of webp.
+    """
+    with io.BytesIO() as output:
+        image = Image.open(io.BytesIO(png_binary)).convert('RGB')
+        image.save(output, 'webp')
+        return output.getvalue()
+
+
+def convert_data_url_to_binary(
+    image_data_url: str, file_type: str
+) -> bytes:
+    """Converts a PNG or WEBP base64 data URL to a PNG binary data.
 
     Args:
         image_data_url: str. A string that is to be interpreted as a PNG
-            data URL.
+            or WEBP data URL.
+        file_type: str. Type of the data url, webp or png.
 
     Returns:
-        bytes. Binary content of the PNG created from the data URL.
+        bytes. Binary content of the PNG or WEBP created from the data URL.
 
     Raises:
         Exception. The given string does not represent a PNG data URL.
     """
-    if image_data_url.startswith(PNG_DATA_URL_PREFIX):
+    if image_data_url.startswith(DATA_URL_FORMAT_PREFIX % file_type):
         return base64.b64decode(
             urllib.parse.unquote(
-                image_data_url[len(PNG_DATA_URL_PREFIX):]))
+                image_data_url[len(DATA_URL_FORMAT_PREFIX % file_type):]))
     else:
-        raise Exception('The given string does not represent a PNG data URL.')
+        raise Exception(
+            'The given string does not represent a %s data URL.' % file_type)
 
 
-def convert_png_binary_to_data_url(content: bytes) -> str:
-    """Converts a PNG image string (represented by 'content') to a data URL.
+def convert_image_binary_to_data_url(
+    content: bytes, file_type: str
+) -> str:
+    """Converts a PNG or WEBP image string (represented by 'content')
+    to a data URL.
 
     Args:
-        content: str. PNG binary file content.
+        content: str. PNG or WEBP binary file content.
+        file_type: str. Type of the binary data, webp or png.
 
     Returns:
-        str. Data URL created from the binary content of the PNG.
+        str. Data URL created from the binary content of the PNG or WEBP.
 
     Raises:
         Exception. The given binary string does not represent a PNG image.
+        Exception. The given binary string does not represent a WEBP image.
     """
-    if imghdr.what(None, h=content) == 'png':
-        return '%s%s' % (
-            PNG_DATA_URL_PREFIX, urllib.parse.quote(base64.b64encode(content))
-        )
-    else:
-        raise Exception('The given string does not represent a PNG image.')
+    file_details = filetype.guess(content)
+    if file_details is None or file_details.extension != file_type:
+        raise Exception(
+            'The given binary string does not represent a %s image.' 
+            % file_type)
+
+    return '%s%s' % (
+        DATA_URL_FORMAT_PREFIX % file_type,
+        urllib.parse.quote(base64.b64encode(content))
+    )
 
 
 def is_base64_encoded(content: str) -> bool:
@@ -464,7 +464,7 @@ def convert_png_to_data_url(filepath: str) -> str:
         str. Data url created from the filepath of the PNG.
     """
     file_contents = get_file_contents(filepath, raw_bytes=True, mode='rb')
-    return convert_png_binary_to_data_url(file_contents)
+    return convert_image_binary_to_data_url(file_contents, 'png')
 
 
 def camelcase_to_hyphenated(camelcase_str: str) -> str:
@@ -532,7 +532,7 @@ class JSONEncoderForHTML(json.JSONEncoder):
     # but we are returning Union[str, unicode].
     def encode(self, o: str) -> str:
         chunks = self.iterencode(o, True)
-        return ''.join(chunks) if self.ensure_ascii else u''.join(chunks)
+        return ''.join(chunks)
 
     def iterencode(self, o: str, _one_shot: bool = False) -> Iterator[str]:
         chunks = super().iterencode(o, _one_shot=_one_shot)
@@ -594,8 +594,7 @@ def get_time_in_millisecs(datetime_obj: datetime.datetime) -> float:
     Returns:
         float. The time in milliseconds since the Epoch.
     """
-    msecs = time.mktime(datetime_obj.timetuple()) * 1000.0
-    return msecs + (datetime_obj.microsecond / 1000.0)
+    return datetime_obj.timestamp() * 1000.0
 
 
 def convert_naive_datetime_to_string(datetime_obj: datetime.datetime) -> str:
@@ -634,7 +633,9 @@ def get_current_time_in_millisecs() -> float:
     Returns:
         float. The time in milliseconds since the Epoch.
     """
-    return get_time_in_millisecs(datetime.datetime.utcnow())
+    return get_time_in_millisecs(
+        datetime.datetime.now(datetime.timezone.utc)
+    )
 
 
 def get_human_readable_time_string(time_msec: float) -> str:
@@ -655,6 +656,19 @@ def get_human_readable_time_string(time_msec: float) -> str:
     )
     return time.strftime(
         '%B %d %H:%M:%S', time.gmtime(time_msec / 1000.0))
+
+
+def get_number_of_days_since_date(date: datetime.date) -> int:
+    """Returns the number of days past since a given date.
+
+    Args:
+        date: datetime.date. Date since when the number of days is to
+            calculated.
+
+    Returns:
+        int. The number of days past since a given date.
+    """
+    return int((datetime.date.today() - date).days)
 
 
 def create_string_from_largest_unit_in_timedelta(
@@ -1216,30 +1230,6 @@ def get_hashable_value(value: Any) -> Any:
         return value
 
 
-def compress_to_zlib(data: bytes) -> bytes:
-    """Compress the data to zlib format for efficient storage and communication.
-
-    Args:
-        data: str. Data to be compressed.
-
-    Returns:
-        str. Compressed data string.
-    """
-    return zlib.compress(data)
-
-
-def decompress_from_zlib(data: bytes) -> bytes:
-    """Decompress the zlib compressed data.
-
-    Args:
-        data: str. Data to be decompressed.
-
-    Returns:
-        str. Decompressed data string.
-    """
-    return zlib.decompress(data)
-
-
 # The mentioned types can be changed in future if they are inadequate to
 # represent the types handled by this function.
 def compute_list_difference(list_a: List[str], list_b: List[str]) -> List[str]:
@@ -1399,8 +1389,6 @@ def url_open(
     Returns:
         urlopen. The 'urlopen' object.
     """
-    # TODO(#12912): Remove pylint disable after the arg-name-for-non-keyword-arg
-    # check is refactored.
     context = ssl.create_default_context(cafile=certifi.where())
     return urllib.request.urlopen(source_url, context=context)
 
@@ -1453,3 +1441,14 @@ def unescape_html(escaped_html_data: str) -> str:
             replace_tuple[0], replace_tuple[1])
 
     return unescaped_html_data
+
+
+def get_image_filename_regex_pattern() -> str:
+    """Returns regex pattern for valid image filenames based on
+    accepted extensions.
+    """
+    extensions = []
+    for _, exts in feconf.ACCEPTED_IMAGE_FORMATS_AND_EXTENSIONS.items():
+        extensions.extend(exts)
+    extension_pattern = '|'.join(extensions)
+    return r'^[a-zA-Z0-9\-_]+\.(%s)$' % extension_pattern

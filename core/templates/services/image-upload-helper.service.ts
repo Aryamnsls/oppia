@@ -16,16 +16,15 @@
  * @fileoverview Image upload helper service.
  */
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {Injectable} from '@angular/core';
 
-import { AssetsBackendApiService } from 'services/assets-backend-api.service';
-import { SvgSanitizerService } from './svg-sanitizer.service';
+import {AssetsBackendApiService} from 'services/assets-backend-api.service';
+import {SvgSanitizerService} from './svg-sanitizer.service';
 
-import constants from 'assets/constants';
+import {AppConstants} from 'app.constants';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ImageUploadHelperService {
   constructor(
@@ -35,13 +34,17 @@ export class ImageUploadHelperService {
 
   private _generateDateTimeStringForFilename(): string {
     let date = new Date();
-    return date.getFullYear() +
+    return (
+      date.getFullYear() +
       ('0' + (date.getMonth() + 1)).slice(-2) +
-      ('0' + date.getDate()).slice(-2) + '_' +
+      ('0' + date.getDate()).slice(-2) +
+      '_' +
       ('0' + date.getHours()).slice(-2) +
       ('0' + date.getMinutes()).slice(-2) +
-      ('0' + date.getSeconds()).slice(-2) + '_' +
-      Math.random().toString(36).substr(2, 10);
+      ('0' + date.getSeconds()).slice(-2) +
+      '_' +
+      Math.random().toString(36).substr(2, 10)
+    );
   }
 
   // Image file returned will be null when blob is not of type
@@ -63,9 +66,8 @@ export class ImageUploadHelperService {
         ia[i] = byteString.charCodeAt(i);
       }
 
-      let blob = new Blob([ia], { type: mime });
-      if (blob.type.match('image') &&
-        blob.size > 0) {
+      let blob = new Blob([ia], {type: mime});
+      if (blob.type.match('image') && blob.size > 0) {
         return blob;
       }
     }
@@ -74,42 +76,57 @@ export class ImageUploadHelperService {
   }
 
   getTrustedResourceUrlForThumbnailFilename(
-      imageFileName: string, entityType: string, entityId: string): string {
+    imageFileName: string,
+    entityType: string,
+    entityId: string
+  ): string {
     let encodedFilepath = window.encodeURIComponent(imageFileName);
     return this.assetsBackendApiService.getThumbnailUrlForPreview(
-      entityType, entityId, encodedFilepath);
+      entityType,
+      entityId,
+      encodedFilepath
+    );
   }
 
   generateImageFilename(
-      height: number, width: number, extension: string): string {
-    return 'img_' +
+    height: number,
+    width: number,
+    extension: string
+  ): string {
+    return (
+      'img_' +
       this._generateDateTimeStringForFilename() +
-      '_height_' + height +
-      '_width_' + width +
-      '.' + extension;
+      '_height_' +
+      height +
+      '_width_' +
+      width +
+      '.' +
+      extension
+    );
   }
 
   generateMathExpressionImageFilename(
-      height: string, width: string, verticalPadding: string): string {
-    let filename = (
+    height: string,
+    width: string,
+    verticalPadding: string
+  ): string {
+    let filename =
       'mathImg_' +
-        this._generateDateTimeStringForFilename() +
-        '_height_' + height +
-        '_width_' + width +
-        '_vertical_' + verticalPadding +
-        '.' + 'svg'
-    );
-    let filenameRegexString = constants.MATH_SVG_FILENAME_REGEX;
+      this._generateDateTimeStringForFilename() +
+      '_height_' +
+      height +
+      '_width_' +
+      width +
+      '_vertical_' +
+      verticalPadding +
+      '.' +
+      'svg';
+    let filenameRegexString = AppConstants.MATH_SVG_FILENAME_REGEX;
     let filenameRegex = RegExp(filenameRegexString, 'g');
     if (filenameRegex.exec(filename)) {
       return filename;
     } else {
-      throw new Error(
-        'The Math SVG filename format is invalid.');
+      throw new Error('The Math SVG filename format is invalid.');
     }
   }
 }
-
-angular.module('oppia').factory(
-  'ImageUploadHelperService',
-  downgradeInjectable(ImageUploadHelperService));

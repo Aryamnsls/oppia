@@ -16,11 +16,10 @@
  * @fileoverview Service for keeping track of solution validity.
  */
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {Injectable} from '@angular/core';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class SolutionValidityService {
   solutionValidities: Record<string, boolean> = {};
@@ -56,6 +55,3 @@ export class SolutionValidityService {
     return this.solutionValidities;
   }
 }
-
-angular.module('oppia').factory(
-  'SolutionValidityService', downgradeInjectable(SolutionValidityService));

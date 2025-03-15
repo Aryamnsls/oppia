@@ -16,7 +16,7 @@
  * @fileoverview Unit tests for CollectionSummary.
  */
 
-import { CollectionSummary } from 'domain/collection/collection-summary.model';
+import {CollectionSummary} from 'domain/collection/collection-summary.model';
 
 describe('Collection summary model', () => {
   it('should correctly convert dict to collection summary object', () => {
@@ -27,25 +27,26 @@ describe('Collection summary model', () => {
       id: '44LKoKLlIbGe',
       thumbnail_icon_url: '/subjects/Algebra.svg',
       language_code: 'en',
-      thumbnail_bg_color: '#cd672b',
+      thumbnail_bg_color: '#cc4b00',
       created_on: 1591296635736.666,
       status: 'public',
       category: 'Algebra',
       title: 'Test Title',
-      node_count: 0
+      node_count: 0,
     };
 
-    let collectionSummaryObject = CollectionSummary.createFromBackendDict(
-      backendDict);
+    let collectionSummaryObject =
+      CollectionSummary.createFromBackendDict(backendDict);
 
     expect(collectionSummaryObject.lastUpdatedMsec).toEqual(1591296737470.528);
     expect(collectionSummaryObject.communityOwned).toEqual(false);
     expect(collectionSummaryObject.objective).toEqual('Test Objective');
     expect(collectionSummaryObject.id).toEqual('44LKoKLlIbGe');
     expect(collectionSummaryObject.thumbnailIconUrl).toEqual(
-      '/subjects/Algebra.svg');
+      '/subjects/Algebra.svg'
+    );
     expect(collectionSummaryObject.languageCode).toEqual('en');
-    expect(collectionSummaryObject.thumbnailBgColor).toEqual('#cd672b');
+    expect(collectionSummaryObject.thumbnailBgColor).toEqual('#cc4b00');
     expect(collectionSummaryObject.createdOn).toEqual(1591296635736.666);
     expect(collectionSummaryObject.status).toEqual('public');
     expect(collectionSummaryObject.category).toEqual('Algebra');

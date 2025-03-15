@@ -20,14 +20,19 @@
 // may be additional customization options for the editor that should be passed
 // in via initArgs.
 
-import { AfterViewInit, Component, EventEmitter, Input, Output } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { GraphAnswer } from 'interactions/answer-defs';
+import {
+  AfterViewInit,
+  Component,
+  EventEmitter,
+  Input,
+  Output,
+} from '@angular/core';
+import {GraphAnswer} from 'interactions/answer-defs';
 
 @Component({
   selector: 'graph-editor',
   templateUrl: './graph-editor.component.html',
-  styleUrls: []
+  styleUrls: [],
 })
 export class GraphEditorComponent implements AfterViewInit {
   @Input() modalId!: symbol;
@@ -44,7 +49,7 @@ export class GraphEditorComponent implements AfterViewInit {
   ngAfterViewInit(): void {
     // Please check the note above the "graphIsShown" variable declaration for
     // info on why setTimeout is used or why the "graphIsShown" is needed.
-    setTimeout(() => this.graphIsShown = true);
+    setTimeout(() => (this.graphIsShown = true));
   }
 
   updateValue(graph: GraphAnswer): void {
@@ -52,7 +57,3 @@ export class GraphEditorComponent implements AfterViewInit {
     this.valueChanged.emit(graph);
   }
 }
-
-angular.module('oppia').directive('graphEditor', downgradeComponent({
-  component: GraphEditorComponent
-}) as angular.IDirectiveFactory);

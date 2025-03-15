@@ -16,12 +16,30 @@
  * @fileoverview Component for general schema-based editors.
  */
 
-import { Input, Output, EventEmitter, Component, forwardRef, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
-import { NG_VALUE_ACCESSOR, NG_VALIDATORS, ControlValueAccessor, Validator, AbstractControl, ValidationErrors, NgForm } from '@angular/forms';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { Schema, SchemaDefaultValue } from 'services/schema-default-value.service';
-
-const VALIDATION_STATUS_INVALID = 'INVALID';
+import {
+  Input,
+  Output,
+  EventEmitter,
+  Component,
+  forwardRef,
+  AfterViewInit,
+  ViewChild,
+  ElementRef,
+} from '@angular/core';
+import {
+  NG_VALUE_ACCESSOR,
+  NG_VALIDATORS,
+  ControlValueAccessor,
+  Validator,
+  AbstractControl,
+  ValidationErrors,
+  NgForm,
+} from '@angular/forms';
+import {
+  Schema,
+  SchemaDefaultValue,
+} from 'services/schema-default-value.service';
+import {VALIDATION_STATUS_INVALID} from 'utility/forms';
 
 @Component({
   selector: 'schema-based-editor',
@@ -30,17 +48,18 @@ const VALIDATION_STATUS_INVALID = 'INVALID';
     {
       provide: NG_VALUE_ACCESSOR,
       useExisting: forwardRef(() => SchemaBasedEditorComponent),
-      multi: true
+      multi: true,
     },
     {
       provide: NG_VALIDATORS,
       useExisting: forwardRef(() => SchemaBasedEditorComponent),
-      multi: true
+      multi: true,
     },
-  ]
+  ],
 })
 export class SchemaBasedEditorComponent
-implements AfterViewInit, ControlValueAccessor, Validator {
+  implements AfterViewInit, ControlValueAccessor, Validator
+{
   // These properties are initialized using Angular lifecycle hooks
   // and we need to do non-null assertion. For more information, see
   // https://github.com/oppia/oppia/wiki/Guide-on-defining-types#ts-7-1
@@ -53,6 +72,7 @@ implements AfterViewInit, ControlValueAccessor, Validator {
   @Output() inputFocus = new EventEmitter();
   @Input() notRequired!: boolean;
   onChange: (val: SchemaDefaultValue) => void = () => {};
+  onValidatorChange: () => void = () => {};
   get localValue(): SchemaDefaultValue {
     return this._localValue;
   }
@@ -64,7 +84,7 @@ implements AfterViewInit, ControlValueAccessor, Validator {
   }
 
   @Output() localValueChange = new EventEmitter();
-  constructor(private elementRef: ElementRef) { }
+  constructor(private elementRef: ElementRef) {}
 
   // Implemented as a part of ControlValueAccessor interface.
   writeValue(value: SchemaDefaultValue): void {
@@ -80,40 +100,60 @@ implements AfterViewInit, ControlValueAccessor, Validator {
   }
 
   // Implemented as a part of ControlValueAccessor interface.
-  registerOnTouched(): void {
+  registerOnTouched(): void {}
+
+  registerOnValidatorChange(fn: () => void): void {
+    this.onValidatorChange = fn;
   }
 
   // Implemented as a part of Validator interface.
   validate(control: AbstractControl): ValidationErrors | null {
-    return this.form ? this.form.errors : null;
+    if (!this.form) {
+      return null;
+    }
+    return this.form.valid ? null : {invalid: true};
   }
 
   ngAfterViewInit(): void {
-    if (angular.element) {
-      let angularJsFormController: angular.IFormController = angular.element(
-        this.elementRef.nativeElement).controller('form');
-      // This throws "Object is possibly undefined." The type undefined
-      // comes here from NgForm dependency. We need to suppress this
-      // error because of strict type checking.
-      // @ts-ignore
-      this.form.statusChanges.subscribe((validationStatus) => {
-        if (angularJsFormController === null ||
-          angularJsFormController === undefined) {
-          return;
-        }
-        if (validationStatus === VALIDATION_STATUS_INVALID) {
-          angularJsFormController.$setValidity(
-            'schema', false, angularJsFormController);
-        } else {
-          angularJsFormController.$setValidity(
-            'schema', true, angularJsFormController);
-        }
-      });
-    }
+    let angularJsFormController: angular.IFormController | undefined = angular
+      ?.element(this.elementRef.nativeElement)
+      .controller('form');
+    // The 'statusChanges' property is an Observable that emits an event every
+    // time the status of the control changes. The NgForm class, which our
+    // component is using, initializes 'this.form' (which is an instance of
+    // FormGroup) in its constructor. Since FormGroup extends AbstractControl
+    // (and indirectly AbstractControlDirective), it also has the
+    // 'statusChanges' property. The 'control' getter in NgForm is overridden to
+    // return 'this.form'. Thus, whenever we reference 'statusChanges' in our
+    // component, it is referring to 'statusChanges' of 'this.form'.
+
+    // Because 'this.form' is guaranteed to be initialized in the NgForm
+    // constructor before any lifecycle methods of our component are run, we can
+    // safely use a non-null assertion operator on 'statusChanges'. This is
+    // because we are confident that 'statusChanges' will not be null when we
+    // use it in our component.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    this.form.statusChanges!.subscribe(validationStatus => {
+      this.onValidatorChange();
+      if (
+        angularJsFormController === null ||
+        angularJsFormController === undefined
+      ) {
+        return;
+      }
+      if (validationStatus === VALIDATION_STATUS_INVALID) {
+        angularJsFormController.$setValidity(
+          'schema',
+          false,
+          angularJsFormController
+        );
+      } else {
+        angularJsFormController.$setValidity(
+          'schema',
+          true,
+          angularJsFormController
+        );
+      }
+    });
   }
 }
-
-
-angular.module('oppia').directive('schemaBasedEditor', downgradeComponent({
-  component: SchemaBasedEditorComponent
-}));

@@ -76,7 +76,8 @@ class RteComponentUnitTests(test_utils.GenericTestBase):
         """Validates the given customization arg specs."""
         for ca_spec in customization_arg_specs:
             self.assertEqual(set(ca_spec.keys()), set([
-                'name', 'description', 'schema', 'default_value']))
+                'name', 'description', 'schema', 'default_value',
+                'default_value_obtainable_from_highlight']))
 
             self.assertTrue(
                 isinstance(ca_spec['name'], str))
@@ -184,8 +185,6 @@ class RteComponentUnitTests(test_utils.GenericTestBase):
             self.assertTrue(os.path.isfile(main_html_file))
 
             ts_file_content = utils.get_file_contents(main_ts_file)
-            self.assertIn(
-                'oppiaNoninteractive%s' % component_id, ts_file_content)
             self.assertNotIn('<script>', ts_file_content)
             self.assertNotIn('</script>', ts_file_content)
 

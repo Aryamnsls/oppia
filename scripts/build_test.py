@@ -23,18 +23,23 @@ import collections
 import contextlib
 import io
 import os
+import pathlib
 import re
 import subprocess
+import sys
 import tempfile
 import threading
 
+from core import feconf
 from core import utils
 from core.tests import test_utils
 
-from typing import Deque, Dict, Iterator, List, Tuple, Union
+from typing import ContextManager, Deque, Dict, Iterator, List, Tuple, Union
 
 from . import build
 from . import common
+from . import install_python_dev_dependencies
+from . import install_third_party_libs
 from . import scripts_test_utils
 from . import servers
 
@@ -57,13 +62,28 @@ INVALID_OUTPUT_FILEPATH = os.path.join(
 EMPTY_DIR = os.path.join(TEST_DIR, 'empty', '')
 
 
+def mock_managed_process(
+    *unused_args: str, **unused_kwargs: str
+) -> ContextManager[scripts_test_utils.PopenStub]:
+    """Mock method for replacing the managed_process() functions.
+
+    Returns:
+        Context manager. A context manager that always yields a mock
+        process.
+    """
+    return contextlib.nullcontext(
+        enter_result=scripts_test_utils.PopenStub(alive=False))
+
+
 class BuildTests(test_utils.GenericTestBase):
     """Test the build methods."""
 
     def tearDown(self) -> None:
-        super().tearDown()
         build.safe_delete_directory_tree(TEST_DIR)
         build.safe_delete_directory_tree(EMPTY_DIR)
+        pathlib.Path.unlink(pathlib.Path('mock_app.yaml'), missing_ok=True)
+        pathlib.Path.unlink(pathlib.Path('mock_app_dev.yaml'), missing_ok=True)
+        super().tearDown()
 
     def test_minify_func_with_invalid_filepath(self) -> None:
         """Tests minify_func with an invalid filepath."""
@@ -88,6 +108,25 @@ class BuildTests(test_utils.GenericTestBase):
         # the error, we used ignore here.
         # `returncode` is the exit status of the child process.
         self.assertEqual(called_process.exception.returncode, 1)  # type: ignore[attr-defined]
+
+    def test_minify_and_create_sourcemap_under_docker_environment(self) -> None:
+        """Tests _minify_and_create_sourcemap with an invalid filepath."""
+
+        def mock_subprocess_check_call(command: str, **kwargs: bool) -> None:   # pylint: disable=unused-argument
+            """Mock method for replacing subprocess.check_call()."""
+            excepted_cmd = (
+                'node /app/oppia/node_modules/uglify-js/bin/uglifyjs '
+                '/app/oppia/third_party/generated/js/third_party.js -c -m'
+                ' --source-map includeSources,url=\'third_party.min.js.map\' '
+                '-o /app/oppia/third_party/generated/js/third_party.min.js'
+            )
+            self.assertEqual(command, excepted_cmd)
+
+        with self.swap(feconf, 'OPPIA_IS_DOCKERIZED', True):
+            with self.swap(
+                subprocess, 'check_call', mock_subprocess_check_call):
+                build._minify_and_create_sourcemap(  # pylint: disable=protected-access
+                    INVALID_INPUT_FILEPATH, INVALID_OUTPUT_FILEPATH)
 
     def test_join_files(self) -> None:
         """Determine third_party.js contains the content of the first 10 JS
@@ -164,7 +203,7 @@ class BuildTests(test_utils.GenericTestBase):
         """
 
         # Test when both lists contain single directory.
-        build.ensure_directory_exists(EMPTY_DIR)
+        common.ensure_directory_exists(EMPTY_DIR)
         source_dir_file_count = build.get_file_count(EMPTY_DIR)
         assert source_dir_file_count == 0
         target_dir_file_count = build.get_file_count(MOCK_ASSETS_DEV_DIR)
@@ -357,7 +396,7 @@ class BuildTests(test_utils.GenericTestBase):
         directory with given extensions.
         """
         filepaths: List[str] = []
-        build.ensure_directory_exists(MOCK_ASSETS_DEV_DIR)
+        common.ensure_directory_exists(MOCK_ASSETS_DEV_DIR)
         extensions: Tuple[str, ...] = ('.json', '.svg',)
 
         self.assertEqual(len(filepaths), 0)
@@ -551,7 +590,7 @@ class BuildTests(test_utils.GenericTestBase):
         build_dir_tasks.clear()
 
         # Test for building only new files when staging dir exists.
-        build.ensure_directory_exists(
+        common.ensure_directory_exists(
             extensions_dirnames_to_dirpaths['staging_dir'])
         self.assertEqual(len(build_dir_tasks), 0)
 
@@ -562,7 +601,7 @@ class BuildTests(test_utils.GenericTestBase):
         build.safe_delete_directory_tree(TEST_DIR)
 
         # Build all files and save to final directory.
-        build.ensure_directory_exists(
+        common.ensure_directory_exists(
             extensions_dirnames_to_dirpaths['staging_dir'])
         build._execute_tasks(build_dir_tasks)  # pylint: disable=protected-access
         self.assertEqual(threading.active_count(), 1)
@@ -593,7 +632,7 @@ class BuildTests(test_utils.GenericTestBase):
         setattr(temp_file, 'name', temp_file_name)
         with utils.open_file(
             '%ssome_file.js' % MOCK_EXTENSIONS_DEV_DIR, 'w') as tmp:
-            tmp.write(u'Some content.')
+            tmp.write('Some content.')
 
         extensions_dirnames_to_dirpaths = {
             'dev_dir': MOCK_EXTENSIONS_DEV_DIR,
@@ -619,7 +658,7 @@ class BuildTests(test_utils.GenericTestBase):
         build_dir_tasks.clear()
 
         # Test for building only new files when staging dir exists.
-        build.ensure_directory_exists(
+        common.ensure_directory_exists(
             extensions_dirnames_to_dirpaths['staging_dir'])
         self.assertEqual(len(build_dir_tasks), 0)
 
@@ -631,7 +670,7 @@ class BuildTests(test_utils.GenericTestBase):
         self.assertEqual(
             sorted(always_rebuilt_filepaths), sorted(
                 ['base.py', 'CodeRepl.py', '__init__.py', 'some_file.js',
-                 'DragAndDropSortInput.py', 'code_repl_prediction.html']))
+                 'DragAndDropSortInput.py', 'randomfile.html']))
         self.assertGreater(len(always_rebuilt_filepaths), 0)
 
         # Test that 'some_file.js' is not rebuilt, i.e it is built for the first
@@ -650,7 +689,7 @@ class BuildTests(test_utils.GenericTestBase):
     def test_get_recently_changed_filenames(self) -> None:
         """Test get_recently_changed_filenames detects file recently added."""
         # Create an empty folder.
-        build.ensure_directory_exists(EMPTY_DIR)
+        common.ensure_directory_exists(EMPTY_DIR)
         # Get hashes from ASSETS_DEV_DIR to simulate a folder with built files.
         assets_hashes = build.get_file_hashes(MOCK_ASSETS_DEV_DIR)
         recently_changed_filenames: List[str] = []
@@ -699,16 +738,18 @@ class BuildTests(test_utils.GenericTestBase):
         setattr(
             app_dev_yaml_temp_file, 'name', mock_dev_yaml_filepath)
         with utils.open_file(mock_dev_yaml_filepath, 'w') as tmp:
-            tmp.write('Some content in mock_app_dev.yaml\n')
-            tmp.write('  FIREBASE_AUTH_EMULATOR_HOST: "localhost:9099"\n')
-            tmp.write('version: default')
+            with self.swap(feconf, 'OPPIA_IS_DOCKERIZED', True):
+                tmp.write('Some content in mock_app_dev.yaml\n')
+                tmp.write(
+                    '  FIREBASE_AUTH_EMULATOR_HOST: "firebase:9099"\n')
+                tmp.write('version: default')
 
         app_yaml_temp_file = tempfile.NamedTemporaryFile()
         # Here MyPy assumes that the 'name' attribute is read-only. In order to
         # silence the MyPy complaints `setattr` is used to set the attribute.
         setattr(app_yaml_temp_file, 'name', mock_yaml_filepath)
         with utils.open_file(mock_yaml_filepath, 'w') as tmp:
-            tmp.write(u'Initial content in mock_app.yaml')
+            tmp.write('Initial content in mock_app.yaml')
 
         with app_dev_yaml_filepath_swap, app_yaml_filepath_swap:
             with env_vars_to_remove_from_deployed_app_yaml_swap:
@@ -745,9 +786,15 @@ class BuildTests(test_utils.GenericTestBase):
         # silence the MyPy complaints `setattr` is used to set the attribute.
         setattr(
             app_dev_yaml_temp_file, 'name', mock_dev_yaml_filepath)
+        # TODO(#18260): Change this when we permanently move to
+        # the Dockerized Setup.
+        firebase_host = (
+            'firebase' if feconf.OPPIA_IS_DOCKERIZED else 'localhost'
+        )
         with utils.open_file(mock_dev_yaml_filepath, 'w') as tmp:
             tmp.write('Some content in mock_app_dev.yaml\n')
-            tmp.write('  FIREBASE_AUTH_EMULATOR_HOST: "localhost:9099"\n')
+            tmp.write(
+                '  FIREBASE_AUTH_EMULATOR_HOST: "%s:9099"\n' % firebase_host)
             tmp.write('version: default')
 
         app_yaml_temp_file = tempfile.NamedTemporaryFile()
@@ -774,103 +821,6 @@ class BuildTests(test_utils.GenericTestBase):
         app_yaml_temp_file.close()
         app_dev_yaml_temp_file.close()
 
-    def test_modify_constants(self) -> None:
-        mock_constants_path = 'mock_app_dev.yaml'
-        mock_feconf_path = 'mock_app.yaml'
-        constants_path_swap = self.swap(
-            common, 'CONSTANTS_FILE_PATH', mock_constants_path)
-        feconf_path_swap = self.swap(common, 'FECONF_PATH', mock_feconf_path)
-
-        constants_temp_file = tempfile.NamedTemporaryFile()
-        # Here MyPy assumes that the 'name' attribute is read-only. In order to
-        # silence the MyPy complaints `setattr` is used to set the attribute.
-        setattr(
-            constants_temp_file, 'name', mock_constants_path)
-        with utils.open_file(mock_constants_path, 'w') as tmp:
-            tmp.write('export = {\n')
-            tmp.write('  "DEV_MODE": true,\n')
-            tmp.write('  "EMULATOR_MODE": false,\n')
-            tmp.write('};')
-
-        feconf_temp_file = tempfile.NamedTemporaryFile()
-        # Here MyPy assumes that the 'name' attribute is read-only. In order to
-        # silence the MyPy complaints `setattr` is used to set the attribute.
-        setattr(feconf_temp_file, 'name', mock_feconf_path)
-        with utils.open_file(mock_feconf_path, 'w') as tmp:
-            tmp.write(u'ENABLE_MAINTENANCE_MODE = False')
-
-        with constants_path_swap, feconf_path_swap:
-            build.modify_constants(prod_env=True, maintenance_mode=False)
-            with utils.open_file(
-                mock_constants_path, 'r') as constants_file:
-                self.assertEqual(
-                    constants_file.read(),
-                    'export = {\n'
-                    '  "DEV_MODE": false,\n'
-                    '  "EMULATOR_MODE": true,\n'
-                    '};')
-            with utils.open_file(mock_feconf_path, 'r') as feconf_file:
-                self.assertEqual(
-                    feconf_file.read(), 'ENABLE_MAINTENANCE_MODE = False')
-
-            build.modify_constants(prod_env=False, maintenance_mode=True)
-            with utils.open_file(
-                mock_constants_path, 'r') as constants_file:
-                self.assertEqual(
-                    constants_file.read(),
-                    'export = {\n'
-                    '  "DEV_MODE": true,\n'
-                    '  "EMULATOR_MODE": true,\n'
-                    '};')
-            with utils.open_file(mock_feconf_path, 'r') as feconf_file:
-                self.assertEqual(
-                    feconf_file.read(), 'ENABLE_MAINTENANCE_MODE = True')
-
-        constants_temp_file.close()
-        feconf_temp_file.close()
-
-    def test_set_constants_to_default(self) -> None:
-        mock_constants_path = 'mock_app_dev.yaml'
-        mock_feconf_path = 'mock_app.yaml'
-        constants_path_swap = self.swap(
-            common, 'CONSTANTS_FILE_PATH', mock_constants_path)
-        feconf_path_swap = self.swap(common, 'FECONF_PATH', mock_feconf_path)
-
-        constants_temp_file = tempfile.NamedTemporaryFile()
-        # Here MyPy assumes that the 'name' attribute is read-only. In order to
-        # silence the MyPy complaints `setattr` is used to set the attribute.
-        setattr(
-            constants_temp_file, 'name', mock_constants_path)
-        with utils.open_file(mock_constants_path, 'w') as tmp:
-            tmp.write('export = {\n')
-            tmp.write('  "DEV_MODE": false,\n')
-            tmp.write('  "EMULATOR_MODE": false,\n')
-            tmp.write('};')
-
-        feconf_temp_file = tempfile.NamedTemporaryFile()
-        # Here MyPy assumes that the 'name' attribute is read-only. In order to
-        # silence the MyPy complaints `setattr` is used to set the attribute.
-        setattr(feconf_temp_file, 'name', mock_feconf_path)
-        with utils.open_file(mock_feconf_path, 'w') as tmp:
-            tmp.write(u'ENABLE_MAINTENANCE_MODE = True')
-
-        with constants_path_swap, feconf_path_swap:
-            build.set_constants_to_default()
-            with utils.open_file(
-                mock_constants_path, 'r') as constants_file:
-                self.assertEqual(
-                    constants_file.read(),
-                    'export = {\n'
-                    '  "DEV_MODE": true,\n'
-                    '  "EMULATOR_MODE": true,\n'
-                    '};')
-            with utils.open_file(mock_feconf_path, 'r') as feconf_file:
-                self.assertEqual(
-                    feconf_file.read(), 'ENABLE_MAINTENANCE_MODE = False')
-
-        constants_temp_file.close()
-        feconf_temp_file.close()
-
     def test_safe_delete_file(self) -> None:
         """Test safe_delete_file with both existent and non-existent
         filepath.
@@ -880,7 +830,7 @@ class BuildTests(test_utils.GenericTestBase):
         # silence the MyPy complaints `setattr` is used to set the attribute.
         setattr(temp_file, 'name', 'some_file.txt')
         with utils.open_file('some_file.txt', 'w') as tmp:
-            tmp.write(u'Some content.')
+            tmp.write('Some content.')
         self.assertTrue(os.path.isfile('some_file.txt'))
 
         build.safe_delete_file('some_file.txt')
@@ -956,127 +906,70 @@ class BuildTests(test_utils.GenericTestBase):
         self.assertEqual(check_function_calls, expected_check_function_calls)
 
     def test_build_with_prod_env(self) -> None:
-        check_function_calls = {
-            'build_using_webpack_gets_called': False,
-            'ensure_files_exist_gets_called': False,
-            'modify_constants_gets_called': False,
-            'compare_file_count_gets_called': False,
-            'generate_python_package_called': False,
-            'clean_gets_called': False,
-        }
-        expected_check_function_calls = {
-            'build_using_webpack_gets_called': True,
-            'ensure_files_exist_gets_called': True,
-            'modify_constants_gets_called': True,
-            'compare_file_count_gets_called': True,
-            'generate_python_package_called': True,
-            'clean_gets_called': True,
-        }
-
-        expected_config_path = build.WEBPACK_PROD_CONFIG
-
-        def mock_build_using_webpack(config_path: str) -> None:
-            self.assertEqual(config_path, expected_config_path)
-            check_function_calls['build_using_webpack_gets_called'] = True
-
-        def mock_ensure_files_exist(unused_filepaths: List[str]) -> None:
-            check_function_calls['ensure_files_exist_gets_called'] = True
-
-        def mock_modify_constants(
-            prod_env: bool,  # pylint: disable=unused-argument
-            emulator_mode: bool,  # pylint: disable=unused-argument
-            maintenance_mode: bool  # pylint: disable=unused-argument
-        ) -> None:  # pylint: disable=unused-argument
-            check_function_calls['modify_constants_gets_called'] = True
-
-        def mock_compare_file_count(
-            unused_first_dir: str,
-            unused_second_dir: str
-        ) -> None:
-            check_function_calls['compare_file_count_gets_called'] = True
-
-        def mock_generate_python_package() -> None:
-            check_function_calls['generate_python_package_called'] = True
-
-        def mock_clean() -> None:
-            check_function_calls['clean_gets_called'] = True
-
         ensure_files_exist_swap = self.swap(
-            build, '_ensure_files_exist', mock_ensure_files_exist)
-        build_using_webpack_swap = self.swap(
-            build, 'build_using_webpack', mock_build_using_webpack)
-        modify_constants_swap = self.swap(
-            build, 'modify_constants', mock_modify_constants)
-        compare_file_count_swap = self.swap(
-            build, '_compare_file_count', mock_compare_file_count)
-        generate_python_package_swap = self.swap(
-            build, 'generate_python_package', mock_generate_python_package)
-        clean_swap = self.swap(build, 'clean', mock_clean)
+            build, '_ensure_files_exist', lambda _: None)
+        build_using_webpack_swap = self.swap_with_checks(
+            build, 'build_using_webpack', lambda _: None,
+            expected_args=[(build.WEBPACK_PROD_CONFIG,)])
+        build_using_ng_swap = self.swap_with_checks(
+            build, 'build_using_ng', lambda: None, expected_args=[()])
+        modify_constants_swap = self.swap_with_checks(
+            common, 'modify_constants', lambda **_: None,
+            expected_kwargs=[
+                {
+                    'prod_env': True,
+                    'emulator_mode': True,
+                    'maintenance_mode': False
+                }
+            ])
+        generate_python_package_swap = self.swap_with_checks(
+            build, 'generate_python_package', lambda: None,
+            expected_args=[()])
+        clean_swap = self.swap_with_checks(
+            build, 'clean', lambda: None, expected_args=[()])
 
         with ensure_files_exist_swap, build_using_webpack_swap, clean_swap:
-            with modify_constants_swap, compare_file_count_swap:
+            with modify_constants_swap, build_using_ng_swap:
                 with generate_python_package_swap:
                     build.main(args=['--prod_env'])
 
-        self.assertEqual(check_function_calls, expected_check_function_calls)
-
     def test_build_with_prod_source_maps(self) -> None:
-        check_function_calls = {
-            'build_using_webpack_gets_called': False,
-            'ensure_files_exist_gets_called': False,
-            'modify_constants_gets_called': False,
-            'compare_file_count_gets_called': False,
-            'clean_gets_called': False,
-        }
-        expected_check_function_calls = {
-            'build_using_webpack_gets_called': True,
-            'ensure_files_exist_gets_called': True,
-            'modify_constants_gets_called': True,
-            'compare_file_count_gets_called': True,
-            'clean_gets_called': True,
-        }
-
-        expected_config_path = build.WEBPACK_PROD_SOURCE_MAPS_CONFIG
-
-        def mock_build_using_webpack(config_path: str) -> None:
-            self.assertEqual(config_path, expected_config_path)
-            check_function_calls['build_using_webpack_gets_called'] = True
-
-        def mock_ensure_files_exist(unused_filepaths: List[str]) -> None:
-            check_function_calls['ensure_files_exist_gets_called'] = True
-
-        def mock_modify_constants(
-            prod_env: bool,  # pylint: disable=unused-argument
-            emulator_mode: bool,  # pylint: disable=unused-argument
-            maintenance_mode: bool  # pylint: disable=unused-argument
-        ) -> None:
-            check_function_calls['modify_constants_gets_called'] = True
-
-        def mock_compare_file_count(
-            unused_first_dir: str,
-            unused_second_dir: str
-        ) -> None:
-            check_function_calls['compare_file_count_gets_called'] = True
-
-        def mock_clean() -> None:
-            check_function_calls['clean_gets_called'] = True
-
         ensure_files_exist_swap = self.swap(
-            build, '_ensure_files_exist', mock_ensure_files_exist)
-        build_using_webpack_swap = self.swap(
-            build, 'build_using_webpack', mock_build_using_webpack)
-        modify_constants_swap = self.swap(
-            build, 'modify_constants', mock_modify_constants)
+            build, '_ensure_files_exist', lambda _: None)
+        build_using_webpack_swap = self.swap_with_checks(
+            build, 'build_using_webpack', lambda _: None,
+            expected_args=[(build.WEBPACK_PROD_SOURCE_MAPS_CONFIG,)])
+        build_using_ng_swap = self.swap_with_checks(
+            build, 'build_using_ng', lambda: None, expected_args=[()])
+        modify_constants_swap = self.swap_with_checks(
+            common, 'modify_constants', lambda **_: None,
+            expected_kwargs=[
+                {
+                    'prod_env': True,
+                    'emulator_mode': True,
+                    'maintenance_mode': False
+                }
+            ])
         compare_file_count_swap = self.swap(
-            build, '_compare_file_count', mock_compare_file_count)
-        clean_swap = self.swap(build, 'clean', mock_clean)
+            build, '_compare_file_count', lambda *_: None)
+        clean_swap = self.swap_with_checks(
+            build, 'clean', lambda: None, expected_args=[()])
+        install_python_dev_dependencies_swap = self.swap_with_checks(
+            install_python_dev_dependencies,
+            'main',
+            lambda _: None,
+            expected_args=[(['--uninstall'],)])
+        install_third_party_libs_swap = self.swap_with_checks(
+            install_third_party_libs,
+            'main',
+            lambda: None,
+            expected_args=[()])
 
         with ensure_files_exist_swap, build_using_webpack_swap:
             with modify_constants_swap, compare_file_count_swap:
-                with clean_swap:
-                    build.main(args=['--prod_env', '--source_maps'])
-
-        self.assertEqual(check_function_calls, expected_check_function_calls)
+                with clean_swap, install_python_dev_dependencies_swap:
+                    with build_using_ng_swap, install_third_party_libs_swap:
+                        build.main(args=['--prod_env', '--source_maps'])
 
     def test_build_with_watcher(self) -> None:
         check_function_calls = {
@@ -1106,7 +999,7 @@ class BuildTests(test_utils.GenericTestBase):
         ensure_files_exist_swap = self.swap(
             build, '_ensure_files_exist', mock_ensure_files_exist)
         modify_constants_swap = self.swap(
-            build, 'modify_constants', mock_modify_constants)
+            common, 'modify_constants', mock_modify_constants)
         clean_swap = self.swap(build, 'clean', mock_clean)
 
         with ensure_files_exist_swap, modify_constants_swap, clean_swap:
@@ -1176,7 +1069,7 @@ class BuildTests(test_utils.GenericTestBase):
         ensure_files_exist_swap = self.swap(
             build, '_ensure_files_exist', mock_ensure_files_exist)
         modify_constants_swap = self.swap(
-            build, 'modify_constants', mock_modify_constants)
+            common, 'modify_constants', mock_modify_constants)
         clean_swap = self.swap(build, 'clean', mock_clean)
         with ensure_files_exist_swap, modify_constants_swap, clean_swap:
             build.main(args=['--prod_env', '--minify_third_party_libs_only'])
@@ -1232,3 +1125,189 @@ class BuildTests(test_utils.GenericTestBase):
                 AssertionError, 'webpack_bundles should be non-empty.'
             ):
                 build.build_using_webpack(build.WEBPACK_PROD_CONFIG)
+
+    def test_build_using_ng_command(self) -> None:
+
+        @contextlib.contextmanager
+        def mock_managed_ng_build(
+            use_prod_env: bool, watch_mode: bool # pylint: disable=unused-argument
+        ) -> Iterator[scripts_test_utils.PopenStub]:
+            yield scripts_test_utils.PopenStub()
+
+        def mock_get_file_count(unused_path: str) -> int:
+            return 1
+
+        ng_build_swap = self.swap_with_checks(
+            servers, 'managed_ng_build', mock_managed_ng_build,
+            expected_kwargs=[{'use_prod_env': True, 'watch_mode': False}])
+        get_file_count_swap = self.swap_with_checks(
+            build, 'get_file_count', mock_get_file_count,
+            expected_args=[('dist/oppia-angular-prod',)])
+
+        with ng_build_swap, get_file_count_swap:
+            build.build_using_ng()
+
+    def test_build_using_ng_command_with_incorrect_filecount_fails(
+        self
+    ) -> None:
+
+        @contextlib.contextmanager
+        def mock_managed_ng_build(
+            use_prod_env: bool, watch_mode: bool # pylint: disable=unused-argument
+        ) -> Iterator[scripts_test_utils.PopenStub]:
+            yield scripts_test_utils.PopenStub()
+
+        def mock_get_file_count(unused_path: str) -> int:
+            return 0
+
+        ng_build_swap = self.swap_with_checks(
+            servers, 'managed_ng_build', mock_managed_ng_build,
+            expected_kwargs=[{'use_prod_env': True, 'watch_mode': False}])
+        get_file_count_swap = self.swap_with_checks(
+            build, 'get_file_count', mock_get_file_count,
+            expected_args=[('dist/oppia-angular-prod',)])
+
+        with ng_build_swap, get_file_count_swap:
+            with self.assertRaisesRegex(
+                AssertionError,
+                'angular generated bundle should be non-empty'
+            ):
+                build.build_using_ng()
+
+
+class E2EAndAcceptanceBuildTests(test_utils.GenericTestBase):
+    """Test the end to end build methods."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.exit_stack = contextlib.ExitStack()
+
+    def tearDown(self) -> None:
+        try:
+            self.exit_stack.close()
+        finally:
+            super().tearDown()
+
+    def test_run_webpack_compilation_success(self) -> None:
+        old_os_path_isdir = os.path.isdir
+
+        def mock_os_path_isdir(path: str) -> bool:
+            if path == 'webpack_bundles':
+                return True
+            return old_os_path_isdir(path)
+
+        # The webpack compilation processes will be called 4 times as mock_isdir
+        # will return true after 4 calls.
+        self.exit_stack.enter_context(self.swap_with_checks(
+            servers, 'managed_webpack_compiler', mock_managed_process))
+        self.exit_stack.enter_context(self.swap_with_checks(
+            sys, 'exit', lambda _: None, called=False))
+        self.exit_stack.enter_context(self.swap_with_checks(
+            os.path, 'isdir', mock_os_path_isdir))
+
+        build.run_webpack_compilation()
+
+    def test_run_webpack_compilation_failed(self) -> None:
+        old_os_path_isdir = os.path.isdir
+
+        def mock_os_path_isdir(path: str) -> bool:
+            if path == 'webpack_bundles':
+                return False
+            return old_os_path_isdir(path)
+
+        # The webpack compilation processes will be called five times.
+        self.exit_stack.enter_context(self.swap_with_checks(
+            servers, 'managed_webpack_compiler', mock_managed_process))
+        self.exit_stack.enter_context(self.swap_with_checks(
+            os.path, 'isdir', mock_os_path_isdir))
+        self.exit_stack.enter_context(self.swap_with_checks(
+            sys, 'exit', lambda _: None, expected_args=[(1,)]))
+
+        build.run_webpack_compilation()
+
+    def test_build_js_files_in_dev_mode_with_hash_file_exists(self) -> None:
+        old_os_path_isdir = os.path.isdir
+
+        def mock_os_path_isdir(path: str) -> bool:
+            if path == 'webpack_bundles':
+                return True
+            return old_os_path_isdir(path)
+
+        self.exit_stack.enter_context(self.swap_with_checks(
+            servers, 'managed_webpack_compiler', mock_managed_process))
+        self.exit_stack.enter_context(self.swap_with_checks(
+            build, 'main', lambda *_, **__: None,
+            expected_kwargs=[{'args': []}]))
+        self.exit_stack.enter_context(self.swap_with_checks(
+            common, 'run_ng_compilation', lambda: None,
+            expected_args=[()]))
+        self.exit_stack.enter_context(self.swap_with_checks(
+            os.path, 'isdir', mock_os_path_isdir))
+        self.exit_stack.enter_context(self.swap_with_checks(
+            sys, 'exit', lambda _: None, called=False))
+
+        build.build_js_files(True)
+
+    def test_build_js_files_in_dev_mode_with_exception_raised(self) -> None:
+        return_code = 2
+        self.exit_stack.enter_context(self.swap_to_always_raise(
+            servers, 'managed_webpack_compiler',
+            error=subprocess.CalledProcessError(return_code, [])))
+        self.exit_stack.enter_context(self.swap_with_checks(
+            build, 'main', lambda *_, **__: None,
+            expected_kwargs=[{'args': []}]))
+        self.exit_stack.enter_context(self.swap_with_checks(
+            common, 'run_ng_compilation', lambda: None,
+            expected_args=[()]))
+        self.exit_stack.enter_context(self.swap_with_checks(
+            sys, 'exit', lambda _: None,
+            expected_args=[
+                # When the code under test runs, the first sys.exit call halts
+                # execution. However, when this test runs, sys.exit is mocked
+                # and so does not interrupt the execution flow. Therefore we
+                # call sys.exit with the error code from the webpack compilation
+                # process (2) 5 times (the maximum number of attempts allowed to
+                # compile webpack) and then exit with code 1 after giving up
+                # trying to compile webpack.
+                (return_code,),
+                (return_code,),
+                (return_code,),
+                (return_code,),
+                (return_code,),
+                (1,),
+            ]))
+
+        build.build_js_files(True)
+
+    def test_build_js_files_in_prod_mode(self) -> None:
+        self.exit_stack.enter_context(self.swap_with_checks(
+            common, 'run_cmd', lambda *_: None, called=False))
+        self.exit_stack.enter_context(self.swap_with_checks(
+            build, 'main', lambda *_, **__: None,
+            expected_kwargs=[{'args': ['--prod_env']}]))
+
+        build.build_js_files(False)
+
+    def test_build_js_files_in_prod_mode_with_source_maps(self) -> None:
+        self.exit_stack.enter_context(self.swap_with_checks(
+            common, 'run_cmd', lambda *_: None, called=False))
+        self.exit_stack.enter_context(self.swap_with_checks(
+            build, 'main', lambda *_, **__: None,
+            expected_kwargs=[{'args': ['--prod_env', '--source_maps']}]))
+
+        build.build_js_files(False, source_maps=True)
+
+    def test_webpack_compilation_in_dev_mode_with_source_maps(self) -> None:
+        self.exit_stack.enter_context(self.swap_with_checks(
+            common, 'run_cmd', lambda *_: None, called=False))
+        self.exit_stack.enter_context(self.swap_with_checks(
+            build, 'main', lambda *_, **__: None,
+            expected_kwargs=[{'args': []}]))
+        self.exit_stack.enter_context(self.swap_with_checks(
+            common, 'run_ng_compilation', lambda: None,
+            expected_args=[()]))
+        self.exit_stack.enter_context(self.swap_with_checks(
+            build, 'run_webpack_compilation', lambda **_: None,
+            expected_kwargs=[{'source_maps': True}]))
+
+        build.build_js_files(True, source_maps=True)

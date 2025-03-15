@@ -16,13 +16,12 @@
  * @fileoverview Standalone services for the general state editor page.
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { EventEmitter, Injectable } from '@angular/core';
+import {EventEmitter, Injectable} from '@angular/core';
 
 import cloneDeep from 'lodash/cloneDeep';
 
-import { AlertsService } from 'services/alerts.service';
-import { UtilsService } from 'services/utils.service';
+import {AlertsService} from 'services/alerts.service';
+import {UtilsService} from 'services/utils.service';
 
 /**
  * NOTE TO DEVELOPERS: This class should not be used to create objects directly.
@@ -38,7 +37,7 @@ import { UtilsService } from 'services/utils.service';
  * savedMomento etc. to be string.
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class StatePropertyService<StatePropertyType> {
   // These properties are initialized using Angular lifecycle hooks
@@ -54,7 +53,8 @@ export class StatePropertyService<StatePropertyType> {
 
   constructor(
     private alertsService: AlertsService,
-    private utilsService: UtilsService) {
+    private utilsService: UtilsService
+  ) {
     this.setterMethodKey = null;
     this.statePropertyInitializedEmitter = new EventEmitter();
   }
@@ -118,7 +118,3 @@ export class StatePropertyService<StatePropertyType> {
     this.displayed = cloneDeep(this.savedMemento);
   }
 }
-
-angular.module('oppia').factory(
-  'StatePropertyService', downgradeInjectable(
-    StatePropertyService));

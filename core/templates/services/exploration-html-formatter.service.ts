@@ -16,20 +16,19 @@
  * @fileoverview Utility services for explorations which may be shared by both
  * the learner and editor views.
  */
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { Injectable } from '@angular/core';
+import {Injectable} from '@angular/core';
 
-import { AppConstants } from 'app.constants';
-import { CamelCaseToHyphensPipe } from 'filters/string-utility-filters/camel-case-to-hyphens.pipe';
-import { ExtensionTagAssemblerService } from 'services/extension-tag-assembler.service';
-import { HtmlEscaperService } from 'services/html-escaper.service';
-import { InteractionAnswer } from 'interactions/answer-defs';
-import { InteractionCustomizationArgs } from 'interactions/customization-args-defs';
+import {AppConstants} from 'app.constants';
+import {CamelCaseToHyphensPipe} from 'filters/string-utility-filters/camel-case-to-hyphens.pipe';
+import {ExtensionTagAssemblerService} from 'services/extension-tag-assembler.service';
+import {HtmlEscaperService} from 'services/html-escaper.service';
+import {InteractionAnswer} from 'interactions/answer-defs';
+import {InteractionCustomizationArgs} from 'interactions/customization-args-defs';
 
 // A service that provides a number of utility functions useful to both the
 // editor and player.
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ExplorationHtmlFormatterService {
   private readonly migratedInteractions: string[] = [
@@ -56,22 +55,18 @@ export class ExplorationHtmlFormatterService {
   ];
 
   constructor(
-      private camelCaseToHyphens: CamelCaseToHyphensPipe,
-      private extensionTagAssembler: ExtensionTagAssemblerService,
-      private htmlEscaper: HtmlEscaperService
+    private camelCaseToHyphens: CamelCaseToHyphensPipe,
+    private extensionTagAssembler: ExtensionTagAssemblerService,
+    private htmlEscaper: HtmlEscaperService
   ) {}
 
   /**
    * @param {string} interactionId - The interaction id.
    * @param {object} interactionCustomizationArgs - The various
    *   attributes that the interaction depends on.
-   * @param {boolean} parentHasLastAnswerProperty - If this function is
-   *   called in the exploration_player view (including the preview mode),
-   *   callers should ensure that parentHasLastAnswerProperty is set to
-   *   true and $scope.lastAnswer =
-   *   PlayerTranscriptService.getLastAnswerOnDisplayedCard(index) is set on
-   *   the parent controller of the returned tag.
-   *   Otherwise, parentHasLastAnswerProperty should be set to false.
+   * @param {boolean} parentHasLastAnswerProperty - Indicates whether the parent
+   *   component has a property for the last answer. If true, the attribute
+   *   'last-answer' will be set to 'lastAnswer', otherwise it will be set to 'null'.
    * @param {string} labelForFocusTarget - The label for setting focus on
    *   the interaction.
    * @param {string} savedSolution - The name of property that needs to be bound
@@ -79,11 +74,11 @@ export class ExplorationHtmlFormatterService {
    *   scope where the return value of this function is compiled.
    */
   getInteractionHtml(
-      interactionId: string,
-      interactionCustomizationArgs: InteractionCustomizationArgs,
-      parentHasLastAnswerProperty: boolean,
-      labelForFocusTarget: string | null,
-      savedSolution: 'savedMemento()' | null
+    interactionId: string,
+    interactionCustomizationArgs: InteractionCustomizationArgs,
+    parentHasLastAnswerProperty: boolean,
+    labelForFocusTarget: string | null,
+    savedSolution: 'savedSolution' | null
   ): string {
     let availableInteractionIds = Array.prototype.concat.apply(
       [],
@@ -98,14 +93,15 @@ export class ExplorationHtmlFormatterService {
     // The createElement is safe because we verify that the interactionId
     // belongs to a list of interaction IDs.
     let element = document.createElement(
-      `oppia-interactive-${htmlInteractionId}`);
-    element = (
-      this.extensionTagAssembler.formatCustomizationArgAttrs(
-        element, interactionCustomizationArgs)
+      `oppia-interactive-${htmlInteractionId}`
+    );
+    element = this.extensionTagAssembler.formatCustomizationArgAttrs(
+      element,
+      interactionCustomizationArgs
     );
     // The setAttribute is safe because we verify that the savedSolution
     // is 'savedMemento()'.
-    if (savedSolution === 'savedMemento()') {
+    if (savedSolution === 'savedSolution') {
       // TODO(#12292): Refactor this once all interactions have been migrated to
       // Angular 2+, such that we don't need to parse the string in the
       // interaction directives/components.
@@ -127,12 +123,13 @@ export class ExplorationHtmlFormatterService {
       element.setAttribute('label-for-focus-target', labelForFocusTarget);
     } else if (labelForFocusTarget) {
       throw new Error(
-        `Unexpected label for focus target: ${labelForFocusTarget}.`);
+        `Unexpected label for focus target: ${labelForFocusTarget}.`
+      );
     }
 
-    let lastAnswerPropValue = (
-      parentHasLastAnswerProperty ? 'lastAnswer' : 'null'
-    );
+    let lastAnswerPropValue = parentHasLastAnswerProperty
+      ? 'lastAnswer'
+      : 'null';
     // The setAttribute is safe because the only possible value is 'lastAnswer'
     // as per the line above.
     element.setAttribute('last-answer', lastAnswerPropValue);
@@ -152,7 +149,7 @@ export class ExplorationHtmlFormatterService {
     let interactionHtml = element.outerHTML;
     const tagEnd = '></oppia-interactive-' + htmlInteractionId + '>';
     let interactionHtmlWithoutEnd = interactionHtml.replace(tagEnd, '');
-    if (savedSolution === 'savedMemento()') {
+    if (savedSolution === 'savedSolution') {
       interactionHtmlWithoutEnd += ` [saved-solution]="${savedSolution}"`;
     }
     interactionHtmlWithoutEnd += ` [last-answer]="${lastAnswerPropValue}"`;
@@ -160,9 +157,9 @@ export class ExplorationHtmlFormatterService {
   }
 
   getAnswerHtml(
-      answer: InteractionAnswer,
-      interactionId: string | null,
-      interactionCustomizationArgs: InteractionCustomizationArgs
+    answer: InteractionAnswer,
+    interactionId: string | null,
+    interactionCustomizationArgs: InteractionCustomizationArgs
   ): string {
     // TODO(#14464): Remove this check once interaction ID is
     // not allowed to be null.
@@ -170,21 +167,24 @@ export class ExplorationHtmlFormatterService {
       throw new Error('InteractionId cannot be null');
     }
     var element = document.createElement(
-      `oppia-response-${this.camelCaseToHyphens.transform(interactionId)}`);
+      `oppia-response-${this.camelCaseToHyphens.transform(interactionId)}`
+    );
     element.setAttribute('answer', this.htmlEscaper.objToEscapedJson(answer));
     // TODO(sll): Get rid of this special case for multiple choice.
     if ('choices' in interactionCustomizationArgs) {
       let interactionChoices = interactionCustomizationArgs.choices.value;
       element.setAttribute(
-        'choices', this.htmlEscaper.objToEscapedJson(interactionChoices));
+        'choices',
+        this.htmlEscaper.objToEscapedJson(interactionChoices)
+      );
     }
     return element.outerHTML;
   }
 
   getShortAnswerHtml(
-      answer: InteractionAnswer,
-      interactionId: string,
-      interactionCustomizationArgs: InteractionCustomizationArgs
+    answer: InteractionAnswer,
+    interactionId: string,
+    interactionCustomizationArgs: InteractionCustomizationArgs
   ): string {
     let element = document.createElement(
       `oppia-short-response-${this.camelCaseToHyphens.transform(interactionId)}`
@@ -194,12 +194,10 @@ export class ExplorationHtmlFormatterService {
     if ('choices' in interactionCustomizationArgs) {
       let interactionChoices = interactionCustomizationArgs.choices.value;
       element.setAttribute(
-        'choices', this.htmlEscaper.objToEscapedJson(interactionChoices));
+        'choices',
+        this.htmlEscaper.objToEscapedJson(interactionChoices)
+      );
     }
     return element.outerHTML;
   }
 }
-
-angular.module('oppia').factory(
-  'ExplorationHtmlFormatterService',
-  downgradeInjectable(ExplorationHtmlFormatterService));

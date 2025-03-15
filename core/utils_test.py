@@ -22,7 +22,6 @@ import base64
 import copy
 import datetime
 import os
-import sys
 import time
 import urllib
 
@@ -32,7 +31,7 @@ from core.constants import constants
 from core.tests import test_utils
 from core.tests.data import unicode_and_str_handler
 
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 
 
 class UtilsTests(test_utils.GenericTestBase):
@@ -97,7 +96,7 @@ class UtilsTests(test_utils.GenericTestBase):
         self.assertEqual(parsed_str, 'Hola!')
 
         parsed_str = utils.to_ascii(
-            u'Klüft skräms inför på fédéral électoral große')
+            'Klüft skräms inför på fédéral électoral große')
         self.assertEqual(
             parsed_str, 'Kluft skrams infor pa federal electoral groe')
 
@@ -126,36 +125,6 @@ class UtilsTests(test_utils.GenericTestBase):
             'while parsing a flow node\n'
             'expected the node content, but found \'<stream end>\'\n'):
             utils.dict_from_yaml('{')
-
-    def test_recursively_remove_key_for_empty_dict(self) -> None:
-        """Test recursively_remove_key method for an empty dict."""
-        d: Dict[str, str] = {}
-        utils.recursively_remove_key(d, 'a')
-        self.assertEqual(d, {})
-
-    def test_recursively_remove_key_for_single_key_dict(self) -> None:
-        """Test recursively_remove_key method for single key dict."""
-        d = {'a': 'b'}
-        utils.recursively_remove_key(d, 'a')
-        self.assertEqual(d, {})
-
-    def test_recursively_remove_key_for_multi_key_dict(self) -> None:
-        """Test recursively_remove_key method for multi key dict."""
-        d = {'a': 'b', 'c': 'd'}
-        utils.recursively_remove_key(d, 'a')
-        self.assertEqual(d, {'c': 'd'})
-
-    def test_recursively_remove_key_for_dict_with_value_dict(self) -> None:
-        """Test recursively_remove_key method for dict with a value dict."""
-        d = {'a': 'b', 'c': {'a': 'b'}}
-        utils.recursively_remove_key(d, 'a')
-        self.assertEqual(d, {'c': {}})
-
-    def test_recursively_remove_key_for_list(self) -> None:
-        """Test recursively_remove_key method for list."""
-        l = ['a', 'b', {'c': 'd'}]
-        utils.recursively_remove_key(l, 'c')
-        self.assertEqual(l, ['a', 'b', {}])
 
     def test_camelcase_to_hyphenated(self) -> None:
         """Test camelcase_to_hyphenated method."""
@@ -272,11 +241,14 @@ class UtilsTests(test_utils.GenericTestBase):
         self.assertIsInstance(random_string, str)
         self.assertEqual(len(random_string), 12)
 
-    def test_convert_png_data_url_to_binary_with_incorrect_prefix(self) -> None:
+    def test_convert_data_url_to_binary_with_incorrect_prefix(
+        self
+    ) -> None:
         with self.assertRaisesRegex(
-            Exception, 'The given string does not represent a PNG data URL'
+            Exception, 'The given string does not represent a png data URL'
         ):
-            utils.convert_png_data_url_to_binary('data:image/jpg;base64,')
+            utils.convert_data_url_to_binary(
+                'data:image/jpg;base64,', 'png')
 
     def test_get_thumbnail_icon_url_for_category(self) -> None:
         self.assertEqual(
@@ -605,7 +577,9 @@ class UtilsTests(test_utils.GenericTestBase):
             self.get_static_asset_filepath(), 'assets', 'favicon.ico')
 
         with self.assertRaisesRegex(
-            Exception, 'The given string does not represent a PNG image.'):
+            Exception,
+            'The given binary string does not represent a png image.'
+        ):
             utils.convert_png_to_data_url(favicon_filepath)
 
     def test_get_exploration_components_from_dir_with_invalid_path_raises_error(
@@ -689,10 +663,10 @@ class UtilsTests(test_utils.GenericTestBase):
         self.assertFalse(utils.is_user_id_valid('a' * 36))
 
     def test_is_pseudonymous_id(self) -> None:
-        self.assertTrue(utils.is_pseudonymous_id('pid_' + 'a' * 32))
-        self.assertFalse(utils.is_pseudonymous_id('uid_' + 'a' * 32))
-        self.assertFalse(utils.is_pseudonymous_id('uid_' + 'a' * 31 + 'A'))
-        self.assertFalse(utils.is_pseudonymous_id('uid_' + 'a' * 31))
+        self.assertTrue(utils.is_pseudonymous_id('pid_%s' % ('a' * 32)))
+        self.assertFalse(utils.is_pseudonymous_id('uid_%s' % ('a' * 32)))
+        self.assertFalse(utils.is_pseudonymous_id('uid_%s%s' % ('a' * 31, 'A')))
+        self.assertFalse(utils.is_pseudonymous_id('uid_%s' % ('a' * 31)))
         self.assertFalse(utils.is_pseudonymous_id('a' * 36))
 
     def test_snake_case_to_camel_case(self) -> None:
@@ -805,24 +779,25 @@ class UtilsTests(test_utils.GenericTestBase):
         self.assertEqual(list(errors), [(0, 'ERROR: foo'), (3, 'ERROR: fie')])
         self.assertEqual(list(others), [(1, 'INFO: bar'), (2, 'INFO: fee')])
 
-    def test_convert_png_data_url_to_binary(self) -> None:
+    def test_convert_data_url_to_binary(self) -> None:
         image_data_url = '%s%s' % (
             utils.PNG_DATA_URL_PREFIX,
             urllib.parse.quote(base64.b64encode(b'test123'))
         )
 
         self.assertEqual(
-            utils.convert_png_data_url_to_binary(image_data_url), b'test123')
+            utils.convert_data_url_to_binary(
+                image_data_url, 'png'), b'test123')
 
-    def test_convert_png_data_url_to_binary_raises_if_prefix_is_missing(
+    def test_convert_data_url_to_binary_raises_if_prefix_is_missing(
             self
     ) -> None:
         image_data_url = urllib.parse.quote(base64.b64encode(b'test123'))
 
         with self.assertRaisesRegex(
-            Exception, 'The given string does not represent a PNG data URL.'
+            Exception, 'The given string does not represent a png data URL.'
         ):
-            utils.convert_png_data_url_to_binary(image_data_url)
+            utils.convert_data_url_to_binary(image_data_url, 'png')
 
     def test_quoted_string(self) -> None:
         self.assertEqual(utils.quoted('a"b\'c'), '"a\\"b\'c"')
@@ -869,6 +844,14 @@ class UtilsTests(test_utils.GenericTestBase):
             AssertionError, 'Time cannot be negative'):
             utils.get_human_readable_time_string(-1.42)
 
+    def test_get_number_of_days_since_date(self) -> None:
+        self.assertEqual(
+            90,
+            utils.get_number_of_days_since_date(
+                datetime.date.today() - datetime.timedelta(days=90)
+            )
+        )
+
     def test_generate_new_session_id(self) -> None:
         test_string = utils.generate_new_session_id()
         self.assertEqual(24, len(test_string))
@@ -880,7 +863,8 @@ class UtilsTests(test_utils.GenericTestBase):
     def test_require_valid_name_with_incorrect_input(self) -> None:
         with self.assertRaisesRegex(
             utils.ValidationError,
-            'The length of the exploration title should be between 1 and 50 ' 'characters; received '):   # pylint: disable=line-too-long
+            'The length of the exploration title should be between 1 and 50 '
+            'characters; received '):
             utils.require_valid_name('', 'the exploration title')
         with self.assertRaisesRegex(
             utils.ValidationError,
@@ -901,7 +885,7 @@ class UtilsTests(test_utils.GenericTestBase):
 
     def test_get_hex_color_for_category(self) -> None:
         self.assertEqual(
-            utils.get_hex_color_for_category('Law'), '#538270')
+            utils.get_hex_color_for_category('Law'), '#507c6b')
         self.assertEqual(
             utils.get_hex_color_for_category('Quantum Physics'), '#a33f40')
 
@@ -919,16 +903,6 @@ class UtilsTests(test_utils.GenericTestBase):
         filter_values_list = utils.convert_filter_parameter_string_into_list(
             '("GSOC" OR "Math")')
         self.assertEqual(filter_values_list.sort(), ['GSOC', 'Math'].sort())
-
-    def test_compress_and_decompress_zlib(self) -> None:
-        byte_instance = b'a' * 26
-        byte_compressed = utils.compress_to_zlib(byte_instance)
-        self.assertLess(
-            sys.getsizeof(byte_compressed),
-            sys.getsizeof(byte_instance))
-        self.assertEqual(
-            utils.decompress_from_zlib(byte_compressed),
-            byte_instance)
 
     def test_compute_list_difference(self) -> None:
         self.assertEqual(utils.compute_list_difference(
@@ -948,11 +922,32 @@ class UtilsTests(test_utils.GenericTestBase):
                 ['-1', '-2', '-3', '-4', '-5']),
                 [])
 
-    def test_convert_png_binary_to_data_url(self) -> None:
+    def _get_png_and_webp_image(self) -> Tuple[bytes, bytes]:
+        """Returns png image."""
         filepath_png = os.path.join('core', 'tests', 'data', 'test_png_img.png')
+        filepath_webp = os.path.join(
+            'core', 'tests', 'data', 'test_png_img.webp')
         file_contents_png = utils.get_file_contents(
             filepath_png, raw_bytes=True, mode='rb')
-        self.assertEqual(utils.convert_png_binary_to_data_url(file_contents_png), 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAcAAAAGCAIAAACAbBMhAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAEnQAABJ0Ad5mH3gAAAAySURBVBhXY/iPDYBEV6xY0draCuFDAEgUKMTAANUEUYFuAkQFihIIGwigosiG/P//HwD5HmjphyAmJQAAAABJRU5ErkJggg%3D%3D')  # pylint: disable=line-too-long
+        file_contents_webp = utils.get_file_contents(
+            filepath_webp, raw_bytes=True, mode='rb')
+        return (file_contents_png, file_contents_webp)
+
+    def test_convert_image_binary_to_data_url(self) -> None:
+        file_contents_png, file_contents_webp = self._get_png_and_webp_image()
+        self.assertEqual(utils.convert_image_binary_to_data_url(file_contents_png, 'png'), 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAcAAAAGCAIAAACAbBMhAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAEnQAABJ0Ad5mH3gAAAAySURBVBhXY/iPDYBEV6xY0draCuFDAEgUKMTAANUEUYFuAkQFihIIGwigosiG/P//HwD5HmjphyAmJQAAAABJRU5ErkJggg%3D%3D')  # pylint: disable=line-too-long
+        self.assertEqual(utils.convert_image_binary_to_data_url(file_contents_webp, 'webp'), 'data:image/webp;base64,UklGRlIAAABXRUJQVlA4IEYAAADQAQCdASoHAAYAAgA0JaQAAv%2B5x9YuAAD%2B%2B0nD9oP5zmavp/Nyl8%2Bf/REL9weER482Ugrc/6dmq28Kx1pj/se/CsMAAAAA') # pylint: disable=line-too-long
+
+    def test_raise_error_invalid_convert_webp_binary_to_data_url(
+        self
+    ) -> None:
+        file_contents_png, _ = self._get_png_and_webp_image()
+        with self.assertRaisesRegex(
+            Exception,
+            'The given binary string does not represent a webp image.'
+        ):
+            utils.convert_image_binary_to_data_url(
+                file_contents_png, 'webp')
 
     def test_get_exploration_components_from_dir_with_yaml_content(self) -> None: # pylint: disable=line-too-long
         img1_path = 'images/sample_Img.svg'

@@ -17,21 +17,19 @@
  *               the exploration editor.
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { Injectable } from '@angular/core';
+import {Injectable} from '@angular/core';
 
-import { ExplorationFeatures } from
-  'services/exploration-features-backend-api.service';
-import { ParamChangeBackendDict } from 'domain/exploration/ParamChangeObjectFactory';
-import { StateObjectsBackendDict } from 'domain/exploration/StatesObjectFactory';
+import {ExplorationFeatures} from 'services/exploration-features-backend-api.service';
+import {ParamChangeBackendDict} from 'domain/exploration/ParamChangeObjectFactory';
+import {StateObjectsBackendDict} from 'domain/exploration/StatesObjectFactory';
 
 export interface ExplorationDataDict {
-  'param_changes': ParamChangeBackendDict[] | [];
+  param_changes: ParamChangeBackendDict[] | [];
   states: StateObjectsBackendDict;
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ExplorationFeaturesService {
   /**
@@ -40,7 +38,7 @@ export class ExplorationFeaturesService {
   static serviceIsInitialized = false;
   static settings = {
     areParametersEnabled: false,
-    isPlaythroughRecordingEnabled: false
+    isPlaythroughRecordingEnabled: false,
   };
 
   /**
@@ -50,15 +48,18 @@ export class ExplorationFeaturesService {
    * @param featuresData - An ExplorationFeatures object.
    */
   init(
-      explorationData: ExplorationDataDict,
-      featuresData: ExplorationFeatures): void {
+    explorationData: ExplorationDataDict,
+    featuresData: ExplorationFeatures
+  ): void {
     if (ExplorationFeaturesService.serviceIsInitialized) {
       return;
     }
     ExplorationFeaturesService.settings.isPlaythroughRecordingEnabled =
-      featuresData.isExplorationWhitelisted;
-    if (explorationData.param_changes &&
-        explorationData.param_changes.length > 0) {
+      featuresData.explorationIsCurated;
+    if (
+      explorationData.param_changes &&
+      explorationData.param_changes.length > 0
+    ) {
       this.enableParameters();
     } else {
       for (var state in explorationData.states) {
@@ -99,7 +100,3 @@ export class ExplorationFeaturesService {
     ExplorationFeaturesService.settings.areParametersEnabled = true;
   }
 }
-
-angular.module('oppia').factory(
-  'ExplorationFeaturesService',
-  downgradeInjectable(ExplorationFeaturesService));

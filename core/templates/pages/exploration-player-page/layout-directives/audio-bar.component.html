@@ -1,7 +1,8 @@
-<div class="audio-header" *ngIf="isAudioBarAvailable()"
+<div aria-label="audio menu" class="audio-header" *ngIf="isAudioBarAvailable()"
      [ngClass]="{'audio-header-margin': explorationPlayerModeIsActive}" headroom>
+
   <div *ngIf="audioBarIsExpanded" class="audio-bar-expanded" headroom>
-    <div class="audio-controls" [ngClass]="{'audio-controls-margin': progressBarIsShown}">
+    <div #audioControls tabindex="0" class="audio-controls" [ngClass]="{'audio-controls-margin': progressBarIsShown}">
       <div class="oppia-audio-header-control-buttons fx-row fx-main-center fx-cross-center">
         <div class="audio-header-control-icons">
           <a (click)="onBackwardButtonClicked()">
@@ -10,10 +11,10 @@
               <span class="oppia-five-icon">5</span>
             </span>
           </a>
-          <a (click)="onPlayButtonClicked()"
+          <a (click)="onPlayButtonClicked()" (keydown.enter)="onPlayButtonClicked()"
              [ngbTooltip]="!isAudioAvailableInCurrentLanguage() ? ('I18N_PLAYER_AUDIO_NOT_AVAILABLE_IN' | translate:{languageDescription:getCurrentAudioLanguageDescription()}) : ''"
              placement="right">
-            <i class="fas oppia-audio-controls-button-icon" tabindex="0"
+            <i class="fas oppia-audio-controls-button-icon" tabindex="0" aria-label="Press enter to Listen to the Lesson"
                [ngClass]="{'fa-ellipsis-h': audioLoadingIndicatorIsShown, 'fa-play-circle e2e-test-play-circle': !isAudioPlaying(), 'fa-pause-circle e2e-test-pause-circle': isAudioPlaying(), 'audio-controls-audio-not-available': !isAudioAvailableInCurrentLanguage() || audioIsLoading}">
             </i>
           </a>
@@ -29,8 +30,9 @@
             <mat-progress-bar mode="indeterminate"></mat-progress-bar>
           </div>
           <div *ngIf="!audioLoadingIndicatorIsShown">
-            <oppia-audio-slider [value]="audioPlayerService.getCurrentTime()"
-                                [max]="audioPlayerService.getAudioDuration()"
+            <oppia-audio-slider [value]="this.currentVoiceoverTime"
+                                [dir]="isLanguageRTL() ? 'rtl' : 'ltr'"
+                                [max]="this.totalVoiceoverDurationSecs"
                                 (valueChange)="setProgress($event)"
                                 aria-label="audio-slider">
             </oppia-audio-slider>
@@ -46,11 +48,20 @@
           <!--Filler space for message-->
           <span class="audio-controls-message">&zwnj;</span>
         </div>
-        <div class="oppia-audio-header-select">
+        <div class="oppia-audio-header-select"
+             *ngIf="!isVoiceoverContributionWithAccentEnabled()">
           <select class="audio-language-select e2e-test-audio-lang-select"
                   [(ngModel)]="selectedLanguage.value"
                   (change)="onNewLanguageSelected()">
             <option *ngFor="let opt of languagesInExploration" [value]="opt.value">{{ opt.displayed }}</option>
+          </select>
+        </div>
+        <div class="oppia-audio-header-select"
+             *ngIf="isVoiceoverContributionWithAccentEnabled() && languageAccentDecriptions.length > 0">
+          <select class="audio-language-select e2e-test-audio-lang-select"
+                  [(ngModel)]="selectedLanguageAccentDescription"
+                  (change)="updateSelectedLanguageAccent()">
+            <option *ngFor="let opt of languageAccentDecriptions" [value]="opt">{{ opt }}</option>
           </select>
         </div>
       </div>
@@ -66,6 +77,7 @@
   <div class="audio-expand-button audio-toggle-button"
        *ngIf="!audioBarIsExpanded"
        (click)="expandAudioBar()"
+       (keydown.enter)="expandAudioBar()"
        aria-label="Audio menu expand">
     <div class="container e2e-test-audio-bar">
       <div class="row">
@@ -75,10 +87,10 @@
           </span>
         </div>
         <div class="col-lg-3 col-6 px-0 mt-lg-2">
-          <i class="audio-expand-icon fas fa-headphones-alt"></i>
+          <i tabindex="0" aria-label="headphone icon" class="audio-expand-icon fas fa-headphones-alt"></i>
         </div>
         <div class="col-lg-2 col-6 px-0 mt-lg-1">
-          <i class="audio-expand-icon fas fa-sort-down"></i>
+          <i tabindex="0" aria-label="Press Enter to expand the audio menu" class="audio-expand-icon fas fa-sort-down"></i>
         </div>
       </div>
     </div>
@@ -212,7 +224,7 @@
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
-    height: 44px;
+    height: 70px;
     justify-content: center;
     padding: 0 4px;
     transition: margin-top 200ms linear;
@@ -249,6 +261,7 @@
     color: white;
     font-size: 10px;
     font-style: italic;
+    vertical-align: 29px;
   }
 
   .audio-header {
@@ -277,14 +290,15 @@
   .audio-language-select {
     border-radius: 9px;
     font-size: 15px;
-    margin-bottom: 12px;
+    margin-bottom: 15px;
     margin-left: 5px;
-    padding-left: 3px;
+    padding-left: 2px;
+    padding-top: 2px;
   }
 
   .slider-section {
+    line-height: 0px;
     transform: translateY(10px);
-    width: 38%;
   }
 
   .audio-bar-nav-up {
@@ -295,7 +309,7 @@
     margin-top: -270px;
   }
 
-  @media screen and (max-width: 768px) {
+  @media screen and (max-width: 370px) {
     .oppia-audio-header-control-buttons {
       justify-content: space-evenly;
     }

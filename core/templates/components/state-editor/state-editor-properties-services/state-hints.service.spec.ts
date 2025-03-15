@@ -16,42 +16,42 @@
  * @fileoverview Unit test for the State Hints service.
  */
 
-import { TestBed } from '@angular/core/testing';
-import { HintObjectFactory } from 'domain/exploration/HintObjectFactory';
-import { StateHintsService } from 'components/state-editor/state-editor-properties-services/state-hints.service';
+import {TestBed} from '@angular/core/testing';
+import {Hint} from 'domain/exploration/hint-object.model';
+import {StateHintsService} from 'components/state-editor/state-editor-properties-services/state-hints.service';
 
 describe('State hints service', () => {
   let shs: StateHintsService;
-  let hof: HintObjectFactory;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [StateHintsService, HintObjectFactory]
+      providers: [StateHintsService],
     });
 
     shs = TestBed.get(StateHintsService);
-    hof = TestBed.get(HintObjectFactory);
   });
 
-  it('should called the constructor', () =>{
+  it('should called the constructor', () => {
     expect(shs.displayed).toEqual([]);
     expect(shs.setterMethodKey).toBe('saveHints');
   });
 
-  it('should called setActiveHintIndex after init', () =>{
+  it('should called setActiveHintIndex after init', () => {
     spyOn(shs, 'setActiveHintIndex');
     const StateName = 'Introduction';
-    const value = [{
-      hint_content: {
-        html: '<p>math</p>',
-        content_id: 'hint_1'
-      }
-    }].map(item => hof.createFromBackendDict(item));
+    const value = [
+      {
+        hint_content: {
+          html: '<p>math</p>',
+          content_id: 'hint_1',
+        },
+      },
+    ].map(item => Hint.createFromBackendDict(item));
     shs.init(StateName, value);
     expect(shs.setActiveHintIndex).toHaveBeenCalled();
   });
 
-  it('should set and get activeHintIndex correctly', () =>{
+  it('should set and get activeHintIndex correctly', () => {
     shs.setActiveHintIndex(1);
     expect(shs.getActiveHintIndex()).toBe(1);
     shs.setActiveHintIndex(2);

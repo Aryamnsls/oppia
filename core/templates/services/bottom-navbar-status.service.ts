@@ -17,15 +17,12 @@
  * bottom navigation bar.
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { Injectable } from '@angular/core';
+import {Injectable} from '@angular/core';
 
-import { WindowDimensionsService } from
-  'services/contextual/window-dimensions.service';
-
+import {WindowDimensionsService} from 'services/contextual/window-dimensions.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class BottomNavbarStatusService {
   bottomNavbarIsEnabled: boolean = false;
@@ -38,9 +35,7 @@ export class BottomNavbarStatusService {
   isBottomNavbarEnabled(): boolean {
     return (
       this.bottomNavbarIsEnabled &&
-          this.windowDimensionsService.getWidth() < 1000);
+      this.windowDimensionsService.getWidth() < 1000
+    );
   }
 }
-
-angular.module('oppia').factory(
-  'BottomNavbarStatusService', downgradeInjectable(BottomNavbarStatusService));

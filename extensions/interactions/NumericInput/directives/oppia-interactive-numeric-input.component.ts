@@ -20,24 +20,23 @@
  * followed by the name of the arg.
  */
 
-import { ChangeDetectorRef, Component, Input, OnInit } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
+import {ChangeDetectorRef, Component, Input, OnInit} from '@angular/core';
 import isUndefined from 'lodash/isUndefined';
-import { InteractionAttributesExtractorService } from 'interactions/interaction-attributes-extractor.service';
-import { CurrentInteractionService } from 'pages/exploration-player-page/services/current-interaction.service';
-import { NumericInputCustomizationArgs } from 'interactions/customization-args-defs';
-import { NumericInputRulesService } from './numeric-input-rules.service';
-import { NumericInputValidationService } from './numeric-input-validation.service';
-import { NumericInputAnswer } from 'interactions/answer-defs';
+import {InteractionAttributesExtractorService} from 'interactions/interaction-attributes-extractor.service';
+import {CurrentInteractionService} from 'pages/exploration-player-page/services/current-interaction.service';
+import {NumericInputCustomizationArgs} from 'interactions/customization-args-defs';
+import {NumericInputRulesService} from './numeric-input-rules.service';
+import {NumericInputValidationService} from './numeric-input-validation.service';
+import {NumericInputAnswer} from 'interactions/answer-defs';
 
 interface NumericInputFormSchema {
   type: string;
-  'ui_config': {};
+  ui_config: {};
 }
 
 @Component({
   selector: 'oppia-interactive-numeric-input',
-  templateUrl: './numeric-input-interaction.component.html'
+  templateUrl: './numeric-input-interaction.component.html',
 })
 export class InteractiveNumericInput implements OnInit {
   // These properties are initialized using Angular lifecycle hooks
@@ -50,16 +49,15 @@ export class InteractiveNumericInput implements OnInit {
   // the case when the user has not yet clicked the submit button.
   answer!: number | string;
   NUMERIC_INPUT_FORM_SCHEMA!: NumericInputFormSchema;
-  errorString: string = '';
+  errorMessageI18nKey: string = '';
   requireNonnegativeInput: boolean = false;
   constructor(
     private currentInteractionService: CurrentInteractionService,
     private numericInputRulesService: NumericInputRulesService,
     private numericInputValidationService: NumericInputValidationService,
     private changeDetectorRef: ChangeDetectorRef,
-    private interactionAttributesExtractorService:
-      InteractionAttributesExtractorService
-  ) { }
+    private interactionAttributesExtractorService: InteractionAttributesExtractorService
+  ) {}
 
   private isAnswerValid(): boolean {
     if (typeof this.answer === 'string') {
@@ -70,20 +68,33 @@ export class InteractiveNumericInput implements OnInit {
       this.answer !== null &&
       isUndefined(
         this.numericInputValidationService.validateNumber(
-          this.answer, this.requireNonnegativeInput)));
+          this.answer,
+          this.requireNonnegativeInput
+        )
+      )
+    );
   }
 
   submitAnswer(answer: number | string): void {
+    if (
+      typeof answer !== 'number' &&
+      this.currentInteractionService.showNoResponseError()
+    ) {
+      this.errorMessageI18nKey = 'I18N_INTERACTIONS_NUMERIC_INPUT_NO_RESPONSE';
+      return;
+    }
+
     if (this.isAnswerValid()) {
       this.currentInteractionService.onSubmit(
-        answer, this.numericInputRulesService);
+        answer,
+        this.numericInputRulesService
+      );
     }
   }
 
   private getAttributesObject() {
     return {
-      requireNonnegativeInputWithValue:
-        this.requireNonnegativeInputWithValue
+      requireNonnegativeInputWithValue: this.requireNonnegativeInputWithValue,
     };
   }
 
@@ -92,6 +103,8 @@ export class InteractiveNumericInput implements OnInit {
       return;
     }
     this.answer = answer;
+    this.errorMessageI18nKey = '';
+    this.currentInteractionService.updateCurrentAnswer(this.answer);
     this.changeDetectorRef.detectChanges();
   }
 
@@ -104,31 +117,24 @@ export class InteractiveNumericInput implements OnInit {
   }
 
   ngOnInit(): void {
-    const {
-      requireNonnegativeInput
-    } = this.interactionAttributesExtractorService.getValuesFromAttributes(
-      'NumericInput',
-      this.getAttributesObject()
-    ) as NumericInputCustomizationArgs;
+    const {requireNonnegativeInput} =
+      this.interactionAttributesExtractorService.getValuesFromAttributes(
+        'NumericInput',
+        this.getAttributesObject()
+      ) as NumericInputCustomizationArgs;
     this.requireNonnegativeInput = requireNonnegativeInput.value;
-    this.answer = (
-      this.savedSolution !== undefined ?
-      this.savedSolution : ''
-    );
+    this.answer = this.savedSolution !== undefined ? this.savedSolution : '';
 
     this.NUMERIC_INPUT_FORM_SCHEMA = {
       type: 'float',
       ui_config: {
-        checkRequireNonnegativeInput: this.requireNonnegativeInput
-      }
+        checkRequireNonnegativeInput: this.requireNonnegativeInput,
+      },
     };
 
     this.currentInteractionService.registerCurrentInteraction(
-      () => this.submitAnswer(this.answer), () => this.isAnswerValid());
+      () => this.submitAnswer(this.answer),
+      () => this.isAnswerValid()
+    );
   }
 }
-
-angular.module('oppia').directive(
-  'oppiaInteractiveNumericInput', downgradeComponent({
-    component: InteractiveNumericInput
-  }) as angular.IDirectiveFactory);

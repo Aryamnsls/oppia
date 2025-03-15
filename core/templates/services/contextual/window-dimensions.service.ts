@@ -16,13 +16,12 @@
  * @fileoverview Service for computing the window dimensions.
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { fromEvent, Observable } from 'rxjs';
-import { Injectable } from '@angular/core';
-import { WindowRef } from 'services/contextual/window-ref.service';
+import {fromEvent, Observable} from 'rxjs';
+import {Injectable} from '@angular/core';
+import {WindowRef} from 'services/contextual/window-ref.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class WindowDimensionsService {
   constructor(private windowRef: WindowRef) {}
@@ -35,14 +34,16 @@ export class WindowDimensionsService {
     return (
       this.windowRef.nativeWindow.innerWidth ||
       this.windowRef.nativeWindow.document.documentElement.clientWidth ||
-      this.windowRef.nativeWindow.document.body.clientWidth);
+      this.windowRef.nativeWindow.document.body.clientWidth
+    );
   }
 
   getHeight(): number {
     return (
       this.windowRef.nativeWindow.innerHeight ||
       this.windowRef.nativeWindow.document.documentElement.clientHeight ||
-      this.windowRef.nativeWindow.document.body.clientHeight);
+      this.windowRef.nativeWindow.document.body.clientHeight
+    );
   }
 
   isWindowNarrow(): boolean {
@@ -50,7 +51,3 @@ export class WindowDimensionsService {
     return this.getWidth() <= NORMAL_NAVBAR_CUTOFF_WIDTH_PX;
   }
 }
-
-angular.module('oppia').factory(
-  'WindowDimensionsService',
-  downgradeInjectable(WindowDimensionsService));

@@ -16,19 +16,15 @@
  * @fileoverview Service for inspecting and managing suggestion objects.
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { Injectable } from '@angular/core';
+import {Injectable} from '@angular/core';
 
-import { SuggestionBackendDict } from 'domain/suggestion/suggestion.model';
+import {SuggestionBackendDict} from 'domain/suggestion/suggestion.model';
 
 @Injectable({providedIn: 'root'})
 export class SuggestionsService {
   getThreadIdFromSuggestionBackendDict(
-      suggestionBackendDict: SuggestionBackendDict): string {
+    suggestionBackendDict: SuggestionBackendDict
+  ): string {
     return suggestionBackendDict.suggestion_id;
   }
 }
-
-angular.module('oppia').factory(
-  'SuggestionsService',
-  downgradeInjectable(SuggestionsService));

@@ -1,5 +1,5 @@
 <div class="modal-header e2e-test-add-or-update-solution-modal">
-  <h3>{{ solutionType !== null ? 'Update Solution' : 'Add Solution' }}</h3>
+  <h3 tabindex="0">{{ solutionType !== null ? 'Update Solution' : 'Add Solution' }}</h3>
 </div>
 
 <div class="modal-body">
@@ -11,12 +11,13 @@
         <option *ngFor="let item of ansOptions">
           {{ item }}
         </option>
-      </select> <strong> solution is...</strong>
+      </select> <strong tabindex="0"> solution is...</strong>
       <br>
       <br>
       <div>
         <oppia-interaction-display classStr="e2e-test-interaction-html"
-                                   [htmlData]="correctAnswerEditorHtml">
+                                   [htmlData]="correctAnswerEditorHtml"
+                                   [parentScope]="this">
         </oppia-interaction-display>
       </div>
       <br>
@@ -28,7 +29,7 @@
       </button>
       <br>
       <div [hidden]="data.correctAnswer === undefined">
-        <strong>Explanation:</strong>
+        <strong tabindex="0">Explanation:</strong>
         <schema-based-editor class="e2e-test-explanation-textarea"
                              [schema]="EXPLANATION_FORM_SCHEMA"
                              [(localValue)]="data.explanationHtml">
@@ -50,3 +51,9 @@
     Check and Save Solution
   </button>
 </div>
+
+<style>
+  .oppia-learner-submit-answer-button:focus {
+    border: 2px solid #000;
+  }
+</style>
