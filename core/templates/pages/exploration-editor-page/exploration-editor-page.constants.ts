@@ -18,8 +18,7 @@
  */
 
 export const ExplorationEditorPageConstants = {
-  EXPLORATION_TITLE_INPUT_FOCUS_LABEL:
-    'explorationTitleInputFocusLabel',
+  EXPLORATION_TITLE_INPUT_FOCUS_LABEL: 'explorationTitleInputFocusLabel',
 
   PARAM_ACTION_GET: 'get',
 
@@ -37,12 +36,15 @@ export const ExplorationEditorPageConstants = {
   // Constant for audio recording time limit.
   RECORDING_TIME_LIMIT: 300,
 
+  HINT_CHARACTER_LIMIT: 500,
+
+  NEW_LINE_REGEX: /(\n)(\s\n)*/g,
+
   IMPROVE_TYPE_INCOMPLETE: 'incomplete',
 
   DEFAULT_AUDIO_LANGUAGE: 'en',
 
-  INFO_MESSAGE_SOLUTION_IS_VALID:
-    'The solution is now valid!',
+  INFO_MESSAGE_SOLUTION_IS_VALID: 'The solution is now valid!',
 
   INFO_MESSAGE_SOLUTION_IS_INVALID_FOR_CURRENT_RULE:
     'The current solution is no longer valid.',
@@ -53,5 +55,5 @@ export const ExplorationEditorPageConstants = {
   STATUS_FIXED: 'fixed',
   STATUS_IGNORED: 'ignored',
   STATUS_NOT_ACTIONABLE: 'not_actionable',
-  STATUS_OPEN: 'open'
+  STATUS_OPEN: 'open',
 } as const;

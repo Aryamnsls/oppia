@@ -8,6 +8,7 @@
           <div *ngIf="questionsFetched">
             <div class="question-filters">
               <input type="text"
+                     class="e2e-test-question-text-input"
                      [(ngModel)]="questionTextFilter"
                      (change)="applyFilters()">
               <select [(ngModel)]="interactionFilter"
@@ -65,6 +66,17 @@
                             [avatarImageIsShown]="false"
                             [startCardChangeAnimation]="false">
           </oppia-tutor-card>
+          <div *ngIf="isCurrentSupplementalCardNonEmpty() && !canWindowShowTwoCards()">
+            <oppia-supplemental-card [displayedCard]="displayedCard">
+            </oppia-supplemental-card>
+          </div>
+          <div *ngIf="isCurrentSupplementalCardNonEmpty() && canWindowShowTwoCards()"
+               class="conversation-skin-supplemental-card-container">
+            <div class="supplemental-card-parent-container">
+              <oppia-supplemental-card [displayedCard]="displayedCard">
+              </oppia-supplemental-card>
+            </div>
+          </div>
         </div>
       </div>
     </div>

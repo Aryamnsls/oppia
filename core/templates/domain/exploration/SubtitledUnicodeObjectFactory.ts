@@ -18,12 +18,11 @@
  */
 
 export interface SubtitledUnicodeBackendDict {
-  'content_id': string | null;
-  'unicode_str': string;
+  content_id: string | null;
+  unicode_str: string;
 }
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {Injectable} from '@angular/core';
 
 export class SubtitledUnicode {
   // A null 'content_id' indicates that the 'SubtitledHtml' has been created
@@ -37,7 +36,7 @@ export class SubtitledUnicode {
   toBackendDict(): SubtitledUnicodeBackendDict {
     return {
       unicode_str: this._unicode,
-      content_id: this._contentId
+      content_id: this._contentId,
     };
   }
 
@@ -63,22 +62,19 @@ export class SubtitledUnicode {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class SubtitledUnicodeObjectFactory {
   createFromBackendDict(
-      subtitledUnicodeBackendDict: SubtitledUnicodeBackendDict
+    subtitledUnicodeBackendDict: SubtitledUnicodeBackendDict
   ): SubtitledUnicode {
     return new SubtitledUnicode(
       subtitledUnicodeBackendDict.unicode_str,
-      subtitledUnicodeBackendDict.content_id);
+      subtitledUnicodeBackendDict.content_id
+    );
   }
 
   createDefault(unicode: string, contentId: string | null): SubtitledUnicode {
     return new SubtitledUnicode(unicode, contentId);
   }
 }
-
-angular.module('oppia').factory(
-  'SubtitledUnicodeObjectFactory',
-  downgradeInjectable(SubtitledUnicodeObjectFactory));

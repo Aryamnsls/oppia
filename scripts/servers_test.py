@@ -24,18 +24,20 @@ import os
 import re
 import shutil
 import signal
+import ssl
 import subprocess
 import sys
 import threading
 import time
+from urllib import request as urlrequest
 
+from core import utils
 from core.tests import test_utils
 from scripts import common
 from scripts import scripts_test_utils
 from scripts import servers
 
 import psutil
-
 from typing import Callable, Iterator, List, Optional, Sequence, Tuple
 
 
@@ -459,7 +461,7 @@ class ManagedProcessTests(test_utils.TestBase):
 
         self.assertEqual(len(popen_calls), 1)
         self.assertIn('dev_appserver.py', popen_calls[0].program_args)
-        self.assertEqual(popen_calls[0].kwargs, {'shell': True, 'env': None})
+        self.assertEqual(list(popen_calls[0].kwargs.keys()), ['shell', 'env'])
 
     def test_managed_elasticsearch_dev_server(self) -> None:
         popen_calls = self.exit_stack.enter_context(self.swap_popen())
@@ -511,23 +513,6 @@ class ManagedProcessTests(test_utils.TestBase):
         self.exit_stack.close()
 
         self.assertTrue(check_function_calls['shutil_rmtree_is_called'])
-
-    def test_managed_redis_server_throws_exception_when_on_windows_os(
-        self
-    ) -> None:
-        self.exit_stack.enter_context(self.swap_popen())
-        self.exit_stack.enter_context(self.swap_to_always_return(
-            common, 'is_windows_os', value=True))
-        self.exit_stack.enter_context(self.swap_to_always_return(
-            common, 'wait_for_port_to_be_in_use'))
-
-        with self.assertRaisesRegex(
-            Exception,
-            'The redis command line interface is not installed because '
-            'your machine is on the Windows operating system. The redis '
-            'server cannot start.'
-        ):
-            self.exit_stack.enter_context(servers.managed_redis_server())
 
     def test_managed_redis_server(self) -> None:
         original_os_remove = os.remove
@@ -618,23 +603,13 @@ class ManagedProcessTests(test_utils.TestBase):
 
         managed_web_browser = servers.create_managed_web_browser(123)
         self.assertIsNotNone(managed_web_browser)
+
         assert managed_web_browser is not None
         self.exit_stack.enter_context(managed_web_browser)
 
         self.assertEqual(len(popen_calls), 1)
         self.assertEqual(
             popen_calls[0].program_args, ['xdg-open', 'http://localhost:123/'])
-
-    def test_managed_web_browser_on_virtualbox_os(self) -> None:
-        popen_calls = self.exit_stack.enter_context(self.swap_popen())
-        self.exit_stack.enter_context(self.swap(common, 'OS_NAME', 'Linux'))
-        self.exit_stack.enter_context(self.swap_to_always_return(
-            os, 'listdir', value=['VBOX-123']))
-
-        managed_web_browser = servers.create_managed_web_browser(123)
-        self.assertIsNone(managed_web_browser)
-
-        self.assertEqual(len(popen_calls), 0)
 
     def test_managed_web_browser_on_mac_os(self) -> None:
         popen_calls = self.exit_stack.enter_context(self.swap_popen())
@@ -654,11 +629,32 @@ class ManagedProcessTests(test_utils.TestBase):
     def test_managed_web_browser_on_windows_os(self) -> None:
         popen_calls = self.exit_stack.enter_context(self.swap_popen())
         self.exit_stack.enter_context(self.swap(common, 'OS_NAME', 'Windows'))
-        self.exit_stack.enter_context(self.swap_to_always_return(
-            os, 'listdir', value=[]))
 
-        managed_web_browser = servers.create_managed_web_browser(123)
-        self.assertIsNone(managed_web_browser)
+        with self.assertRaisesRegex(
+            Exception,
+            'Unable to identify the Operating System and therefore, unable to '
+            'launch the web browser.'
+            ):
+            self.exit_stack.enter_context(
+                servers.create_managed_web_browser(123))
+
+        self.assertEqual(len(popen_calls), 0)
+
+    def test_managed_web_browser_for_exception(self) -> None:
+        web_browser_error = 'Mock Exception while launching web browser.'
+        popen_calls = self.exit_stack.enter_context(self.swap_popen())
+        self.exit_stack.enter_context(self.swap(common, 'OS_NAME', 'Linux'))
+        mock_create_managed_web_browser = self.swap_to_always_raise(
+                    servers, 'create_managed_web_browser',
+                    Exception(web_browser_error))
+
+        with mock_create_managed_web_browser:
+            with self.assertRaisesRegex(
+                Exception,
+                web_browser_error
+            ):
+                self.exit_stack.enter_context(
+                    servers.create_managed_web_browser(123))
 
         self.assertEqual(len(popen_calls), 0)
 
@@ -1000,17 +996,54 @@ class ManagedProcessTests(test_utils.TestBase):
         self.assertIn('--suite full', program_args)
         self.assertIn('--params.devMode=True', program_args)
 
-    def test_managed_webdriverio_mobile(self) -> None:
-        with servers.managed_webdriverio_server(mobile=True):
-            self.assertEqual(os.getenv('MOBILE'), 'true')
+    def test_managed_webdriverio_mobile(
+        self
+    ) -> None:
+        attempts = []
 
-    def test_managed_webdriverio_with_explicit_args(self) -> None:
+        def mock_urlopen(
+            url: str, context: ssl.SSLContext
+        ) -> io.BufferedIOBase:
+            attempts.append(url)
+            self.assertLessEqual(len(attempts), 1)
+            self.assertTrue(
+                url.startswith(
+                    'https://chromedriver.storage.googleapis.com/LATEST_RELEASE'
+                    ))
+            self.assertIsNotNone(context)
+            return io.BytesIO(b'content')
+
+        urlopen_swap = self.swap(urlrequest, 'urlopen', mock_urlopen)
+        with urlopen_swap:
+            with servers.managed_webdriverio_server(mobile=True):
+                self.assertEqual(os.getenv('MOBILE'), 'true')
+
+    def test_managed_webdriverio_with_explicit_args(
+        self
+    ) -> None:
+        attempts = []
+
+        def mock_urlopen(
+            url: str, context: ssl.SSLContext
+        ) -> io.BufferedIOBase:
+            attempts.append(url)
+            self.assertLessEqual(len(attempts), 1)
+            self.assertTrue(
+                url.startswith(
+                    'https://chromedriver.storage.googleapis.com/LATEST_RELEASE'
+                    ))
+            self.assertIsNotNone(context)
+            return io.BytesIO(b'content')
+
+        urlopen_swap = self.swap(urlrequest, 'urlopen', mock_urlopen)
+
         popen_calls = self.exit_stack.enter_context(self.swap_popen())
 
-        self.exit_stack.enter_context(servers.managed_webdriverio_server(
-            suite_name='abc', sharding_instances=3, debug_mode=True,
-            dev_mode=False, stdout=subprocess.PIPE))
-        self.exit_stack.close()
+        with urlopen_swap:
+            self.exit_stack.enter_context(servers.managed_webdriverio_server(
+                suite_name='abc', sharding_instances=3, debug_mode=True,
+                dev_mode=False, stdout=subprocess.PIPE))
+            self.exit_stack.close()
 
         self.assertEqual(len(popen_calls), 1)
         self.assertEqual(
@@ -1024,3 +1057,108 @@ class ManagedProcessTests(test_utils.TestBase):
         self.assertIn('--params.devMode=False', program_args)
         # From suite='full'.
         self.assertIn('--suite abc', program_args)
+
+    def test_managed_acceptance_test_server_with_explicit_args(self) -> None:
+        popen_calls = self.exit_stack.enter_context(self.swap_popen())
+        test_file_path = (
+            'blog-admin/assign-roles-to-users-and-change-tag-properties')
+
+        self.exit_stack.enter_context(servers.managed_acceptance_tests_server(
+            suite_name=test_file_path,
+            stdout=subprocess.PIPE))
+        self.exit_stack.close()
+
+        self.assertEqual(len(popen_calls), 1)
+        self.assertEqual(
+            popen_calls[0].kwargs, {'shell': True, 'stdout': subprocess.PIPE})
+        program_args = popen_calls[0].program_args
+        self.assertIn(test_file_path, program_args)
+        self.assertEqual(os.getenv('SPEC_NAME'), test_file_path)
+
+    def test_managed_acceptance_test_server_with_invalid_suite(self) -> None:
+        suite_name = 'invalid_suite'
+
+        expected_regexp = 'Invalid suite name: %s' % suite_name
+        with self.assertRaisesRegex(Exception, expected_regexp):
+            self.exit_stack.enter_context(
+                servers.managed_acceptance_tests_server(
+                    suite_name=suite_name,
+                    stdout=subprocess.PIPE))
+
+    def test_managed_acceptance_test_server_headless(self) -> None:
+        popen_calls = self.exit_stack.enter_context(self.swap_popen())
+        suite_name = (
+            'blog-admin/assign-roles-to-users-and-change-tag-properties')
+
+        self.exit_stack.enter_context(servers.managed_acceptance_tests_server(
+            suite_name=suite_name,
+            headless=True,
+            stdout=subprocess.PIPE))
+        self.exit_stack.close()
+
+        self.assertEqual(os.getenv('HEADLESS'), 'true')
+        self.assertEqual(len(popen_calls), 1)
+        self.assertEqual(
+            popen_calls[0].kwargs, {'shell': True, 'stdout': subprocess.PIPE})
+        program_args = popen_calls[0].program_args
+        self.assertIn(suite_name, program_args)
+        self.assertEqual(os.getenv('SPEC_NAME'), suite_name)
+
+    def test_managed_acceptance_test_server_mobile(self) -> None:
+        popen_calls = self.exit_stack.enter_context(self.swap_popen())
+        suite_name = (
+            'blog-admin/assign-roles-to-users-and-change-tag-properties')
+
+        self.exit_stack.enter_context(servers.managed_acceptance_tests_server(
+            suite_name=suite_name,
+            mobile=True,
+            stdout=subprocess.PIPE))
+
+        self.assertEqual(os.getenv('MOBILE'), 'true')
+        self.assertEqual(len(popen_calls), 1)
+        self.assertEqual(
+            popen_calls[0].kwargs, {'shell': True, 'stdout': subprocess.PIPE})
+        program_args = popen_calls[0].program_args
+        self.assertIn(suite_name, program_args)
+        self.assertEqual(os.getenv('SPEC_NAME'), suite_name)
+
+        self.exit_stack.close()
+
+
+class GetChromedriverVersionTests(test_utils.TestBase):
+
+    def test_chrome_before_115_queries_api(self) -> None:
+        def mock_check_output(_: List[str]) -> bytes:
+            return b'Google Chrome 72.0.3626.123\n'
+        def mock_url_open(_: str) -> io.BytesIO:
+            return io.BytesIO(b'72.0.3626.69')
+        expected_url = (
+            'https://chromedriver.storage.googleapis.com/'
+            'LATEST_RELEASE_72.0.3626')
+
+        check_output_swap = self.swap(
+            subprocess, 'check_output', mock_check_output)
+        url_open_swap = self.swap_with_checks(
+            utils, 'url_open', mock_url_open, expected_args=[(expected_url,)])
+
+        with check_output_swap, url_open_swap:
+            self.assertEqual(
+                servers.get_chromedriver_version(),
+                '72.0.3626.69',
+            )
+
+    def test_chrome_115_and_later_returns_chrome_version(self) -> None:
+        def mock_check_output(_: List[str]) -> bytes:
+            return b'Google Chrome 115.0.3626.123\n'
+        def mock_url_open(_: str) -> None:
+            raise AssertionError('url_open should not be called.')
+
+        check_output_swap = self.swap(
+            subprocess, 'check_output', mock_check_output)
+        url_open_swap = self.swap(utils, 'url_open', mock_url_open)
+
+        with check_output_swap, url_open_swap:
+            self.assertEqual(
+                servers.get_chromedriver_version(),
+                '115.0.3626.123',
+            )

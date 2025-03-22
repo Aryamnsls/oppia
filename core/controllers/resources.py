@@ -24,9 +24,11 @@ from core import feconf
 from core.constants import constants
 from core.controllers import acl_decorators
 from core.controllers import base
-from core.domain import config_domain
-from core.domain import config_services
 from core.domain import fs_services
+from core.domain import platform_parameter_domain
+from core.domain import platform_parameter_list
+from core.domain import platform_parameter_registry as registry
+from core.domain import platform_parameter_services
 from core.domain import value_generators_domain
 
 from typing import Dict, TypedDict
@@ -67,7 +69,9 @@ class AssetDevHandler(base.BaseHandler[Dict[str, str], Dict[str, str]]):
         feconf.ENTITY_TYPE_BLOG_POST,
         feconf.ENTITY_TYPE_TOPIC, feconf.ENTITY_TYPE_STORY,
         feconf.ENTITY_TYPE_QUESTION, feconf.IMAGE_CONTEXT_QUESTION_SUGGESTIONS,
-        feconf.IMAGE_CONTEXT_EXPLORATION_SUGGESTIONS]
+        feconf.IMAGE_CONTEXT_EXPLORATION_SUGGESTIONS,
+        feconf.ENTITY_TYPE_CLASSROOM
+    ]
 
     GET_HANDLER_ERROR_RETURN_TYPE = feconf.HANDLER_TYPE_JSON
     URL_PATH_ARGS_SCHEMAS = {
@@ -123,9 +127,13 @@ class AssetDevHandler(base.BaseHandler[Dict[str, str], Dict[str, str]]):
             asset_type: str. Type of the asset, either image or audio.
             encoded_filename: str. The asset filename. This
                 string is encoded in the frontend using encodeURIComponent().
+
+        Raises:
+            NotFoundException. The page cannot be found.
+            Exception. File not found.
         """
         if not constants.EMULATOR_MODE:
-            raise self.PageNotFoundException
+            raise self.NotFoundException
 
         try:
             filename = urllib.parse.unquote(encoded_filename)
@@ -148,7 +156,7 @@ class AssetDevHandler(base.BaseHandler[Dict[str, str], Dict[str, str]]):
         except Exception as e:
             logging.exception(
                 'File not found: %s. %s' % (encoded_filename, e))
-            raise self.PageNotFoundException
+            raise self.NotFoundException
 
 
 class PromoBarHandlerNormalizedPayloadDict(TypedDict):
@@ -191,13 +199,19 @@ class PromoBarHandler(
 
     @acl_decorators.open_access
     def get(self) -> None:
+        """Retrieves the configuration values for a promotional bar."""
         self.render_json({
-            'promo_bar_enabled': config_domain.PROMO_BAR_ENABLED.value,
-            'promo_bar_message': config_domain.PROMO_BAR_MESSAGE.value
+            'promo_bar_enabled': (
+                platform_parameter_services.get_platform_parameter_value(
+                    'promo_bar_enabled')),
+            'promo_bar_message': (
+                platform_parameter_services.get_platform_parameter_value(
+                    'promo_bar_message'))
         })
 
     @acl_decorators.can_access_release_coordinator_page
     def put(self) -> None:
+        """Updates the configuration values for a promotional bar."""
         assert self.user_id is not None
         assert self.normalized_payload is not None
         promo_bar_enabled_value = self.normalized_payload['promo_bar_enabled']
@@ -206,9 +220,101 @@ class PromoBarHandler(
         logging.info(
             '[RELEASE COORDINATOR] %s saved promo-bar config property values: '
             '%s' % (self.user_id, promo_bar_message_value))
-        config_services.set_property(
-            self.user_id, 'promo_bar_enabled', promo_bar_enabled_value)
-        config_services.set_property(
-            self.user_id, 'promo_bar_message', promo_bar_message_value)
+
+        rules_for_promo_bar_enabled_value = [
+            platform_parameter_domain.PlatformParameterRule.from_dict({
+                'filters': [],
+                'value_when_matched': promo_bar_enabled_value
+            })
+        ]
+        rules_for_promo_bar_message_value = [
+            platform_parameter_domain.PlatformParameterRule.from_dict({
+                'filters': [],
+                'value_when_matched': promo_bar_message_value
+            })
+        ]
+
+        promo_bar_enabled_parameter = (
+            registry.Registry.get_platform_parameter(
+                platform_parameter_list.ParamName.PROMO_BAR_ENABLED.value)
+        )
+
+        promo_bar_message_parameter = (
+            registry.Registry.get_platform_parameter(
+                platform_parameter_list.ParamName.PROMO_BAR_MESSAGE.value)
+        )
+
+        registry.Registry.update_platform_parameter(
+            'promo_bar_enabled',
+            self.user_id,
+            'Update promo_bar_enabled property from release '
+            'coordinator page.',
+            rules_for_promo_bar_enabled_value,
+            promo_bar_enabled_parameter.default_value)
+
+        registry.Registry.update_platform_parameter(
+            'promo_bar_message',
+            self.user_id,
+            'Update promo_bar_message property from release '
+            'coordinator page.',
+            rules_for_promo_bar_message_value,
+            promo_bar_message_parameter.default_value)
 
         self.render_json({})
+
+
+class FaviconHandler(base.BaseHandler[Dict[str, str], Dict[str, str]]):
+    """Handles favicon image redirection·"""
+
+    GET_HANDLER_ERROR_RETURN_TYPE = feconf.HANDLER_TYPE_JSON
+    URL_PATH_ARGS_SCHEMAS: Dict[str, str] = {}
+    HANDLER_ARGS_SCHEMAS: Dict[str, Dict[str, str]] = {'GET': {}}
+
+    @acl_decorators.open_access
+    def get(self) -> None:
+        """Redirects to correct favicon for particular deployment."""
+        self.redirect(fs_services.get_static_asset_url('favicon.ico'))
+
+
+class RobotsTxtHandler(base.BaseHandler[Dict[str, str], Dict[str, str]]):
+    """Handles robots.txt redirection·"""
+
+    GET_HANDLER_ERROR_RETURN_TYPE = feconf.HANDLER_TYPE_JSON
+    URL_PATH_ARGS_SCHEMAS: Dict[str, str] = {}
+    HANDLER_ARGS_SCHEMAS: Dict[str, Dict[str, str]] = {'GET': {}}
+
+    @acl_decorators.open_access
+    def get(self) -> None:
+        """Redirects to correct robots.txt for particular deployment."""
+        self.redirect(fs_services.get_static_asset_url('robots.txt'))
+
+
+class CopyrightImagesHandler(base.BaseHandler[Dict[str, str], Dict[str, str]]):
+    """Handles copyrighted images redirection·"""
+
+    GET_HANDLER_ERROR_RETURN_TYPE = feconf.HANDLER_TYPE_JSON
+    URL_PATH_ARGS_SCHEMAS = {
+        'folder': {
+            'schema': {
+                'type': 'basestring'
+            }
+        },
+        'filename': {
+            'schema': {
+                'type': 'basestring'
+            }
+        },
+    }
+    HANDLER_ARGS_SCHEMAS: Dict[str, Dict[str, str]] = {'GET': {}}
+
+    @acl_decorators.open_access
+    def get(self, folder: str, filename: str) -> None:
+        """Redirects to correct copyrighted image for particular deployment.
+
+        Args:
+            folder: str. The folder in which the image is.
+            filename: str. The filename of the image.
+        """
+        self.redirect(
+            fs_services.get_static_asset_url(
+                'copyrighted-images/%s/%s' % (folder, filename)))

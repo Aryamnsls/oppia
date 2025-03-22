@@ -21,13 +21,12 @@
 // in via initArgs.
 //
 // This component is based on the UnicodeString directive.
-import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
+import {Component, EventEmitter, Input, Output} from '@angular/core';
 
 @Component({
   selector: 'html-editor',
   templateUrl: './html-editor.component.html',
-  styleUrls: []
+  styleUrls: [],
 })
 export class HtmlEditorComponent {
   // These properties are initialized using Angular lifecycle hooks
@@ -37,7 +36,7 @@ export class HtmlEditorComponent {
   @Input() value!: string;
   @Output() valueChanged = new EventEmitter();
   schema = {
-    type: 'html'
+    type: 'html',
   };
 
   updateValue(value: string): void {
@@ -45,7 +44,3 @@ export class HtmlEditorComponent {
     this.valueChanged.emit(value);
   }
 }
-
-angular.module('oppia').directive('htmlEditor', downgradeComponent({
-  component: HtmlEditorComponent
-}) as angular.IDirectiveFactory);

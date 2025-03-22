@@ -24,10 +24,9 @@ from core.controllers import base
 from core.controllers import domain_objects_validator as validation_method
 from core.domain import blog_domain
 from core.domain import blog_services
-from core.domain import config_domain
 from core.domain import fs_services
-from core.domain import image_validation_services
-from core.domain import user_services
+from core.domain import platform_parameter_list
+from core.domain import platform_parameter_services
 
 from typing import Dict, List, Optional, TypedDict
 
@@ -73,21 +72,6 @@ def _get_blog_card_summary_dicts_for_dashboard(
     return summary_dicts
 
 
-class BlogDashboardPage(
-    base.BaseHandler[Dict[str, str], Dict[str, str]]
-):
-    """Blog Dashboard Page Handler to render the frontend template."""
-
-    URL_PATH_ARGS_SCHEMAS: Dict[str, str] = {}
-    HANDLER_ARGS_SCHEMAS: Dict[str, Dict[str, str]] = {'GET': {}}
-
-    @acl_decorators.can_access_blog_dashboard
-    def get(self) -> None:
-        """Handles GET requests."""
-
-        self.render_template('blog-dashboard-page.mainpage.html')
-
-
 class BlogDashboardDataHandler(
     base.BaseHandler[Dict[str, str], Dict[str, str]]
 ):
@@ -103,28 +87,31 @@ class BlogDashboardDataHandler(
                 'schema': {
                     'type': 'basestring',
                 },
-                'validators': [{
-                    'id': 'has_length_at_most',
-                    'max_value': constants.MAX_AUTHOR_NAME_LENGTH
-                }]
+                'validators': [
+                    {
+                        'id': 'has_length_at_most',
+                        'max_value': constants.MAX_AUTHOR_NAME_LENGTH
+                    }
+                ]
             },
             'author_bio': {
                 'schema': {
                     'type': 'basestring',
                 },
-                'validators': [{
-                    'id': 'has_length_at_most',
-                    'max_value': constants.MAX_CHARS_IN_AUTHOR_BIO
-                }]
+                'validators': [
+                    {
+                        'id': 'has_length_at_most',
+                        'max_value': constants.MAX_CHARS_IN_AUTHOR_BIO
+                    }
+                ]
             },
         },
     }
 
     @acl_decorators.can_access_blog_dashboard
     def get(self) -> None:
-        """Handles GET requests."""
+        """Retrieves data for the blog dashboard."""
         assert self.user_id is not None
-        user_settings = user_services.get_user_settings(self.user_id)
         author_details = (
             blog_services.get_blog_author_details(self.user_id).to_dict())
         no_of_published_blog_posts = 0
@@ -150,7 +137,6 @@ class BlogDashboardDataHandler(
                     draft_blog_post_summaries))
         self.values.update({
             'author_details': author_details,
-            'profile_picture_data_url': user_settings.profile_picture_data_url,
             'no_of_published_blog_posts': no_of_published_blog_posts,
             'no_of_draft_blog_posts': no_of_draft_blog_posts,
             'published_blog_post_summary_dicts': published_post_summary_dicts,
@@ -161,7 +147,7 @@ class BlogDashboardDataHandler(
 
     @acl_decorators.can_access_blog_dashboard
     def post(self) -> None:
-        """Handles POST requests to create a new blog post draft."""
+        """Creates a new blog post draft."""
         assert self.user_id is not None
         new_blog_post = blog_services.create_new_blog_post(self.user_id)
         self.render_json({'blog_post_id': new_blog_post.id})
@@ -216,8 +202,18 @@ class BlogPostHandler(
     URL_PATH_ARGS_SCHEMAS = {
         'blog_post_id': {
             'schema': {
-                'type': 'basestring'
-            }
+                'type': 'basestring',
+                'validators': [
+                    {
+                        'id': 'has_length_at_most',
+                        'max_value': constants.BLOG_POST_ID_LENGTH
+                    },
+                    {
+                        'id': 'has_length_at_least',
+                        'min_value': constants.BLOG_POST_ID_LENGTH
+                    }
+                ]
+            },
         }
     }
     HANDLER_ARGS_SCHEMAS = {
@@ -232,7 +228,8 @@ class BlogPostHandler(
                 'schema': {
                     'type': 'object_dict',
                     'validation_method': (
-                        validation_method.validate_change_dict_for_blog_post),
+                        validation_method.validate_change_dict_for_blog_post
+                    ),
                 }
             },
         },
@@ -253,27 +250,30 @@ class BlogPostHandler(
 
     @acl_decorators.can_access_blog_dashboard
     def get(self, blog_post_id: str) -> None:
-        """Populates the data on the blog dashboard editor page."""
-        blog_domain.BlogPost.require_valid_blog_post_id(blog_post_id)
+        """Populates the data on the blog dashboard editor page.
+
+        Args:
+            blog_post_id: str. The ID of the blog post.
+
+        Raises:
+            NotFoundException. The blog post with the given id
+                or url doesn't exist.
+        """
         blog_post = (
             blog_services.get_blog_post_by_id(blog_post_id, strict=False))
         if blog_post is None:
-            raise self.PageNotFoundException(
+            raise self.NotFoundException(
                 'The blog post with the given id or url doesn\'t exist.')
-
-        user_settings = user_services.get_user_settings(
-            blog_post.author_id, strict=False)
-        if user_settings:
-            profile_picture_data_url = user_settings.profile_picture_data_url
-        else:
-            profile_picture_data_url = None
 
         author_details = blog_services.get_blog_author_details(
             blog_post.author_id)
-        max_no_of_tags = config_domain.Registry.get_config_property(
-            'max_number_of_tags_assigned_to_blog_post', strict=True).value
-        list_of_default_tags = config_domain.Registry.get_config_property(
-            'list_of_default_tags_for_blog_post', strict=True).value
+        max_no_of_tags = (
+            platform_parameter_services.get_platform_parameter_value(
+                platform_parameter_list.ParamName.
+                MAX_NUMBER_OF_TAGS_ASSIGNED_TO_BLOG_POST.value
+            )
+        )
+        list_of_default_tags = constants.LIST_OF_DEFAULT_TAGS_FOR_BLOG_POST
 
         blog_post_dict = blog_post.to_dict()
         blog_post_dict_for_dashboard = {
@@ -290,7 +290,6 @@ class BlogPostHandler(
         self.values.update({
             'blog_post_dict': blog_post_dict_for_dashboard,
             'displayed_author_name': author_details.displayed_author_name,
-            'profile_picture_data_url': profile_picture_data_url,
             'max_no_of_tags': max_no_of_tags,
             'list_of_default_tags': list_of_default_tags
         })
@@ -299,14 +298,16 @@ class BlogPostHandler(
 
     @acl_decorators.can_edit_blog_post
     def put(self, blog_post_id: str) -> None:
-        """Updates properties of the given blog post."""
+        """Updates properties of the given blog post.
+
+        Args:
+            blog_post_id: str. The ID of the blog post.
+        """
         assert self.normalized_payload is not None
-        blog_domain.BlogPost.require_valid_blog_post_id(blog_post_id)
         blog_post_rights = (
             blog_services.get_blog_post_rights(blog_post_id, strict=True))
         blog_post_currently_published = blog_post_rights.blog_post_is_published
         change_dict = self.normalized_payload['change_dict']
-
         blog_services.update_blog_post(blog_post_id, change_dict)
         new_publish_status = self.normalized_payload['new_publish_status']
         if new_publish_status:
@@ -324,32 +325,102 @@ class BlogPostHandler(
 
     @acl_decorators.can_edit_blog_post
     def post(self, blog_post_id: str) -> None:
-        """Stores thumbnail of the blog post in the datastore."""
+        """Stores thumbnail of the blog post in the datastore.
+
+        Args:
+            blog_post_id: str. The ID of the blog post.
+
+        Raises:
+            InvalidInputException. The input provided is not valid.
+        """
         assert self.normalized_request is not None
         assert self.normalized_payload is not None
-        blog_domain.BlogPost.require_valid_blog_post_id(blog_post_id)
         raw_image = self.normalized_request['image']
         thumbnail_filename = self.normalized_payload['thumbnail_filename']
         try:
-            file_format = image_validation_services.validate_image_and_filename(
-                raw_image, thumbnail_filename, feconf.ENTITY_TYPE_BLOG_POST)
+            fs_services.validate_and_save_image(
+              raw_image, thumbnail_filename, 'thumbnail',
+              feconf.ENTITY_TYPE_BLOG_POST, blog_post_id)
         except utils.ValidationError as e:
             raise self.InvalidInputException(e)
-
-        entity_id = blog_post_id
-        filename_prefix = 'thumbnail'
-
-        image_is_compressible = (
-            file_format in feconf.COMPRESSIBLE_IMAGE_FORMATS)
-        fs_services.save_original_and_compressed_versions_of_image(
-            thumbnail_filename, feconf.ENTITY_TYPE_BLOG_POST, entity_id,
-            raw_image, filename_prefix, image_is_compressible)
 
         self.render_json(self.values)
 
     @acl_decorators.can_delete_blog_post
     def delete(self, blog_post_id: str) -> None:
-        """Handles Delete requests."""
-        blog_domain.BlogPost.require_valid_blog_post_id(blog_post_id)
+        """Deletes a blog post.
+
+        Args:
+            blog_post_id: str. The ID of the blog post.
+        """
         blog_services.delete_blog_post(blog_post_id)
         self.render_json(self.values)
+
+
+class BlogPostTitleHandlerNormalizedDict(TypedDict):
+    """Dict representation of BlogPostTitleHandler's normalized_request
+    and payload dictionary.
+    """
+
+    title: str
+
+
+class BlogPostTitleHandler(
+    base.BaseHandler[
+        BlogPostTitleHandlerNormalizedDict,
+        BlogPostTitleHandlerNormalizedDict
+    ]
+):
+    """A data handler for checking if a blog post with given title exists."""
+
+    GET_HANDLER_ERROR_RETURN_TYPE = feconf.HANDLER_TYPE_JSON
+    URL_PATH_ARGS_SCHEMAS = {
+        'blog_post_id': {
+            'schema': {
+                'type': 'basestring',
+                'validators': [
+                    {
+                        'id': 'has_length_at_most',
+                        'max_value': constants.BLOG_POST_ID_LENGTH
+                    },
+                    {
+                        'id': 'has_length_at_least',
+                        'min_value': constants.BLOG_POST_ID_LENGTH,
+                    }
+                ]
+            }
+        }
+    }
+    HANDLER_ARGS_SCHEMAS = {
+        'GET': {
+            'title': {
+                'schema': {
+                    'type': 'basestring',
+                    'validators': [
+                        {
+                            'id': 'has_length_at_most',
+                            'max_value': constants.MAX_CHARS_IN_BLOG_POST_TITLE
+                        }
+                    ]
+                }
+            }
+        },
+    }
+
+    @acl_decorators.can_edit_blog_post
+    def get(self, blog_post_id: str) -> None:
+        """Handler that receives a blog post title and checks whether
+        a blog post with the same title exists.
+
+        Args:
+            blog_post_id: str. The ID of the blog post.
+        """
+        assert self.normalized_request is not None
+        title = self.normalized_request['title']
+        self.render_json({
+            'blog_post_exists': (
+                blog_services.does_blog_post_with_title_exist(
+                    title, blog_post_id
+                )
+            )
+        })

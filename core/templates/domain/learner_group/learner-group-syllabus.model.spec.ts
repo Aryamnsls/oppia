@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { LearnerGroupSyllabus } from './learner-group-syllabus.model';
+import {LearnerGroupSyllabus} from './learner-group-syllabus.model';
 
 /**
  * @fileoverview Tests for learner group syllabus model.
@@ -26,7 +26,7 @@ describe('Learner Group Syllabus', () => {
       parent_topic_id: 'parentTopicId',
       parent_topic_name: 'parentTopicName',
       thumbnail_filename: 'thumbnailFilename',
-      thumbnail_bg_color: 'red'
+      thumbnail_bg_color: 'red',
     };
 
     let nodeDict = {
@@ -40,7 +40,12 @@ describe('Learner Group Syllabus', () => {
       outline: 'Outline',
       exploration_id: null,
       outline_is_finalized: false,
-      thumbnail_bg_color: '#a33f40'
+      thumbnail_bg_color: '#a33f40',
+      status: 'Published',
+      planned_publication_date_msecs: 100.0,
+      last_modified_msecs: 100.0,
+      first_publication_date_msecs: 200.0,
+      unpublishing_reason: null,
     };
 
     const sampleStorySummaryBackendDict = {
@@ -56,18 +61,17 @@ describe('Learner Group Syllabus', () => {
       all_node_dicts: [nodeDict],
       topic_name: 'Topic one',
       topic_url_fragment: 'topic-one',
-      classroom_url_fragment: 'math'
+      classroom_url_fragment: 'math',
     };
 
     let sampleLearnerGroupSyllabusDict = {
       learner_group_id: 'groupId',
       story_summary_dicts: [sampleStorySummaryBackendDict],
-      subtopic_summary_dicts: [sampleLearnerGroupSubtopicSummaryDict]
+      subtopic_summary_dicts: [sampleLearnerGroupSubtopicSummaryDict],
     };
 
-    let sampleLearnerGroupSyllabus = (
-      LearnerGroupSyllabus.createFromBackendDict(
-        sampleLearnerGroupSyllabusDict)
+    let sampleLearnerGroupSyllabus = LearnerGroupSyllabus.createFromBackendDict(
+      sampleLearnerGroupSyllabusDict
     );
 
     expect(sampleLearnerGroupSyllabus.learnerGroupId).toEqual('groupId');
@@ -78,9 +82,8 @@ describe('Learner Group Syllabus', () => {
     expect(storySummary.getId()).toEqual('sample_story_id');
     expect(storySummary.getCompletedNodeTitles()).toEqual([]);
 
-    let learnerGroupSubtopicSummary = (
-      sampleLearnerGroupSyllabus.subtopicPageSummaries[0]
-    );
+    let learnerGroupSubtopicSummary =
+      sampleLearnerGroupSyllabus.subtopicPageSummaries[0];
     expect(learnerGroupSubtopicSummary.subtopicId).toEqual(1);
     expect(learnerGroupSubtopicSummary.subtopicMastery).toBeUndefined();
   });

@@ -16,15 +16,14 @@
  * @fileoverview Service for computing graph data.
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { EventEmitter, Injectable } from '@angular/core';
+import {EventEmitter, Injectable} from '@angular/core';
 import cloneDeep from 'lodash/cloneDeep';
-import { ComputeGraphService, GraphData } from 'services/compute-graph.service';
-import { ExplorationInitStateNameService } from 'pages/exploration-editor-page/services/exploration-init-state-name.service';
-import { ExplorationStatesService } from 'pages/exploration-editor-page/services/exploration-states.service';
+import {ComputeGraphService, GraphData} from 'services/compute-graph.service';
+import {ExplorationInitStateNameService} from 'pages/exploration-editor-page/services/exploration-init-state-name.service';
+import {ExplorationStatesService} from 'pages/exploration-editor-page/services/exploration-states.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class GraphDataService {
   // This property is initialized using int method and we need to do
@@ -65,6 +64,3 @@ export class GraphDataService {
     return cloneDeep(this._graphData);
   }
 }
-
-angular.module('oppia').factory(
-  'GraphDataService', downgradeInjectable(GraphDataService));

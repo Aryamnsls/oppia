@@ -16,13 +16,15 @@
  * @fileoverview Service that manages blog admin data.
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { Injectable } from '@angular/core';
+import {Injectable} from '@angular/core';
 
-import { BlogAdminPageData, BlogAdminBackendApiService } from 'domain/blog-admin/blog-admin-backend-api.service';
+import {
+  BlogAdminPageData,
+  BlogAdminBackendApiService,
+} from 'domain/blog-admin/blog-admin-backend-api.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class BlogAdminDataService {
   // This property is initialized using private methods
@@ -30,8 +32,7 @@ export class BlogAdminDataService {
   // https://github.com/oppia/oppia/wiki/Guide-on-defining-types#ts-7-1
   dataPromise!: Promise<BlogAdminPageData>;
 
-  constructor(
-    private BackendApiService: BlogAdminBackendApiService) {}
+  constructor(private BackendApiService: BlogAdminBackendApiService) {}
 
   async _getDataAsync(): Promise<BlogAdminPageData> {
     this.dataPromise = this.BackendApiService.getDataAsync();
@@ -43,7 +44,3 @@ export class BlogAdminDataService {
     return this._getDataAsync();
   }
 }
-
-angular.module('oppia').factory(
-  'BlogAdminDataService',
-  downgradeInjectable(BlogAdminDataService));

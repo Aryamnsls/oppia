@@ -16,10 +16,10 @@
  * @fileoverview Component for Alert Messages
  */
 
-import { Component, Input } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { ToastrService } from 'ngx-toastr';
-import { AlertsService } from 'services/alerts.service';
+import {Component, Input} from '@angular/core';
+import {ToastrService} from 'ngx-toastr';
+import {AlertsService} from 'services/alerts.service';
+require('ngx-toastr/toastr.css');
 
 export interface MessageObject {
   type: string;
@@ -29,7 +29,7 @@ export interface MessageObject {
 
 @Component({
   selector: 'oppia-alert-message',
-  template: '<div class="oppia-alert-message"></div>'
+  template: '<div class="oppia-alert-message"></div>',
 })
 export class AlertMessageComponent {
   // These properties are initialized using Angular lifecycle hooks
@@ -45,22 +45,23 @@ export class AlertMessageComponent {
 
   ngOnInit(): void {
     if (this.messageObject.type === 'info') {
-      this.toastrService.info(this.messageObject.content, '', {
-        timeOut: this.messageObject.timeout,
-      }).onHidden.toPromise().then(() => {
-        this.alertsService.deleteMessage(this.messageObject);
-      });
+      this.toastrService
+        .info(this.messageObject.content, '', {
+          timeOut: this.messageObject.timeout,
+        })
+        .onHidden.toPromise()
+        .then(() => {
+          this.alertsService.deleteMessage(this.messageObject);
+        });
     } else if (this.messageObject.type === 'success') {
-      this.toastrService.success(this.messageObject.content, '', {
-        timeOut: this.messageObject.timeout
-      }).onHidden.toPromise().then(() => {
-        this.alertsService.deleteMessage(this.messageObject);
-      });
+      this.toastrService
+        .success(this.messageObject.content, '', {
+          timeOut: this.messageObject.timeout,
+        })
+        .onHidden.toPromise()
+        .then(() => {
+          this.alertsService.deleteMessage(this.messageObject);
+        });
     }
   }
 }
-
-angular.module('oppia').directive('oppiaAlertMessage',
-  downgradeComponent({
-    component: AlertMessageComponent
-  }) as angular.IDirectiveFactory);

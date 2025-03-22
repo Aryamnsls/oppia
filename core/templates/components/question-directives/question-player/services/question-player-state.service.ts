@@ -17,9 +17,8 @@
  * in the test session.
  */
 
-import { EventEmitter, Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { Question } from 'domain/question/QuestionObjectFactory';
+import {EventEmitter, Injectable} from '@angular/core';
+import {Question} from 'domain/question/QuestionObjectFactory';
 
 interface UsedHintOrSolution {
   timestamp: number;
@@ -43,7 +42,7 @@ interface QuestionPlayerState {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class QuestionPlayerStateService {
   questionPlayerState: QuestionPlayerState = {};
@@ -55,14 +54,14 @@ export class QuestionPlayerStateService {
   }
 
   private _createNewQuestionPlayerState(
-      questionId: string,
-      linkedSkillIds: string[]
+    questionId: string,
+    linkedSkillIds: string[]
   ): void {
     this.questionPlayerState[questionId] = {
       linkedSkillIds: linkedSkillIds,
       answers: [],
       usedHints: [],
-      viewedSolution: undefined
+      viewedSolution: undefined,
     };
   }
 
@@ -70,10 +69,12 @@ export class QuestionPlayerStateService {
     let questionId = question.getId() as string;
     if (!this.questionPlayerState[questionId]) {
       this._createNewQuestionPlayerState(
-        questionId, question.getLinkedSkillIds());
+        questionId,
+        question.getLinkedSkillIds()
+      );
     }
     this.questionPlayerState[questionId].usedHints.push({
-      timestamp: this._getCurrentTime()
+      timestamp: this._getCurrentTime(),
     });
   }
 
@@ -81,34 +82,37 @@ export class QuestionPlayerStateService {
     let questionId = question.getId() as string;
     if (!this.questionPlayerState[questionId]) {
       this._createNewQuestionPlayerState(
-        questionId, question.getLinkedSkillIds());
+        questionId,
+        question.getLinkedSkillIds()
+      );
     }
     this.questionPlayerState[questionId].viewedSolution = {
-      timestamp: this._getCurrentTime()
+      timestamp: this._getCurrentTime(),
     };
   }
 
   answerSubmitted(
-      question: Question,
-      isCorrect: boolean,
-      taggedSkillMisconceptionId: string): void {
+    question: Question,
+    isCorrect: boolean,
+    taggedSkillMisconceptionId: string
+  ): void {
     let questionId = question.getId() as string;
     if (!this.questionPlayerState[questionId]) {
       this._createNewQuestionPlayerState(
-        questionId, question.getLinkedSkillIds());
+        questionId,
+        question.getLinkedSkillIds()
+      );
     }
     // Don't store a correct answer in the case where
     // the learner viewed the solution for this question.
     if (isCorrect && this.questionPlayerState[questionId].viewedSolution) {
       return;
     }
-    this.questionPlayerState[questionId].answers.push(
-      {
-        isCorrect: isCorrect,
-        timestamp: this._getCurrentTime(),
-        taggedSkillMisconceptionId: taggedSkillMisconceptionId
-      }
-    );
+    this.questionPlayerState[questionId].answers.push({
+      isCorrect: isCorrect,
+      timestamp: this._getCurrentTime(),
+      taggedSkillMisconceptionId: taggedSkillMisconceptionId,
+    });
   }
 
   getQuestionPlayerStateData(): object {
@@ -123,6 +127,3 @@ export class QuestionPlayerStateService {
     return this._resultsPageIsLoadedEventEmitter;
   }
 }
-
-angular.module('oppia').factory('QuestionPlayerStateService',
-  downgradeInjectable(QuestionPlayerStateService));

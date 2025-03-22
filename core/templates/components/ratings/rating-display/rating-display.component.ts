@@ -16,8 +16,7 @@
  * @fileoverview Component for displaying summary rating information.
  */
 
-import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
+import {Component, EventEmitter, Input, Output} from '@angular/core';
 
 interface StarDict {
   cssClass: string;
@@ -26,7 +25,7 @@ interface StarDict {
 
 @Component({
   selector: 'oppia-rating-display',
-  templateUrl: './rating-display.component.html'
+  templateUrl: './rating-display.component.html',
 })
 export class RatingDisplayComponent {
   // This will display a star-rating based on the given data. The attributes
@@ -50,10 +49,10 @@ export class RatingDisplayComponent {
   STATUS_RATING_SET = 'rating_set';
 
   ngOnInit(): void {
-    this.stars = this.POSSIBLE_RATINGS.map((starValue) => {
+    this.stars = this.POSSIBLE_RATINGS.map(starValue => {
       return {
         cssClass: 'far fa-star',
-        value: starValue
+        value: starValue,
       };
     });
     this.status = this.STATUS_INACTIVE;
@@ -62,14 +61,19 @@ export class RatingDisplayComponent {
 
   displayValue(ratingValue: number): void {
     for (let i = 0; i < this.stars.length; i++) {
-      this.stars[i].cssClass = (
-              ratingValue === undefined ? 'far fa-star' :
-              ratingValue < this.stars[i].value - 0.75 ? 'far fa-star' :
-              ratingValue < this.stars[i].value - 0.25 ? 'far fa-star-half' :
-              'fas fa-star');
+      this.stars[i].cssClass =
+        ratingValue === undefined
+          ? 'far fa-star'
+          : ratingValue < this.stars[i].value - 0.75
+            ? 'far fa-star'
+            : ratingValue < this.stars[i].value - 0.25
+              ? 'far fa-star-half'
+              : 'fas fa-star';
 
-      if (this.status === this.STATUS_ACTIVE &&
-        ratingValue >= this.stars[i].value) {
+      if (
+        this.status === this.STATUS_ACTIVE &&
+        ratingValue >= this.stars[i].value
+      ) {
         this.stars[i].cssClass += ' oppia-rating-star-active';
       }
     }
@@ -85,10 +89,9 @@ export class RatingDisplayComponent {
   }
 
   enterStar(starValue: number): void {
-    let starsHaveNotBeenClicked = (
+    let starsHaveNotBeenClicked =
       this.status === this.STATUS_ACTIVE ||
-      this.status === this.STATUS_INACTIVE
-    );
+      this.status === this.STATUS_INACTIVE;
 
     if (this.isEditable && starsHaveNotBeenClicked) {
       this.status = this.STATUS_ACTIVE;
@@ -101,8 +104,3 @@ export class RatingDisplayComponent {
     this.displayValue(this.ratingValue);
   }
 }
-
-angular.module('oppia').directive('oppiaRatingDisplay',
-  downgradeComponent({
-    component: RatingDisplayComponent
-  }) as angular.IDirectiveFactory);

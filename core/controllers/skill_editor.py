@@ -47,46 +47,13 @@ def _require_valid_version(
             in the backend.
 
     Raises:
-        Exception. Invalid input.
+        Exception. The skill versions do not match.
     """
-
     if version_from_payload != skill_version:
         raise base.BaseHandler.InvalidInputException(
             'Trying to update version %s of skill from version %s, '
             'which is too old. Please reload the page and try again.'
             % (skill_version, version_from_payload))
-
-
-class SkillEditorPage(
-    base.BaseHandler[Dict[str, str], Dict[str, str]]
-):
-    """The editor page for a single skill."""
-
-    URL_PATH_ARGS_SCHEMAS = {
-        'skill_id': {
-            'schema': {
-                'type': 'basestring',
-                'validators': [{
-                    'id': 'is_regex_matched',
-                    'regex_pattern': constants.ENTITY_ID_REGEX
-                }]
-            }
-        }
-    }
-    HANDLER_ARGS_SCHEMAS: Dict[str, Dict[str, str]] = {'GET': {}}
-
-    @acl_decorators.can_edit_skill
-    def get(self, skill_id: str) -> None:
-        """Handles GET requests."""
-        skill_domain.Skill.require_valid_skill_id(skill_id)
-
-        skill = skill_fetchers.get_skill_by_id(skill_id, strict=False)
-
-        if skill is None:
-            raise self.PageNotFoundException(
-                Exception('The skill with the given id doesn\'t exist.'))
-
-        self.render_template('skill-editor-page.mainpage.html')
 
 
 def check_can_edit_skill_description(user: user_domain.UserActionsInfo) -> bool:
@@ -99,7 +66,6 @@ def check_can_edit_skill_description(user: user_domain.UserActionsInfo) -> bool:
     Returns:
         bool. Whether the given user can edit skill descriptions.
     """
-
     if role_services.ACTION_EDIT_SKILL_DESCRIPTION not in user.actions:
         return False
     else:
@@ -125,7 +91,11 @@ class SkillRightsHandler(base.BaseHandler[Dict[str, str], Dict[str, str]]):
 
     @acl_decorators.can_edit_skill
     def get(self, skill_id: str) -> None:
-        """Returns whether the user can edit the description of a skill."""
+        """Checks whether the user can edit the description of a skill.
+
+        Args:
+            skill_id: str. The skill ID.
+        """
         skill_domain.Skill.require_valid_skill_id(skill_id)
 
         user_actions_info = user_services.get_user_actions_info(self.user_id)
@@ -202,12 +172,18 @@ class EditableSkillDataHandler(
 
     @acl_decorators.open_access
     def get(self, skill_id: str) -> None:
-        """Populates the data on the individual skill page."""
+        """Populates the data on the individual skill page.
 
+        Args:
+            skill_id: str. The skill ID.
+
+        Raises:
+            Exception. The skill with the given id doesn't exist.
+        """
         skill = skill_fetchers.get_skill_by_id(skill_id, strict=False)
 
         if skill is None:
-            raise self.PageNotFoundException(
+            raise self.NotFoundException(
                 Exception('The skill with the given id doesn\'t exist.'))
 
         topics = topic_fetchers.get_all_topics()
@@ -246,12 +222,22 @@ class EditableSkillDataHandler(
 
     @acl_decorators.can_edit_skill
     def put(self, skill_id: str) -> None:
-        """Updates properties of the given skill."""
+        """Updates properties of the given skill.
+
+        Args:
+            skill_id: str. The skill ID.
+
+        Raises:
+            NotFoundException. The skill with the given id doesn't exist.
+            InvalidInputException. Commit messages must be at most 375
+                characters long.
+            InvalidInputException. The input provided is not valid.
+        """
         assert self.user_id is not None
         assert self.normalized_payload is not None
         skill = skill_fetchers.get_skill_by_id(skill_id, strict=False)
         if skill is None:
-            raise self.PageNotFoundException(
+            raise self.NotFoundException(
                 Exception('The skill with the given id doesn\'t exist.'))
 
         version = self.normalized_payload['version']
@@ -281,15 +267,22 @@ class EditableSkillDataHandler(
 
     @acl_decorators.can_delete_skill
     def delete(self, skill_id: str) -> None:
-        """Handles Delete requests."""
+        """Deletes a skill.
+
+        Args:
+            skill_id: str. The skill ID.
+
+        Raises:
+            InvalidInputException. The skill still has associated questions.
+        """
         assert self.user_id is not None
-        skill_services.remove_skill_from_all_topics(self.user_id, skill_id)
 
         if skill_services.skill_has_associated_questions(skill_id):
             raise self.InvalidInputException(
                 'Please delete all questions associated with this skill '
                 'first.')
 
+        skill_services.remove_skill_from_all_topics(self.user_id, skill_id)
         skill_services.delete_skill(self.user_id, skill_id)
 
         self.render_json(self.values)
@@ -313,14 +306,20 @@ class SkillDataHandler(base.BaseHandler[Dict[str, str], Dict[str, str]]):
 
     @acl_decorators.open_access
     def get(self, comma_separated_skill_ids: str) -> None:
-        """Populates the data on skill pages of the skill ids."""
+        """Populates the data on skill pages of the skill ids.
 
+        Args:
+            comma_separated_skill_ids: str. Comma separated skill IDs.
+
+        Raises:
+            Exception. The skill with the given id doesn't exist.
+        """
         skill_ids = comma_separated_skill_ids.split(',')
 
         try:
             skills = skill_fetchers.get_multi_skills(skill_ids)
         except Exception as e:
-            raise self.PageNotFoundException(e)
+            raise self.NotFoundException(e)
 
         skill_dicts = [skill.to_dict() for skill in skills]
         self.values.update({
@@ -374,6 +373,9 @@ class SkillDescriptionHandler(base.BaseHandler[Dict[str, str], Dict[str, str]]):
     def get(self, skill_description: str) -> None:
         """Handler that receives a skill description and checks whether
         a skill with the same description exists.
+
+        Args:
+            skill_description: str. Skill description.
         """
         self.values.update({
             'skill_description_exists': (
@@ -408,6 +410,9 @@ class DiagnosticTestSkillAssignmentHandler(
     def get(self, skill_id: str) -> None:
         """Returns a list of topic names for which the given skill is assigned
         to that topic's diagnostic test.
+
+        Args:
+            skill_id: str. The skill ID.
         """
         self.values.update({
             'topic_names': (

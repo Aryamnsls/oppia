@@ -28,6 +28,9 @@ from core.domain import collection_services
 from core.domain import email_manager
 from core.domain import exp_fetchers
 from core.domain import exp_services
+from core.domain import fs_services
+from core.domain import platform_parameter_list
+from core.domain import platform_parameter_services
 from core.domain import rights_domain
 from core.domain import rights_manager
 from core.domain import taskqueue_services
@@ -101,6 +104,7 @@ def get_pending_deletion_request(
         user_models.PendingDeletionRequestModel.get_by_id(user_id))
     return wipeout_domain.PendingDeletionRequest(
         pending_deletion_request_model.id,
+        pending_deletion_request_model.username,
         pending_deletion_request_model.email,
         pending_deletion_request_model.normalized_long_term_username,
         pending_deletion_request_model.deletion_complete,
@@ -137,6 +141,7 @@ def save_pending_deletion_requests(
             pending_deletion_request_models, pending_deletion_requests):
         deletion_request.validate()
         deletion_request_dict = {
+            'username': deletion_request.username,
             'email': deletion_request.email,
             'normalized_long_term_username': (
                 deletion_request.normalized_long_term_username),
@@ -191,6 +196,7 @@ def pre_delete_user(user_id: str) -> None:
         pending_deletion_requests.append(
             wipeout_domain.PendingDeletionRequest.create_default(
                 profile_id,
+                profile_user_settings.username,
                 profile_user_settings.email
             )
         )
@@ -224,6 +230,7 @@ def pre_delete_user(user_id: str) -> None:
     pending_deletion_requests.append(
         wipeout_domain.PendingDeletionRequest.create_default(
             user_id,
+            user_settings.username,
             user_settings.email,
             normalized_long_term_username=normalized_long_term_username
         )
@@ -261,7 +268,12 @@ def delete_users_pending_to_be_deleted() -> None:
         )
 
     email_subject = 'User Deletion job result'
-    if feconf.CAN_SEND_EMAILS:
+    server_can_send_emails = (
+        platform_parameter_services.get_platform_parameter_value(
+            platform_parameter_list.ParamName.SERVER_CAN_SEND_EMAILS.value
+        )
+    )
+    if server_can_send_emails:
         email_manager.send_mail_to_admin(email_subject, email_message)
 
 
@@ -288,7 +300,12 @@ def check_completion_of_user_deletion() -> None:
         # or 'FAILURE'.
         completion_status = run_user_deletion_completion(
             pending_deletion_request)
-        if feconf.CAN_SEND_EMAILS:
+        server_can_send_emails = (
+            platform_parameter_services.get_platform_parameter_value(
+                platform_parameter_list.ParamName.SERVER_CAN_SEND_EMAILS.value
+            )
+        )
+        if server_can_send_emails:
             email_message += '\n-----------------------------------\n'
             email_message += (
                 'PendingDeletionRequestModel ID: %s\n'
@@ -350,14 +367,24 @@ def run_user_deletion_completion(
         if pending_deletion_request.normalized_long_term_username is not None:
             user_services.save_deleted_username(
                 pending_deletion_request.normalized_long_term_username)
-        if feconf.CAN_SEND_EMAILS:
+        server_can_send_emails = (
+            platform_parameter_services.get_platform_parameter_value(
+                platform_parameter_list.ParamName.SERVER_CAN_SEND_EMAILS.value
+            )
+        )
+        if server_can_send_emails:
             email_manager.send_account_deleted_email(
                 pending_deletion_request.user_id,
                 pending_deletion_request.email
             )
         return wipeout_domain.USER_VERIFICATION_SUCCESS
     else:
-        if feconf.CAN_SEND_EMAILS:
+        server_can_send_emails = (
+            platform_parameter_services.get_platform_parameter_value(
+                platform_parameter_list.ParamName.SERVER_CAN_SEND_EMAILS.value
+            )
+        )
+        if server_can_send_emails:
             email_manager.send_account_deletion_failed_email(
                 pending_deletion_request.user_id,
                 pending_deletion_request.email
@@ -380,6 +407,73 @@ def _delete_models_with_delete_at_end_policy(user_id: str) -> None:
             model_class.apply_deletion_policy(user_id)
 
 
+def _delete_profile_picture(
+    pending_deletion_request: wipeout_domain.PendingDeletionRequest
+) -> None:
+    """Verify that the profile picture is deleted.
+
+    Args:
+        pending_deletion_request: PendingDeletionRequest. The pending deletion
+            request object for which to delete or pseudonymize all the models.
+    """
+    username = pending_deletion_request.username
+    # Ruling out the possibility of different types for mypy type checking.
+    assert isinstance(username, str)
+    fs = fs_services.GcsFileSystem(feconf.ENTITY_TYPE_USER, username)
+    filename_png = 'profile_picture.png'
+    filename_webp = 'profile_picture.webp'
+    if fs.isfile(filename_png):
+        fs.delete(filename_png)
+    else:
+        logging.error(
+            '%s Profile picture of username %s in .png format does not exists.'
+            % (WIPEOUT_LOGS_PREFIX, username)
+        )
+
+    if fs.isfile(filename_webp):
+        fs.delete(filename_webp)
+    else:
+        logging.error(
+            '%s Profile picture of username %s in .webp format does not '
+            'exists.' % (WIPEOUT_LOGS_PREFIX, username)
+        )
+
+
+def remove_user_from_user_groups(user_id: str) -> None:
+    """Removes the user from all user groups they are a member of.
+
+    Args:
+        user_id: str. The ID of the user to remove from user groups.
+    """
+    user_group_models: Sequence[user_models.UserGroupModel] = (
+        user_models.UserGroupModel.query(
+            user_models.UserGroupModel.user_ids == user_id).fetch()
+    )
+
+    @transaction_services.run_in_transaction_wrapper
+    def _remove_user_from_groups_transactional(
+        group_models: List[user_models.UserGroupModel]
+    ) -> None:
+        """Remove the user from a batch of user group models transactionally.
+
+        Args:
+            group_models: List[UserGroupModel]. The user group models to update.
+        """
+        for group_model in group_models:
+            if user_id in group_model.user_ids:
+                group_model.user_ids.remove(user_id)
+        user_models.UserGroupModel.update_timestamps_multi(group_models)
+        datastore_services.put_multi(group_models)
+
+    for i in range(
+        0,
+        len(user_group_models),
+        feconf.MAX_NUMBER_OF_OPS_IN_TRANSACTION
+    ):
+        batch = user_group_models[i:i + feconf.MAX_NUMBER_OF_OPS_IN_TRANSACTION]
+        _remove_user_from_groups_transactional(batch)
+
+
 def delete_user(
     pending_deletion_request: wipeout_domain.PendingDeletionRequest
 ) -> None:
@@ -400,6 +494,7 @@ def delete_user(
     _pseudonymize_config_models(pending_deletion_request)
     _delete_models(user_id, models.Names.FEEDBACK)
     _delete_models(user_id, models.Names.SUGGESTION)
+    remove_user_from_user_groups(user_id)
     if feconf.ROLE_ID_MOBILE_LEARNER not in user_roles:
         remove_user_from_activities_with_associated_rights_models(
             pending_deletion_request.user_id)
@@ -476,8 +571,38 @@ def delete_user(
             ['manager_ids'])
         _pseudonymize_blog_post_models(pending_deletion_request)
         _pseudonymize_version_history_models(pending_deletion_request)
+        _delete_profile_picture(pending_deletion_request)
     _delete_models(user_id, models.Names.EMAIL)
     _delete_models(user_id, models.Names.LEARNER_GROUP)
+
+
+def _verify_profile_picture_is_deleted(username: str) -> bool:
+    """Verify that the profile picture is deleted.
+
+    Args:
+        username: str. The username of the user.
+
+    Returns:
+        bool. True when the profile picture is deleted else False.
+    """
+    fs = fs_services.GcsFileSystem(feconf.ENTITY_TYPE_USER, username)
+    filename_png = 'profile_picture.png'
+    filename_webp = 'profile_picture.webp'
+    all_profile_images_deleted = True
+    if fs.isfile(filename_png):
+        logging.error(
+            '%s Profile picture in .png format is not deleted for user having '
+            'username %s.' % (WIPEOUT_LOGS_PREFIX, username)
+        )
+        all_profile_images_deleted = False
+    elif fs.isfile(filename_webp):
+        logging.error(
+            '%s Profile picture in .webp format is not deleted for user having '
+            'username %s.' % (WIPEOUT_LOGS_PREFIX, username)
+        )
+        all_profile_images_deleted = False
+
+    return all_profile_images_deleted
 
 
 def verify_user_deleted(
@@ -504,6 +629,14 @@ def verify_user_deleted(
     if not include_delete_at_end_models:
         policies_not_to_verify.append(
             base_models.DELETION_POLICY.DELETE_AT_END)
+
+        # Verify if user profile picture is deleted.
+        user_settings_model = user_models.UserSettingsModel.get_by_id(user_id)
+        username = user_settings_model.username
+        user_roles = user_settings_model.roles
+        if feconf.ROLE_ID_MOBILE_LEARNER not in user_roles:
+            if not _verify_profile_picture_is_deleted(username):
+                return False
 
     user_is_verified = True
     for model_class in models.Registry.get_all_storage_model_classes():
@@ -812,8 +945,7 @@ def _pseudonymize_config_models(
             request object for which to pseudonymize the models.
     """
     snapshot_model_classes = (
-        config_models.ConfigPropertySnapshotMetadataModel,
-        config_models.PlatformParameterSnapshotMetadataModel)
+        config_models.PlatformParameterSnapshotMetadataModel,)
 
     snapshot_metadata_models, _ = (
         _collect_and_save_entity_ids_from_snapshots_and_commits(

@@ -18,16 +18,15 @@
  * an entity.
  */
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { CreateNewSubtopicModalComponent } from 'pages/topic-editor-page/modal-templates/create-new-subtopic-modal.component';
-import { CreateNewSkillModalService } from './create-new-skill-modal.service';
-import { TopicEditorRoutingService } from './topic-editor-routing.service';
-import { TopicEditorStateService } from './topic-editor-state.service';
+import {Injectable} from '@angular/core';
+import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
+import {CreateNewSubtopicModalComponent} from 'pages/topic-editor-page/modal-templates/create-new-subtopic-modal.component';
+import {CreateNewSkillModalService} from './create-new-skill-modal.service';
+import {TopicEditorRoutingService} from './topic-editor-routing.service';
+import {TopicEditorStateService} from './topic-editor-state.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class EntityCreationService {
   constructor(
@@ -38,16 +37,23 @@ export class EntityCreationService {
   ) {}
 
   createSubtopic(): void {
-    this.ngbModal.open(CreateNewSubtopicModalComponent, {
-      backdrop: 'static',
-      windowClass: 'create-new-subtopic'
-    }).result.then((subtopicId) => {
-      this.topicEditorRoutingService.navigateToSubtopicEditorWithId(subtopicId);
-    }, () => {
-      // Note to developers:
-      // This callback is triggered when the Cancel button is clicked.
-      // No further action is needed.
-    });
+    this.ngbModal
+      .open(CreateNewSubtopicModalComponent, {
+        backdrop: 'static',
+        windowClass: 'create-new-subtopic',
+      })
+      .result.then(
+        subtopicId => {
+          this.topicEditorRoutingService.navigateToSubtopicEditorWithId(
+            subtopicId
+          );
+        },
+        () => {
+          // Note to developers:
+          // This callback is triggered when the Cancel button is clicked.
+          // No further action is needed.
+        }
+      );
   }
 
   createSkill(): void {
@@ -55,6 +61,3 @@ export class EntityCreationService {
     this.createNewSkillModalService.createNewSkill([topicId]);
   }
 }
-
-angular.module('oppia').factory('EntityCreationService',
-  downgradeInjectable(EntityCreationService));

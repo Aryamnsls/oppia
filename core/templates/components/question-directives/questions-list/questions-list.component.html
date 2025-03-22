@@ -1,6 +1,6 @@
 <div class="question-editor-container">
   <div *ngIf="editorIsOpen" class="question-editor-parent">
-    <mat-card class="oppia-page-card oppia-mobile-collapsible-card">
+    <mat-card class="oppia-page-card oppia-question-editor-page-card oppia-mobile-collapsible-card">
       <div class="difficulty-card-header oppia-mobile-collapsible-card-header" (click)="toggleDifficultyCard()">
         <h3>Difficulty</h3>
         <i class="fa fa-caret-down"
@@ -37,7 +37,7 @@
           </a>
         </div>
       </mat-card>
-      <button class="btn btn-success btn-sm" (click)="addSkill()">Link Another Skill</button>
+      <button class="btn btn-success btn-sm" (click)="addSkill()" *ngIf="associatedSkillSummaries.length < MAX_SKILLS_PER_QUESTION">Link Another Skill</button>
     </div>
     <oppia-question-editor [questionId]="questionId"
                            [misconceptionsBySkill]="misconceptionsBySkill"
@@ -45,8 +45,8 @@
                            [question]="question"
                            [userCanEditQuestion]="canEditQuestion">
     </oppia-question-editor>
-    <div class="alert alert-danger" *ngIf="question.getStateData().interaction.id && question.getValidationErrorMessage()">
-      {{question.getValidationErrorMessage()}}
+    <div class="alert alert-danger" *ngIf="question.getStateData().interaction.id && questionValidationService.getValidationErrorMessage(question)">
+      {{questionValidationService.getValidationErrorMessage(question)}}
     </div>
   </div>
   <mat-card class="question-data-container" *ngIf="!editorIsOpen">
@@ -63,17 +63,21 @@
         <div *ngFor="let questionSummaryForOneSkill of questionSummariesForOneSkill; let index = index" class="question-list-item e2e-test-question-list-item">
           <div *ngIf="!deletedQuestionIds.includes(questionSummaryForOneSkill.getQuestionSummary().getQuestionId())"
                (click)="editQuestion(questionSummaryForOneSkill.getQuestionSummary(), questionSummaryForOneSkill.getSkillDescription(), questionSummaryForOneSkill.getSkillDifficulty())">
-            <div class="question-data">
-              <oppia-rte-output-display classStr="question-text"
-                                         [rteString]="questionSummaryForOneSkill.getQuestionSummary().getQuestionContent()">
+            <div class="question-data e2e-test-edit-question-button">
+              <oppia-rte-output-display class="e2e-test-question-text question-text"
+                            [rteString]="questionSummaryForOneSkill.getQuestionSummary().getQuestionContent()">
               </oppia-rte-output-display>
-              <span *ngIf="!showUnaddressedSkillMisconceptionWarning(questionSummaryForOneSkill.getQuestionSummary().getMisconceptionIds())">⚠️</span>
-              <span (click)="removeQuestionFromSkill(questionSummaryForOneSkill.getQuestionSummary().getQuestionId());$event.stopPropagation();"
+              <span *ngIf="!showUnaddressedSkillMisconceptionWarning(questionSummaryForOneSkill.getQuestionSummary().getMisconceptionIds())"
+                    matTooltip="Unaddressed skill misconceptions"
+                    matTooltipClass="oppia-mat-tooltip-list">
+                    ⚠️
+              </span>
+              <span (click)="removeQuestionFromSkill(questionSummaryForOneSkill.getQuestionSummary().getQuestionId(),questionSummaryForOneSkill.getSkillDifficulty());$event.stopPropagation();"
                     class="link-off-icon">
                 <i class="fas fa-trash"></i>
               </span>
             </div>
-            <div class="question-interaction-id">
+            <div class="question-interaction-id e2e-test-question-interaction-id">
               <span>{{questionSummaryForOneSkill.getQuestionSummary().getInteractionId()}}</span>
             </div>
           </div>
@@ -127,12 +131,19 @@
     </div>
     <div class="save-question-button-container">
       <button class="btn question-edit-cancel-button" (click)="cancel()">CANCEL</button>
-      <button title="To Save please add: interaction, hint, solution and address all misconceptions"
-              class="btn add-question-btn question-edit-save-button e2e-test-save-question-button"
-              (click)="saveQuestion()"
-              [disabled]="!isQuestionSavable()">
-        SAVE
-      </button>
+      <span matTooltip="To Save please add: interaction, hint, solution and address all misconceptions"
+            matTooltipClass="oppia-mat-tooltip-list"
+            [matTooltipDisabled]="isQuestionSavable()"
+            class="w-100">
+        <button class="btn add-question-btn question-edit-save-button e2e-test-save-question-button"
+                (click)="saveQuestion()"
+                [disabled]="!isQuestionSavable() || questionIsBeingSaved">
+          <i class="fas fa-exclamation-triangle story-save-draft-warning"
+            *ngIf="!isQuestionSavable()">
+          </i>
+          SAVE
+        </button>
+      </span>
     </div>
   </mat-card>
   <div class="create-question-container" *ngIf="!editorIsOpen">
@@ -203,6 +214,7 @@
     cursor: pointer;
     display: flex;
     flex-wrap: wrap;
+    gap: 4px;
     justify-content: space-between;
   }
   .create-question-header {
@@ -210,10 +222,15 @@
     margin: 0;
   }
   .question-text {
-    width: 90%;
+    flex: 1;
+    max-width: 90%;
   }
   .page-navigation-arrows {
     float: right;
+    margin-top: 5px;
+  }
+  .page-navigation-arrows > i {
+    cursor: pointer;
   }
   .add-question-btn {
     background-color: #008098;
@@ -287,6 +304,9 @@
   .btn-success[disabled] {
     background-color: #008098;
   }
+  .btn-success {
+    color: #000;
+  }
   .save-question-button-container {
     border-top: 1px solid #000;
     display: flex;
@@ -313,6 +333,10 @@
   .list-group {
     gap: 10px;
   }
+  .oppia-question-editor-page-card {
+    margin-bottom: 0;
+    margin-top: 0;
+  }
   @media screen and (max-width: 768px) {
     .question-editor-container {
       margin-top: 30px;
@@ -322,8 +346,10 @@
       margin-left: 0;
       margin-right: 0;
       margin-top: 30px;
+      max-height: none;
       order: 10;
       padding: 0;
+      padding-bottom: 90px;
       width: 100%;
     }
     .create-question-container {

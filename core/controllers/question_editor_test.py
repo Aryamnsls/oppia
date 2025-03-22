@@ -15,7 +15,7 @@
 """Tests for the Question Editor controller."""
 
 from __future__ import annotations
-
+import json
 import os
 
 from core import feconf
@@ -26,6 +26,7 @@ from core.domain import question_services
 from core.domain import skill_services
 from core.domain import topic_domain
 from core.domain import topic_fetchers
+from core.domain import translation_domain
 from core.domain import user_services
 from core.platform import models
 from core.tests import test_utils
@@ -80,11 +81,14 @@ class BaseQuestionEditorControllerTests(test_utils.GenericTestBase):
             self.skill_id, self.admin_id, description='Skill Description')
 
         self.question_id = question_services.get_new_question_id()
+        self.content_id_generator = translation_domain.ContentIdGenerator()
+        content_id_generator = translation_domain.ContentIdGenerator()
         self.question = self.save_new_question(
             self.question_id,
             self.editor_id,
-            self._create_valid_question_data('ABC'),
-            [self.skill_id])
+            self._create_valid_question_data('ABC', content_id_generator),
+            [self.skill_id],
+            content_id_generator.next_content_id_index)
 
 
 class QuestionCreationHandlerTest(BaseQuestionEditorControllerTests):
@@ -376,7 +380,8 @@ class QuestionCreationHandlerTest(BaseQuestionEditorControllerTests):
         post_data = {
             'question_dict': question_dict,
             'skill_ids': [self.skill_id],
-            'skill_difficulties': [0.6]
+            'skill_difficulties': [0.6],
+            'filenames': json.dumps(['img.png'])
         }
 
         with utils.open_file(
@@ -387,7 +392,7 @@ class QuestionCreationHandlerTest(BaseQuestionEditorControllerTests):
         self.post_json(
             feconf.NEW_QUESTION_URL, post_data,
             csrf_token=csrf_token,
-            upload_files=[(filename, filename, raw_image)]
+            upload_files=[('image0', filename, raw_image)]
         )
         all_models = question_models.QuestionModel.get_all()
         questions = [
@@ -417,7 +422,8 @@ class QuestionCreationHandlerTest(BaseQuestionEditorControllerTests):
         post_data = {
             'question_dict': question_dict,
             'skill_ids': [self.skill_id],
-            'skill_difficulties': [0.6]
+            'skill_difficulties': [0.6],
+            'filenames': json.dumps(['img.svg'])
         }
 
         response_dict = self.post_json(
@@ -434,7 +440,7 @@ class QuestionCreationHandlerTest(BaseQuestionEditorControllerTests):
             feconf.NEW_QUESTION_URL, post_data,
             csrf_token=csrf_token,
             upload_files=[
-                ('img.svg', 'img.svg', large_image)
+                ('image0', 'img.svg', large_image)
             ], expected_status_int=400)
         self.assertIn(
             'Image exceeds file size limit of 100 KB.',
@@ -455,9 +461,13 @@ class QuestionSkillLinkHandlerTest(BaseQuestionEditorControllerTests):
         self.save_new_skill(
             self.skill_id_2, self.admin_id, description='Skill Description 2')
         self.question_id_2 = question_services.get_new_question_id()
+        self.content_id_generator_2 = translation_domain.ContentIdGenerator()
         self.save_new_question(
             self.question_id_2, self.editor_id,
-            self._create_valid_question_data('ABC'), [self.skill_id])
+            self._create_valid_question_data(
+                'ABC', self.content_id_generator_2),
+            [self.skill_id],
+            self.content_id_generator_2.next_content_id_index)
 
     def test_put_with_non_admin_or_topic_manager_disallows_access(self) -> None:
         self.login(self.NEW_USER_EMAIL)
@@ -722,16 +732,23 @@ class EditableQuestionDataHandlerTest(BaseQuestionEditorControllerTests):
         self.logout()
 
     def test_put_with_long_commit_message_fails(self) -> None:
-        new_question_data = self._create_valid_question_data('DEF')
+        new_question_data = self._create_valid_question_data(
+            'DEF', self.content_id_generator)
         change_list = [{
             'cmd': 'update_question_property',
             'property_name': 'question_state_data',
             'new_value': new_question_data.to_dict(),
             'old_value': self.question.question_state_data.to_dict()
+        }, {
+            'cmd': 'update_question_property',
+            'property_name': 'next_content_id_index',
+            'new_value': self.content_id_generator.next_content_id_index,
+            'old_value': 0
         }]
         payload = {
             'change_list': change_list,
-            'commit_message': ('a' * (constants.MAX_COMMIT_MESSAGE_LENGTH + 1))
+            'commit_message': ('a' * (constants.MAX_COMMIT_MESSAGE_LENGTH + 1)),
+            'version': 2
         }
 
         self.login(self.CURRICULUM_ADMIN_EMAIL)
@@ -742,24 +759,31 @@ class EditableQuestionDataHandlerTest(BaseQuestionEditorControllerTests):
             payload,
             csrf_token=csrf_token, expected_status_int=400)
         max_len_object = 'a' * 376
-        self.assertEqual(
-            response_json['error'],
+        self.assertIn(
             'Schema validation for \'commit_message\' failed: Validation '
             'failed: has_length_at_most ({\'max_value\': 375}) for object %s'
-            % max_len_object
+            % max_len_object,
+            response_json['error'],
         )
 
     def test_put_with_admin_email_allows_question_editing(self) -> None:
-        new_question_data = self._create_valid_question_data('DEF')
+        new_question_data = self._create_valid_question_data(
+            'DEF', self.content_id_generator)
         change_list = [{
             'cmd': 'update_question_property',
             'property_name': 'question_state_data',
             'new_value': new_question_data.to_dict(),
             'old_value': self.question.question_state_data.to_dict()
+        }, {
+            'cmd': 'update_question_property',
+            'property_name': 'next_content_id_index',
+            'new_value': self.content_id_generator.next_content_id_index,
+            'old_value': 2
         }]
         payload = {
             'change_list': change_list,
-            'commit_message': 'update question data'
+            'commit_message': 'update question data',
+            'version': 1
         }
 
         self.login(self.CURRICULUM_ADMIN_EMAIL)
@@ -796,7 +820,8 @@ class EditableQuestionDataHandlerTest(BaseQuestionEditorControllerTests):
         self.logout()
 
     def test_put_with_topic_manager_email_allows_question_editing(self) -> None:
-        new_question_data = self._create_valid_question_data('DEF')
+        new_question_data = self._create_valid_question_data(
+            'DEF', self.content_id_generator)
         change_list = [{
             'cmd': 'update_question_property',
             'property_name': 'question_state_data',
@@ -805,19 +830,26 @@ class EditableQuestionDataHandlerTest(BaseQuestionEditorControllerTests):
         }]
         payload = {
             'change_list': change_list,
-            'commit_message': 'update question data'
+            'commit_message': 'update question data',
+            'version': 1
         }
 
         self.login(self.TOPIC_MANAGER_EMAIL)
         csrf_token = self.get_new_csrf_token()
-        new_question_data = self._create_valid_question_data('GHI')
-        change_list = [{
+        new_question_data = self._create_valid_question_data(
+            'GHI', self.content_id_generator)
+        new_change_list = [{
             'cmd': 'update_question_property',
             'property_name': 'question_state_data',
             'new_value': new_question_data.to_dict(),
             'old_value': self.question.question_state_data.to_dict()
+        }, {
+            'cmd': 'update_question_property',
+            'property_name': 'next_content_id_index',
+            'new_value': self.content_id_generator.next_content_id_index,
+            'old_value': 2
         }]
-        payload['change_list'] = change_list
+        payload['change_list'] = new_change_list
         payload['commit_message'] = 'update question data'
         response_json = self.put_json(
             '%s/%s' % (
@@ -836,7 +868,7 @@ class EditableQuestionDataHandlerTest(BaseQuestionEditorControllerTests):
     def test_put_with_creating_new_fully_specified_question_returns_400(
         self
     ) -> None:
-        self._create_valid_question_data('XXX')
+        self._create_valid_question_data('XXX', self.content_id_generator)
         change_list = [{
             'cmd': 'create_new_fully_specified_question',
             'question_dict': {},
@@ -844,13 +876,17 @@ class EditableQuestionDataHandlerTest(BaseQuestionEditorControllerTests):
         }]
         payload = {
             'change_list': change_list,
-            'commit_message': 'update question data'
+            'commit_message': 'update question data',
+            'version': 1
         }
         self.login(self.CURRICULUM_ADMIN_EMAIL)
         csrf_token = self.get_new_csrf_token()
-        self.put_json(
+        response_json = self.put_json(
             '%s/%s' % (
                 feconf.QUESTION_EDITOR_DATA_URL_PREFIX, self.question_id),
             payload,
             csrf_token=csrf_token, expected_status_int=400)
+        self.assertEqual(
+            response_json['error'],
+            'Cannot create a new fully specified question')
         self.logout()

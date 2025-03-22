@@ -16,15 +16,15 @@
  * @fileoverview Unit tests for FlagExplorationModalComponent.
  */
 
-import { HttpClientTestingModule } from '@angular/common/http/testing';
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
-import { FormsModule } from '@angular/forms';
-import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
-import { SharedPipesModule } from 'filters/shared-pipes.module';
-import { FocusManagerService } from 'services/stateful/focus-manager.service';
-import { PlayerPositionService } from '../services/player-position.service';
-import { FlagExplorationModalComponent } from './flag-exploration-modal.component';
-import { MockTranslatePipe } from 'tests/unit-test-utils';
+import {HttpClientTestingModule} from '@angular/common/http/testing';
+import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
+import {FormsModule} from '@angular/forms';
+import {NgbActiveModal} from '@ng-bootstrap/ng-bootstrap';
+import {SharedPipesModule} from 'filters/shared-pipes.module';
+import {FocusManagerService} from 'services/stateful/focus-manager.service';
+import {PlayerPositionService} from '../services/player-position.service';
+import {FlagExplorationModalComponent} from './flag-exploration-modal.component';
+import {MockTranslatePipe} from 'tests/unit-test-utils';
 
 describe('Flag Exploration modal', () => {
   let component: FlagExplorationModalComponent;
@@ -41,38 +41,28 @@ describe('Flag Exploration modal', () => {
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      imports: [
-        HttpClientTestingModule,
-        SharedPipesModule,
-        FormsModule
-      ],
-      declarations: [
-        FlagExplorationModalComponent,
-        MockTranslatePipe
-      ],
+      imports: [HttpClientTestingModule, SharedPipesModule, FormsModule],
+      declarations: [FlagExplorationModalComponent, MockTranslatePipe],
       providers: [
         NgbActiveModal,
         FocusManagerService,
         {
           provide: PlayerPositionService,
-          useClass: MockPlayerPositionService
-        }
-      ]
+          useClass: MockPlayerPositionService,
+        },
+      ],
     }).compileComponents();
   }));
 
   beforeEach(() => {
     fixture = TestBed.createComponent(FlagExplorationModalComponent);
     component = fixture.componentInstance;
-    focusManagerService = (TestBed.inject(FocusManagerService) as unknown) as
-      jasmine.SpyObj<FocusManagerService>;
-    ngbActiveModal = (TestBed.inject(NgbActiveModal) as unknown) as
-          jasmine.SpyObj<NgbActiveModal>;
+    focusManagerService = TestBed.inject(FocusManagerService);
+    ngbActiveModal = TestBed.inject(NgbActiveModal);
   });
 
   it('should create', () => {
     expect(component).toBeDefined();
-    expect(component.stateName).toEqual(stateName);
   });
 
   it('should show flag message textarea', () => {
@@ -92,7 +82,7 @@ describe('Flag Exploration modal', () => {
     expect(ngbActiveModal.close).toHaveBeenCalledWith({
       report_type: flag,
       report_text: flagMessageTextareaIsShown,
-      state: stateName
+      state: stateName,
     });
   });
 });

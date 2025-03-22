@@ -57,7 +57,7 @@
     "is_terminal": false,
     "default_outcome_heading": null,
     "rule_descriptions": {
-      "IsEqualTo": "is equal to {{f|NumberWithUnits}}",
+      "IsEqualTo": "has the same value and units as {{f|NumberWithUnits}}",
       "IsEquivalentTo": "is equivalent to {{f|NumberWithUnits}}"
     }
   },
@@ -206,7 +206,7 @@
   },
   "ItemSelectionInput": {
     "can_have_solution": false,
-    "show_generic_submit_button": false,
+    "show_generic_submit_button": true,
     "instructions": null,
     "is_trainable": false,
     "narrow_instructions": null,
@@ -626,7 +626,7 @@
   },
   "MultipleChoiceInput": {
     "can_have_solution": false,
-    "show_generic_submit_button": false,
+    "show_generic_submit_button": true,
     "instructions": null,
     "is_trainable": false,
     "narrow_instructions": null,

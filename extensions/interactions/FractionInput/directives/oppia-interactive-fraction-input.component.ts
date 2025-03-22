@@ -16,25 +16,24 @@
  * @fileoverview Directive for the FractionInput interaction.
  */
 
-import { Component, Input, OnDestroy, OnInit } from '@angular/core';
-import { Subject, Subscription } from 'rxjs';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import {Component, Input, OnDestroy, OnInit} from '@angular/core';
+import {Subject, Subscription} from 'rxjs';
+import {debounceTime, distinctUntilChanged} from 'rxjs/operators';
 
-import { Fraction } from 'domain/objects/fraction.model';
-import { ObjectsDomainConstants } from 'domain/objects/objects-domain.constants';
-import { FractionInputCustomizationArgs } from 'interactions/customization-args-defs';
-import { InteractionAttributesExtractorService } from 'interactions/interaction-attributes-extractor.service';
-import { CurrentInteractionService } from 'pages/exploration-player-page/services/current-interaction.service';
+import {Fraction} from 'domain/objects/fraction.model';
+import {ObjectsDomainConstants} from 'domain/objects/objects-domain.constants';
+import {FractionInputCustomizationArgs} from 'interactions/customization-args-defs';
+import {InteractionAttributesExtractorService} from 'interactions/interaction-attributes-extractor.service';
+import {CurrentInteractionService} from 'pages/exploration-player-page/services/current-interaction.service';
 
-import { FractionInputRulesService } from './fraction-input-rules.service';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { FocusManagerService } from 'services/stateful/focus-manager.service';
-import { FractionAnswer, InteractionAnswer } from 'interactions/answer-defs';
+import {FractionInputRulesService} from './fraction-input-rules.service';
+import {FocusManagerService} from 'services/stateful/focus-manager.service';
+import {FractionAnswer, InteractionAnswer} from 'interactions/answer-defs';
 
 @Component({
   selector: 'oppia-interactive-fraction-input',
   templateUrl: './fraction-input-interaction.component.html',
-  styleUrls: []
+  styleUrls: [],
 })
 export class InteractiveFractionInputComponent implements OnInit, OnDestroy {
   // These properties are initialized using Angular lifecycle hooks
@@ -58,15 +57,14 @@ export class InteractiveFractionInputComponent implements OnInit, OnDestroy {
   answerChanged: Subject<string> = new Subject<string>();
   FRACTION_INPUT_FORM_SCHEMA = {
     type: 'unicode',
-    ui_config: {}
+    ui_config: {},
   };
 
   constructor(
     private currentInteractionService: CurrentInteractionService,
     private fractionInputRulesService: FractionInputRulesService,
     private focusManagerService: FocusManagerService,
-    private interactionAttributesExtractorService:
-      InteractionAttributesExtractorService
+    private interactionAttributesExtractorService: InteractionAttributesExtractorService
   ) {
     /**
      * Disables the input box if the data entered is not a valid prefix
@@ -78,43 +76,22 @@ export class InteractiveFractionInputComponent implements OnInit, OnDestroy {
      * -- 2/
      * -- 1 2/3
      */
-    this.componentSubscriptions.add(this.answerChanged.pipe(
-      // Wait 150ms after the last event before emitting last event.
-      debounceTime(150),
-      // Only emit if value is different from previous value.
-      distinctUntilChanged()
-    ).subscribe(newValue => {
-      const INVALID_CHARS_REGEX = /[^\d\s\/-]/g;
-      const INVALID_CHARS_LENGTH_REGEX = /\d{8,}/;
-      // Accepts incomplete fraction inputs
-      // (see examples above except last).
-      const PARTIAL_FRACTION_REGEX =
-        /^\s*(-?\s*((\d*\s*\d+\s*\/?\s*)|\d+)\s*)?$/;
-      // Accepts complete fraction inputs.
-      const FRACTION_REGEX =
-        /^\s*-?\s*((\d*\s*\d+\s*\/\s*\d+)|\d+)\s*$/;
-      if (INVALID_CHARS_LENGTH_REGEX.test(newValue)) {
-        this.errorMessageI18nKey = (
-          ObjectsDomainConstants.
-            FRACTION_PARSING_ERROR_I18N_KEYS.INVALID_CHARS_LENGTH);
-        this.isValid = false;
-      } else if (INVALID_CHARS_REGEX.test(newValue)) {
-        this.errorMessageI18nKey = (
-          ObjectsDomainConstants.
-            FRACTION_PARSING_ERROR_I18N_KEYS.INVALID_CHARS);
-        this.isValid = false;
-      } else if (!(FRACTION_REGEX.test(newValue) ||
-          PARTIAL_FRACTION_REGEX.test(newValue))) {
-        this.errorMessageI18nKey = (
-          ObjectsDomainConstants.
-            FRACTION_PARSING_ERROR_I18N_KEYS.INVALID_FORMAT);
-        this.isValid = false;
-      } else {
-        this.errorMessageI18nKey = '';
-        this.isValid = true;
-      }
-      this.currentInteractionService.updateViewWithNewAnswer();
-    }));
+    this.componentSubscriptions.add(
+      this.answerChanged
+        .pipe(
+          // Wait 150ms after the last event before emitting last event.
+          debounceTime(150),
+          // Only emit if value is different from previous value.
+          distinctUntilChanged()
+        )
+        .subscribe(newValue => {
+          this.answer = newValue;
+          this.currentInteractionService.updateCurrentAnswer(this.answer);
+          this.isValid = true;
+          this.errorMessageI18nKey = '';
+          this.currentInteractionService.updateViewWithNewAnswer();
+        })
+    );
   }
 
   ngOnInit(): void {
@@ -122,7 +99,7 @@ export class InteractiveFractionInputComponent implements OnInit, OnDestroy {
       requireSimplestForm,
       allowImproperFraction,
       allowNonzeroIntegerPart,
-      customPlaceholder
+      customPlaceholder,
     } = this.interactionAttributesExtractorService.getValuesFromAttributes(
       'FractionInput',
       this.getAttributesObject()
@@ -134,19 +111,21 @@ export class InteractiveFractionInputComponent implements OnInit, OnDestroy {
     if (this.savedSolution !== undefined) {
       let savedSolution = this.savedSolution;
       savedSolution = Fraction.fromDict(
-        savedSolution as FractionAnswer).toString();
+        savedSolution as FractionAnswer
+      ).toString();
       this.answer = savedSolution;
     }
     const submitAnswerFn = () => this.submitAnswer();
     const isAnswerValid = () => this.isAnswerValid();
     this.currentInteractionService.registerCurrentInteraction(
-      submitAnswerFn, isAnswerValid);
+      submitAnswerFn,
+      isAnswerValid
+    );
 
-    setTimeout(
-      () => {
-        let focusLabel: string = this.labelForFocusTarget;
-        this.focusManagerService.setFocusWithoutScroll(focusLabel);
-      }, 0);
+    setTimeout(() => {
+      let focusLabel: string = this.labelForFocusTarget;
+      this.focusManagerService.setFocusWithoutScroll(focusLabel);
+    }, 0);
   }
 
   private getAttributesObject() {
@@ -154,47 +133,84 @@ export class InteractiveFractionInputComponent implements OnInit, OnDestroy {
       requireSimplestFormWithValue: this.requireSimplestFormWithValue,
       allowImproperFractionWithValue: this.allowImproperFractionWithValue,
       allowNonzeroIntegerPartWithValue: this.allowNonzeroIntegerPartWithValue,
-      customPlaceholderWithValue: this.customPlaceholderWithValue
+      customPlaceholderWithValue: this.customPlaceholderWithValue,
     };
   }
 
   submitAnswer(): void {
     const answer: string = this.answer;
-    try {
-      const fraction = Fraction.fromRawInputString(answer);
-      // To check if the input fraction is in simplest form, the string
-      // representation of the input fraction and the simplified fraction is
-      // compared. Just comparing 'fraction' and
-      // 'fraction.convertToSimplestForm()' will not work, since both are
-      // objects that cannot be compared directly.
-      if (this.requireSimplestForm &&
-        !(fraction.toString() === fraction.convertToSimplestForm().toString())
-      ) {
-        this.errorMessageI18nKey = 'I18N_INTERACTIONS_FRACTIONS_SIMPLEST_FORM';
-        this.isValid = false;
-      } else if (
-        !this.allowImproperFraction && fraction.isImproperFraction()) {
-        this.errorMessageI18nKey = (
-          'I18N_INTERACTIONS_FRACTIONS_PROPER_FRACTION');
-        this.isValid = false;
-      } else if (
-        !this.allowNonzeroIntegerPart &&
-          fraction.hasNonzeroIntegerPart()) {
-        this.errorMessageI18nKey = (
-          'I18N_INTERACTIONS_FRACTIONS_NON_MIXED');
-        this.isValid = false;
-      } else {
-        this.currentInteractionService.onSubmit(
-          fraction, this.fractionInputRulesService);
-      }
-    } catch (parsingError) {
-      if (parsingError instanceof Error) {
-        this.errorMessageI18nKey = parsingError.message;
-      } else {
-        throw parsingError;
-      }
+    this.isValid = true;
+    this.errorMessageI18nKey = '';
+
+    const INVALID_CHARS_REGEX = /[^\d\s\/-]/g;
+    const INVALID_CHARS_LENGTH_REGEX = /\d{8,}/;
+    // Accepts incomplete fraction inputs
+    // (see examples above except last).
+    const PARTIAL_FRACTION_REGEX = /^\s*(-?\s*((\d*\s*\d+\s*\/?\s*)|\d+)\s*)?$/;
+    // Accepts complete fraction inputs.
+    const FRACTION_REGEX = /^\s*-?\s*((\d*\s*\d+\s*\/\s*\d+)|\d+)\s*$/;
+    if (INVALID_CHARS_LENGTH_REGEX.test(answer)) {
+      this.errorMessageI18nKey =
+        ObjectsDomainConstants.FRACTION_PARSING_ERROR_I18N_KEYS.INVALID_CHARS_LENGTH;
       this.isValid = false;
+    } else if (INVALID_CHARS_REGEX.test(answer)) {
+      this.errorMessageI18nKey =
+        ObjectsDomainConstants.FRACTION_PARSING_ERROR_I18N_KEYS.INVALID_CHARS;
+      this.isValid = false;
+    } else if (
+      !(FRACTION_REGEX.test(answer) || PARTIAL_FRACTION_REGEX.test(answer))
+    ) {
+      this.errorMessageI18nKey =
+        ObjectsDomainConstants.FRACTION_PARSING_ERROR_I18N_KEYS.INVALID_FORMAT;
+      this.isValid = false;
+    } else {
+      this.errorMessageI18nKey = '';
+      this.isValid = true;
     }
+    if (this.isValid) {
+      try {
+        const fraction = Fraction.fromRawInputString(answer);
+        // To check if the input fraction is in simplest form, the string
+        // representation of the input fraction and the simplified fraction is
+        // compared. Just comparing 'fraction' and
+        // 'fraction.convertToSimplestForm()' will not work, since both are
+        // objects that cannot be compared directly.
+        if (
+          this.requireSimplestForm &&
+          !(fraction.toString() === fraction.convertToSimplestForm().toString())
+        ) {
+          this.errorMessageI18nKey =
+            'I18N_INTERACTIONS_FRACTIONS_SIMPLEST_FORM';
+          this.isValid = false;
+        } else if (
+          !this.allowImproperFraction &&
+          fraction.isImproperFraction()
+        ) {
+          this.errorMessageI18nKey =
+            'I18N_INTERACTIONS_FRACTIONS_PROPER_FRACTION';
+          this.isValid = false;
+        } else if (
+          !this.allowNonzeroIntegerPart &&
+          fraction.hasNonzeroIntegerPart()
+        ) {
+          this.errorMessageI18nKey = 'I18N_INTERACTIONS_FRACTIONS_NON_MIXED';
+          this.isValid = false;
+        } else {
+          this.currentInteractionService.onSubmit(
+            fraction,
+            this.fractionInputRulesService
+          );
+        }
+      } catch (parsingError) {
+        if (parsingError instanceof Error) {
+          this.errorMessageI18nKey = parsingError.message;
+        } else {
+          throw parsingError;
+        }
+        this.isValid = false;
+      }
+    }
+    this.currentInteractionService.updateAnswerIsValid(this.isAnswerValid());
   }
 
   isAnswerValid(): boolean {
@@ -216,8 +232,3 @@ export class InteractiveFractionInputComponent implements OnInit, OnDestroy {
     this.componentSubscriptions.unsubscribe();
   }
 }
-
-angular.module('oppia').directive(
-  'oppiaInteractiveFractionInput', downgradeComponent({
-    component: InteractiveFractionInputComponent
-  }) as angular.IDirectiveFactory);

@@ -16,14 +16,13 @@
  * @fileoverview Component for the concept cards viewer.
  */
 
-import { Component, Input, OnInit } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { ConceptCardBackendApiService } from 'domain/skill/concept-card-backend-api.service';
-import { ConceptCard } from 'domain/skill/ConceptCardObjectFactory';
+import {Component, Input, OnInit} from '@angular/core';
+import {ConceptCardBackendApiService} from 'domain/skill/concept-card-backend-api.service';
+import {ConceptCard} from 'domain/skill/concept-card.model';
 
 @Component({
   selector: 'oppia-concept-card',
-  templateUrl: './concept-card.component.html'
+  templateUrl: './concept-card.component.html',
 })
 export class ConceptCardComponent implements OnInit {
   // These properties are initialized using Angular lifecycle hooks
@@ -38,16 +37,15 @@ export class ConceptCardComponent implements OnInit {
   numberOfWorkedExamplesShown: number = 0;
   explanationIsShown: boolean = false;
 
-
   constructor(
     private conceptCardBackendApiService: ConceptCardBackendApiService
   ) {}
 
   ngOnInit(): void {
     this.loadingMessage = 'Loading';
-    this.conceptCardBackendApiService.loadConceptCardsAsync(this.skillIds)
-      .then((conceptCardObjects) => {
-        conceptCardObjects.forEach((conceptCardObject) => {
+    this.conceptCardBackendApiService.loadConceptCardsAsync(this.skillIds).then(
+      conceptCardObjects => {
+        conceptCardObjects.forEach(conceptCardObject => {
           this.conceptsCards.push(conceptCardObject);
         });
         this.loadingMessage = '';
@@ -56,16 +54,20 @@ export class ConceptCardComponent implements OnInit {
         if (this.currentConceptCard.getWorkedExamples().length > 0) {
           this.numberOfWorkedExamplesShown = 1;
         }
-      }, (errorResponse) => {
+      },
+      errorResponse => {
         this.loadingMessage = '';
-        this.skillDeletedMessage = 'Oops, it looks like this skill has' +
-           ' been deleted.';
-      });
+        this.skillDeletedMessage =
+          'Oops, it looks like this skill has' + ' been deleted.';
+      }
+    );
   }
 
   isLastWorkedExample(): boolean {
-    return this.numberOfWorkedExamplesShown ===
-       this.currentConceptCard.getWorkedExamples().length;
+    return (
+      this.numberOfWorkedExamplesShown ===
+      this.currentConceptCard.getWorkedExamples().length
+    );
   }
 
   showMoreWorkedExamples(): void {
@@ -73,8 +75,3 @@ export class ConceptCardComponent implements OnInit {
     this.numberOfWorkedExamplesShown++;
   }
 }
-
-angular.module('oppia').directive(
-  'oppiaConceptCard', downgradeComponent({
-    component: ConceptCardComponent
-  }) as angular.IDirectiveFactory);

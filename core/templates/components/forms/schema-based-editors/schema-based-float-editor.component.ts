@@ -16,18 +16,34 @@
  * @fileoverview Component for a schema-based editor for floats.
  */
 
-import { Component, EventEmitter, forwardRef, Input, OnInit, Output, ViewChild } from '@angular/core';
-import { AbstractControl, ControlValueAccessor, NgForm, NG_VALIDATORS, NG_VALUE_ACCESSOR, ValidationErrors, Validator } from '@angular/forms';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { NumericInputValidationService } from 'interactions/NumericInput/directives/numeric-input-validation.service';
-import { NumberConversionService } from 'services/number-conversion.service';
-import { SchemaFormSubmittedService } from 'services/schema-form-submitted.service';
-import { FocusManagerService } from 'services/stateful/focus-manager.service';
+import {
+  Component,
+  EventEmitter,
+  forwardRef,
+  Input,
+  OnInit,
+  Output,
+  ViewChild,
+} from '@angular/core';
+import {
+  AbstractControl,
+  ControlValueAccessor,
+  NgForm,
+  NG_VALIDATORS,
+  NG_VALUE_ACCESSOR,
+  ValidationErrors,
+  Validator,
+} from '@angular/forms';
+import {NumericInputValidationService} from 'interactions/NumericInput/directives/numeric-input-validation.service';
+import {NumberConversionService} from 'services/number-conversion.service';
+import {SchemaDefaultValue} from 'services/schema-default-value.service';
+import {SchemaFormSubmittedService} from 'services/schema-form-submitted.service';
+import {FocusManagerService} from 'services/stateful/focus-manager.service';
 
 interface OppiaValidator {
   id: string;
-  'min_value': number;
-  'max_value': number;
+  min_value: number;
+  max_value: number;
 }
 
 @Component({
@@ -38,17 +54,18 @@ interface OppiaValidator {
     {
       provide: NG_VALUE_ACCESSOR,
       useExisting: forwardRef(() => SchemaBasedFloatEditorComponent),
-      multi: true
+      multi: true,
     },
     {
       provide: NG_VALIDATORS,
       useExisting: forwardRef(() => SchemaBasedFloatEditorComponent),
-      multi: true
+      multi: true,
     },
-  ]
+  ],
 })
 export class SchemaBasedFloatEditorComponent
-implements ControlValueAccessor, OnInit, Validator {
+  implements ControlValueAccessor, OnInit, Validator
+{
   @Output() inputBlur = new EventEmitter<void>();
   @Output() inputFocus = new EventEmitter<void>();
   // These properties are initialized using Angular lifecycle hooks
@@ -58,7 +75,7 @@ implements ControlValueAccessor, OnInit, Validator {
   @Input() validators!: OppiaValidator[];
   @Input() labelForFocusTarget!: string;
   @Input() uiConfig!: {checkRequireNonnegativeInput: boolean};
-  @ViewChild('floatform', {'static': true}) floatForm!: NgForm;
+  @ViewChild('floatform', {static: true}) floatForm!: NgForm;
   // If input is empty, the number value should be null.
   localValue!: number | null;
   labelForErrorFocusTarget!: string;
@@ -77,7 +94,7 @@ implements ControlValueAccessor, OnInit, Validator {
     private numberConversionService: NumberConversionService,
     private numericInputValidationService: NumericInputValidationService,
     private schemaFormSubmittedService: SchemaFormSubmittedService
-  ) { }
+  ) {}
 
   // Implemented as a part of ControlValueAccessor interface.
   writeValue(value: number): void {
@@ -90,8 +107,7 @@ implements ControlValueAccessor, OnInit, Validator {
   }
 
   // Implemented as a part of ControlValueAccessor interface.
-  registerOnTouched(fn: unknown): void {
-  }
+  registerOnTouched(fn: SchemaDefaultValue): void {}
 
   // Implemented as a part of Validator interface.
   validate(control: AbstractControl): ValidationErrors {
@@ -99,13 +115,14 @@ implements ControlValueAccessor, OnInit, Validator {
     if (this._validate(control.value, this.uiConfig)) {
       return {};
     }
-    return { error: 'invalid' };
+    return {error: 'invalid'};
   }
 
   private _validate(
-      localValue: number | string,
-      customizationArg: {checkRequireNonnegativeInput: unknown}): boolean {
-    let { checkRequireNonnegativeInput } = customizationArg || {};
+    localValue: number | string,
+    customizationArg: {checkRequireNonnegativeInput: SchemaDefaultValue}
+  ): boolean {
+    let {checkRequireNonnegativeInput} = customizationArg || {};
 
     // TODO(#15462): Move the type base checks (like the ones done below) to
     // schema-validator's isFloat method.
@@ -114,8 +131,10 @@ implements ControlValueAccessor, OnInit, Validator {
       localValue !== null &&
       localValue !== '' &&
       this.numericInputValidationService.validateNumber(
-        +localValue, Boolean(checkRequireNonnegativeInput || false)
-      ) === undefined);
+        +localValue,
+        Boolean(checkRequireNonnegativeInput || false)
+      ) === undefined
+    );
   }
 
   updateLocalValue(value: string): void {
@@ -128,9 +147,8 @@ implements ControlValueAccessor, OnInit, Validator {
     this.hasLoaded = false;
     this.userIsCurrentlyTyping = false;
     this.userHasFocusedAtLeastOnce = false;
-    this.labelForErrorFocusTarget = (
-      this.focusManagerService.generateFocusLabel()
-    );
+    this.labelForErrorFocusTarget =
+      this.focusManagerService.generateFocusLabel();
     if (this.localValue === undefined) {
       this.localValue = 0.0;
     }
@@ -139,10 +157,11 @@ implements ControlValueAccessor, OnInit, Validator {
     }
     // To check checkRequireNonnegativeInput customization argument
     // value of numeric input interaction.
-    let { checkRequireNonnegativeInput } = this.uiConfig || {};
-    this.checkRequireNonnegativeInputValue = (
-      checkRequireNonnegativeInput === undefined ? false :
-      checkRequireNonnegativeInput);
+    let {checkRequireNonnegativeInput} = this.uiConfig || {};
+    this.checkRequireNonnegativeInputValue =
+      checkRequireNonnegativeInput === undefined
+        ? false
+        : checkRequireNonnegativeInput;
     // If customization argument of numeric input interaction is true,
     // set Min value as 0 to not let down key go below 0.
     if (checkRequireNonnegativeInput) {
@@ -191,20 +210,19 @@ implements ControlValueAccessor, OnInit, Validator {
   }
 
   generateErrors(): void {
-    this.errorStringI18nKey = (
+    this.errorStringI18nKey =
       this.numericInputValidationService.validateNumber(
         this.localValue,
         this.checkRequireNonnegativeInputValue,
-        this.getCurrentDecimalSeparator())) || null;
+        this.getCurrentDecimalSeparator()
+      ) || null;
   }
 
   onKeypress(evt: KeyboardEvent): void {
     if (evt.keyCode === 13) {
       if (
         this.floatForm.form.controls.floatValue.errors !== null &&
-        Object.keys(
-          this.floatForm.form.controls.floatValue.errors
-        ).length !== 0
+        Object.keys(this.floatForm.form.controls.floatValue.errors).length !== 0
       ) {
         this.userIsCurrentlyTyping = false;
         this.focusManagerService.setFocus(this.labelForErrorFocusTarget);
@@ -228,17 +246,25 @@ implements ControlValueAccessor, OnInit, Validator {
       this.errorStringI18nKey = null;
     } else {
       // Make sure number is in a correct format.
-      let error = this.numericInputValidationService
-        .validateNumericString(
-          this.localStringValue,
-          this.getCurrentDecimalSeparator());
+      let currentDecimalSeparator = this.getCurrentDecimalSeparator();
+      let formattedStringValue = this.localStringValue.replace(
+        /\.|,/g,
+        currentDecimalSeparator
+      );
+
+      let error = this.numericInputValidationService.validateNumericString(
+        formattedStringValue,
+        currentDecimalSeparator
+      );
       if (error !== undefined) {
         this.localValue = null;
         this.errorStringI18nKey = error || null;
       } else {
         // Parse number if the string is in proper format.
-        this.localValue = this.numberConversionService
-          .convertToEnglishDecimal(this.localStringValue);
+        this.localValue =
+          this.numberConversionService.convertToEnglishDecimal(
+            formattedStringValue
+          );
 
         // Generate errors (if any).
         this.generateErrors();
@@ -246,7 +272,3 @@ implements ControlValueAccessor, OnInit, Validator {
     }
   }
 }
-
-angular.module('oppia').directive('schemaBasedFloatEditor', downgradeComponent({
-  component: SchemaBasedFloatEditorComponent
-}));

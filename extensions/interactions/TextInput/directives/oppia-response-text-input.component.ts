@@ -20,13 +20,12 @@
  * followed by the name of the arg.
  */
 
-import { Component, Input, OnInit } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { HtmlEscaperService } from 'services/html-escaper.service';
+import {Component, Input, OnInit} from '@angular/core';
+import {HtmlEscaperService} from 'services/html-escaper.service';
 
 @Component({
   selector: 'oppia-response-text-input',
-  templateUrl: './text-input-response.component.html'
+  templateUrl: './text-input-response.component.html',
 })
 export class ResponseTextInputComponent implements OnInit {
   // These properties are initialized using Angular lifecycle hooks
@@ -35,16 +34,11 @@ export class ResponseTextInputComponent implements OnInit {
   @Input() answer!: string;
   escapedAnswer!: string;
 
-  constructor(private htmlEscaperService: HtmlEscaperService) { }
+  constructor(private htmlEscaperService: HtmlEscaperService) {}
 
   ngOnInit(): void {
     this.escapedAnswer = this.htmlEscaperService.escapedJsonToObj(
-      this.answer) as string;
+      this.answer
+    ) as string;
   }
 }
-
-angular.module('oppia').directive(
-  'oppiaResponseTextInput',
-  downgradeComponent({
-    component: ResponseTextInputComponent
-  }));

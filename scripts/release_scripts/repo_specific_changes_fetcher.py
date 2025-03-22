@@ -24,13 +24,9 @@ import argparse
 import os
 import re
 
+from core import utils
+from scripts import common
 from typing import Dict, Final, List, Optional
-
-# TODO(#15567): The order can be fixed after Literal in utils.py is loaded
-# from typing instead of typing_extensions, this will be possible after
-# we migrate to Python 3.8.
-from scripts import common  # isort:skip  # pylint: disable=wrong-import-position
-from core import utils  # isort:skip  # pylint: disable=wrong-import-position
 
 GIT_CMD_DIFF_NAMES_ONLY_FORMAT_STRING: Final = 'git diff --name-only %s %s'
 GIT_CMD_SHOW_FORMAT_STRING: Final = 'git show %s:core/feconf.py'
@@ -62,7 +58,7 @@ def get_changed_schema_version_constant_names(
         list(str). List of version constant names in feconf that changed.
     """
     changed_version_constants_in_feconf = []
-    git_show_cmd = (GIT_CMD_SHOW_FORMAT_STRING % release_tag_to_diff_against)
+    git_show_cmd = GIT_CMD_SHOW_FORMAT_STRING % release_tag_to_diff_against
     old_feconf = common.run_cmd(git_show_cmd.split(' '))
     with utils.open_file(FECONF_FILEPATH, 'r') as feconf_file:
         new_feconf = feconf_file.read()
@@ -109,10 +105,7 @@ def get_setup_scripts_changes_status(
         indicating whether or not the script is modified since the release
         against which diff is being checked.
     """
-    setup_script_filepaths = [
-        'scripts/%s' % item for item in [
-            'setup.py', 'setup_gae.py', 'install_third_party_libs.py',
-            'install_third_party.py']]
+    setup_script_filepaths = ['scripts/install_third_party_libs.py']
     changed_filenames = _get_changed_filenames_since_tag(
         release_tag_to_diff_against)
     changes_dict = {

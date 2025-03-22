@@ -20,18 +20,17 @@
 // may be additional customization options for the editor that should be passed
 // in via initArgs.
 
-import { Component, EventEmitter, Input, OnInit } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
+import {Component, EventEmitter, Input, OnInit} from '@angular/core';
 
 interface IntValidatorSchema {
   type: string;
-  validators: { id: string }[];
+  validators: {id: string}[];
 }
 
 @Component({
   selector: 'int-editor',
   templateUrl: './int-editor.component.html',
-  styleUrls: []
+  styleUrls: [],
 })
 export class IntEditorComponent implements OnInit {
   // These properties are initialized using Angular lifecycle hooks
@@ -42,12 +41,12 @@ export class IntEditorComponent implements OnInit {
   @Input() valueChanged: EventEmitter<number> = new EventEmitter<number>();
   SCHEMA: IntValidatorSchema = {
     type: 'int',
-    validators: [{
-      id: 'is_integer'
-    }]
+    validators: [
+      {
+        id: 'is_integer',
+      },
+    ],
   };
-
-
 
   ngOnInit(): void {
     if (!this.value) {
@@ -65,7 +64,3 @@ export class IntEditorComponent implements OnInit {
     this.valueChanged.emit(value);
   }
 }
-
-angular.module('oppia').directive('intEditor', downgradeComponent({
-  component: IntEditorComponent
-}) as angular.IDirectiveFactory);

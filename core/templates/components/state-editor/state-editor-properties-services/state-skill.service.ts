@@ -16,21 +16,22 @@
  * @fileoverview A data service that stores the current interaction skill.
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { EventEmitter, Injectable } from '@angular/core';
-import { AlertsService } from 'services/alerts.service';
-import { StatePropertyService } from
+import {EventEmitter, Injectable} from '@angular/core';
+import {AlertsService} from 'services/alerts.service';
+import {
+  StatePropertyService,
   // eslint-disable-next-line max-len
-  'components/state-editor/state-editor-properties-services/state-property.service';
-import { UtilsService } from 'services/utils.service';
+} from 'components/state-editor/state-editor-properties-services/state-property.service';
+import {UtilsService} from 'services/utils.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
-export class StateLinkedSkillIdService
-    // Until a skill is selected, the state attribute is null. Also used to
-    // avoid circular dependencies.
-    extends StatePropertyService<string | null> {
+// Until a skill is selected, the state attribute is null. Also used to
+// avoid circular dependencies.
+export class StateLinkedSkillIdService extends StatePropertyService<
+  string | null
+> {
   constructor(alertsService: AlertsService, utilsService: UtilsService) {
     super(alertsService, utilsService);
     this.setterMethodKey = 'saveLinkedSkillId';
@@ -40,6 +41,3 @@ export class StateLinkedSkillIdService
     return this.statePropertyInitializedEmitter;
   }
 }
-
-angular.module('oppia').factory(
-  'StateLinkedSkillIdService', downgradeInjectable(StateLinkedSkillIdService));

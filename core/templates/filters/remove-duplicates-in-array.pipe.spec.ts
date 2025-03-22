@@ -16,7 +16,7 @@
  * @fileoverview Tests for RemoveDuplicatesInArray pipe for Oppia.
  */
 
-import { RemoveDuplicatesInArrayPipe } from './remove-duplicates-in-array.pipe';
+import {RemoveDuplicatesInArrayPipe} from './remove-duplicates-in-array.pipe';
 
 describe('Testing RemoveDuplicatesInArrayPipe', () => {
   let pipe: RemoveDuplicatesInArrayPipe;
@@ -28,24 +28,35 @@ describe('Testing RemoveDuplicatesInArrayPipe', () => {
     expect(pipe).not.toEqual(null);
   });
 
-  it('should correctly remove duplicates in array', () =>{
-    expect(pipe.transform(
-      ['ca_choices_1', 'ca_choices_2', 'ca_choices_1']))
-      .toEqual(['ca_choices_1', 'ca_choices_2']);
-    expect(pipe.transform(
-      ['ca_choices_1', 'ca_choices_2']))
-      .toEqual(['ca_choices_1', 'ca_choices_2']);
-    expect(pipe.transform(
-      ['ca_choices_1', 'ca_choices_2', 'ca_choices_1', 'ca_choices_2']))
-      .toEqual(['ca_choices_1', 'ca_choices_2']);
+  it('should correctly remove duplicates in array', () => {
+    expect(
+      pipe.transform(['ca_choices_1', 'ca_choices_2', 'ca_choices_1'])
+    ).toEqual(['ca_choices_1', 'ca_choices_2']);
+    expect(pipe.transform(['ca_choices_1', 'ca_choices_2'])).toEqual([
+      'ca_choices_1',
+      'ca_choices_2',
+    ]);
+    expect(
+      pipe.transform([
+        'ca_choices_1',
+        'ca_choices_2',
+        'ca_choices_1',
+        'ca_choices_2',
+      ])
+    ).toEqual(['ca_choices_1', 'ca_choices_2']);
   });
 
   it('should throw error when the input is invalid', () => {
     expect(() => {
-      // Using unknown type conversion to check if the input is invalid.
+      // This throws "Type object is not assignable to type
+      // 'string[]'." We need to suppress this error
+      // because of the need to test validations. We cannot
+      // do 'pipe.transform(123)' because
+      // '123' is not a string array.
+      // @ts-ignore
       pipe.transform({
-        filter: undefined
-      } as unknown as string[]);
+        filter: undefined,
+      } as string[]);
     }).toThrowError('Bad input for removeDuplicatesInArray: {}');
   });
 });

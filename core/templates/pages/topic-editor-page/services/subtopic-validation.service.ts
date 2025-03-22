@@ -16,26 +16,24 @@
  * @fileoverview Service to validate subtopic name.
  */
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { TopicEditorStateService } from './topic-editor-state.service';
-import subtopicValidationConstants from 'assets/constants';
+import {Injectable} from '@angular/core';
+import {TopicEditorStateService} from './topic-editor-state.service';
+import {AppConstants} from 'app.constants';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class SubtopicValidationService {
   private _VALID_URL_FRAGMENT_REGEX = new RegExp(
-    subtopicValidationConstants.VALID_URL_FRAGMENT_REGEX);
+    AppConstants.VALID_URL_FRAGMENT_REGEX
+  );
 
-  constructor(
-    private topicEditorStateService: TopicEditorStateService
-  ) {}
+  constructor(private topicEditorStateService: TopicEditorStateService) {}
 
   checkValidSubtopicName(title: string): boolean {
     let subtopicTitles: string[] = [];
     let topic = this.topicEditorStateService.getTopic();
-    topic.getSubtopics().forEach((subtopic) => {
+    topic.getSubtopics().forEach(subtopic => {
       subtopicTitles.push(subtopic.getTitle());
     });
     return subtopicTitles.indexOf(title) === -1;
@@ -43,14 +41,12 @@ export class SubtopicValidationService {
 
   doesSubtopicWithUrlFragmentExist(urlFragment: string): boolean {
     let topic = this.topicEditorStateService.getTopic();
-    return topic.getSubtopics().some(
-      subtopic => subtopic.getUrlFragment() === urlFragment);
+    return topic
+      .getSubtopics()
+      .some(subtopic => subtopic.getUrlFragment() === urlFragment);
   }
 
   isUrlFragmentValid(urlFragment: string): boolean {
     return this._VALID_URL_FRAGMENT_REGEX.test(urlFragment);
   }
 }
-
-angular.module('oppia').factory('SubtopicValidationService',
-  downgradeInjectable(SubtopicValidationService));

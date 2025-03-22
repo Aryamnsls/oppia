@@ -16,40 +16,17 @@
  * @fileoverview Unit tests for Android page.
  */
 
-import { HttpClientTestingModule } from '@angular/common/http/testing';
-import { NO_ERRORS_SCHEMA, EventEmitter, ElementRef } from '@angular/core';
-import { TestBed, fakeAsync, tick, flushMicrotasks } from '@angular/core/testing';
-import { TranslateService } from '@ngx-translate/core';
-import { MailingListBackendApiService } from 'domain/mailing-list/mailing-list-backend-api.service';
+import {HttpClientTestingModule} from '@angular/common/http/testing';
+import {NO_ERRORS_SCHEMA, EventEmitter} from '@angular/core';
+import {TestBed, fakeAsync, tick, flushMicrotasks} from '@angular/core/testing';
+import {TranslateService} from '@ngx-translate/core';
+import {MailingListBackendApiService} from 'domain/mailing-list/mailing-list-backend-api.service';
 
-import { AndroidPageComponent } from './android-page.component';
-import { UrlInterpolationService } from 'domain/utilities/url-interpolation.service';
-import { PageTitleService } from 'services/page-title.service';
-import { AlertsService } from 'services/alerts.service';
-import { MockTranslatePipe } from 'tests/unit-test-utils';
-
-
-class MockIntersectionObserver {
-  observe: () => void;
-  unobserve: () => void;
-
-  constructor(
-    public callback: (entries: IntersectionObserverEntry[]) => void
-  ) {
-    this.observe = () => {
-      callback([{
-        isIntersecting: true,
-        boundingClientRect: new DOMRectReadOnly(),
-        intersectionRatio: 1,
-        intersectionRect: new DOMRectReadOnly(),
-        rootBounds: null,
-        target: document.createElement('div'),
-        time: 1
-      }]);
-    };
-    this.unobserve = jasmine.createSpy('unobserve');
-  }
-}
+import {AndroidPageComponent} from './android-page.component';
+import {UrlInterpolationService} from 'domain/utilities/url-interpolation.service';
+import {PageTitleService} from 'services/page-title.service';
+import {AlertsService} from 'services/alerts.service';
+import {MockTranslatePipe} from 'tests/unit-test-utils';
 
 class MockTranslateService {
   onLangChange: EventEmitter<string> = new EventEmitter();
@@ -64,7 +41,7 @@ describe('Android page', () => {
   let mailingListBackendApiService: MailingListBackendApiService;
   let alertsService: AlertsService;
 
-  beforeEach(async() => {
+  beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
       declarations: [AndroidPageComponent, MockTranslatePipe],
@@ -75,30 +52,27 @@ describe('Android page', () => {
         PageTitleService,
         {
           provide: TranslateService,
-          useClass: MockTranslateService
-        }
+          useClass: MockTranslateService,
+        },
       ],
-      schemas: [NO_ERRORS_SCHEMA]
+      schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents();
   });
 
   let component: AndroidPageComponent;
 
   beforeEach(() => {
-    const androidPageComponent = TestBed.createComponent(
-      AndroidPageComponent);
+    const androidPageComponent = TestBed.createComponent(AndroidPageComponent);
     component = androidPageComponent.componentInstance;
     alertsService = TestBed.inject(AlertsService);
-    mailingListBackendApiService = TestBed.inject(
-      MailingListBackendApiService);
+    mailingListBackendApiService = TestBed.inject(MailingListBackendApiService);
     translateService = TestBed.inject(TranslateService);
     pageTitleService = TestBed.inject(PageTitleService);
   });
 
-  it('should successfully instantiate the component from beforeEach block',
-    () => {
-      expect(component).toBeDefined();
-    });
+  it('should successfully instantiate the component from beforeEach block', () => {
+    expect(component).toBeDefined();
+  });
 
   it('should set component properties when ngOnInit() is called', () => {
     spyOn(translateService.onLangChange, 'subscribe');
@@ -108,15 +82,26 @@ describe('Android page', () => {
     expect(translateService.onLangChange.subscribe).toHaveBeenCalled();
   });
 
-  it('should obtain translated page title whenever the selected' +
-  'language changes', () => {
-    component.ngOnInit();
+  it('should set page title on init', () => {
     spyOn(component, 'setPageTitle');
 
-    translateService.onLangChange.emit();
+    component.ngAfterViewInit();
 
     expect(component.setPageTitle).toHaveBeenCalled();
   });
+
+  it(
+    'should obtain translated page title whenever the selected' +
+      'language changes',
+    () => {
+      component.ngOnInit();
+      spyOn(component, 'setPageTitle');
+
+      translateService.onLangChange.emit();
+
+      expect(component.setPageTitle).toHaveBeenCalled();
+    }
+  );
 
   it('should set new page title', () => {
     spyOn(translateService, 'instant').and.callThrough();
@@ -125,9 +110,11 @@ describe('Android page', () => {
     component.setPageTitle();
 
     expect(translateService.instant).toHaveBeenCalledWith(
-      'I18N_ANDROID_PAGE_TITLE');
+      'I18N_ANDROID_PAGE_TITLE'
+    );
     expect(pageTitleService.setDocumentTitle).toHaveBeenCalledWith(
-      'I18N_ANDROID_PAGE_TITLE');
+      'I18N_ANDROID_PAGE_TITLE'
+    );
   });
 
   it('should unsubscribe on component destruction', () => {
@@ -144,7 +131,7 @@ describe('Android page', () => {
 
   it('should change feature selection', () => {
     component.ngOnInit();
-    expect(component.featuresShown).toBe(1);
+    expect(component.featuresShown).toBe(0);
 
     component.changeFeaturesShown(3);
 
@@ -159,81 +146,66 @@ describe('Android page', () => {
     expect(component.validateEmailAddress()).toBeTrue();
   });
 
-  it('should add user to android mailing list and return status',
-    fakeAsync(() => {
-      spyOn(alertsService, 'addInfoMessage');
-      component.ngOnInit();
-      tick();
-      component.emailAddress = 'validEmail@example.com';
-      component.name = 'validName';
-      spyOn(mailingListBackendApiService, 'subscribeUserToMailingList')
-        .and.returnValue(Promise.resolve(true));
+  it('should add user to android mailing list and return status', fakeAsync(() => {
+    spyOn(alertsService, 'addInfoMessage');
+    component.ngOnInit();
+    tick();
+    component.emailAddress = 'validEmail@example.com';
+    component.name = 'validName';
+    spyOn(
+      mailingListBackendApiService,
+      'subscribeUserToMailingList'
+    ).and.returnValue(Promise.resolve(true));
+    component.userHasSubscribed = false;
 
-      component.subscribeToAndroidList();
+    component.subscribeToAndroidList();
 
-      flushMicrotasks();
+    flushMicrotasks();
 
-      expect(alertsService.addInfoMessage).toHaveBeenCalledWith(
-        'Done!', 1000);
-    }));
+    expect(component.userHasSubscribed).toBeTrue();
+  }));
 
-  it('should fail to add user to android mailing list and return status',
-    fakeAsync(() => {
-      spyOn(alertsService, 'addInfoMessage');
-      component.ngOnInit();
-      tick();
-      component.emailAddress = 'validEmail@example.com';
-      component.name = 'validName';
-      spyOn(mailingListBackendApiService, 'subscribeUserToMailingList')
-        .and.returnValue(Promise.resolve(false));
+  it('should fail to add user to android mailing list and return status', fakeAsync(() => {
+    spyOn(alertsService, 'addInfoMessage');
+    component.ngOnInit();
+    tick();
+    component.emailAddress = 'validEmail@example.com';
+    component.name = 'validName';
+    spyOn(
+      mailingListBackendApiService,
+      'subscribeUserToMailingList'
+    ).and.returnValue(Promise.resolve(false));
 
-      component.subscribeToAndroidList();
+    component.subscribeToAndroidList();
 
-      flushMicrotasks();
+    flushMicrotasks();
 
-      expect(alertsService.addInfoMessage).toHaveBeenCalledWith(
-        'Sorry, an unexpected error occurred. Please email admin@oppia.org ' +
-        'to be added to the mailing list.', 10000);
-    }));
+    expect(alertsService.addInfoMessage).toHaveBeenCalledWith(
+      'Sorry, an unexpected error occurred. Please email admin@oppia.org ' +
+        'to be added to the mailing list.',
+      10000
+    );
+  }));
 
-  it('should reject request to the android mailing list correctly',
-    fakeAsync(() => {
-      spyOn(alertsService, 'addInfoMessage');
-      component.ngOnInit();
-      tick();
-      component.emailAddress = 'validEmail@example.com';
-      component.name = 'validName';
-      spyOn(mailingListBackendApiService, 'subscribeUserToMailingList')
-        .and.returnValue(Promise.reject(false));
+  it('should reject request to the android mailing list correctly', fakeAsync(() => {
+    spyOn(alertsService, 'addInfoMessage');
+    component.ngOnInit();
+    tick();
+    component.emailAddress = 'validEmail@example.com';
+    component.name = 'validName';
+    spyOn(
+      mailingListBackendApiService,
+      'subscribeUserToMailingList'
+    ).and.returnValue(Promise.reject(false));
 
-      component.subscribeToAndroidList();
+    component.subscribeToAndroidList();
 
-      flushMicrotasks();
+    flushMicrotasks();
 
-      expect(alertsService.addInfoMessage).toHaveBeenCalledWith(
-        'Sorry, an unexpected error occurred. Please email admin@oppia.org ' +
-        'to be added to the mailing list.', 10000);
-    }));
-
-  it('should attach intersection observers', () => {
-    // eslint-disable-next-line
-    (window as any).IntersectionObserver = MockIntersectionObserver;
-    component.androidUpdatesSectionRef = new ElementRef(
-      document.createElement('div'));
-    component.featuresMainTextRef = new ElementRef(
-      document.createElement('div'));
-    component.featureRef1 = new ElementRef(document.createElement('div'));
-    component.featureRef2 = new ElementRef(document.createElement('div'));
-    component.featureRef3 = new ElementRef(document.createElement('div'));
-    component.featureRef4 = new ElementRef(document.createElement('div'));
-    component.androidUpdatesSectionIsSeen = false;
-    component.featuresMainTextIsSeen = false;
-    spyOn(component, 'setPageTitle');
-
-    component.ngAfterViewInit();
-
-    expect(component.setPageTitle).toHaveBeenCalled();
-    expect(component.androidUpdatesSectionIsSeen).toBe(true);
-    expect(component.featuresMainTextIsSeen).toBe(true);
-  });
+    expect(alertsService.addInfoMessage).toHaveBeenCalledWith(
+      'Sorry, an unexpected error occurred. Please email admin@oppia.org ' +
+        'to be added to the mailing list.',
+      10000
+    );
+  }));
 });

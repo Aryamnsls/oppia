@@ -16,26 +16,28 @@
  * @fileoverview Unit tests for GenerateContentIdService.
  */
 
-import { GenerateContentIdService } from 'services/generate-content-id.service';
-import { StateNextContentIdIndexService } from
-  // eslint-disable-next-line max-len
-  'components/state-editor/state-editor-properties-services/state-next-content-id-index.service';
+import {GenerateContentIdService} from 'services/generate-content-id.service';
 
 describe('GenerateContentIdService', () => {
   let gcis: GenerateContentIdService;
-  let fakeSnciis: {};
 
   beforeEach(() => {
-    fakeSnciis = { displayed: 0 };
-    gcis = new GenerateContentIdService(
-      fakeSnciis as StateNextContentIdIndexService);
+    gcis = new GenerateContentIdService();
+    let currentIndex = 0;
+    gcis.init(
+      () => currentIndex++,
+      () => {}
+    );
   });
 
-  it('should generate content id for new feedbacks using next content' +
-     'id index', () => {
-    expect(gcis.getNextStateId('feedback')).toEqual('feedback_0');
-    expect(gcis.getNextStateId('feedback')).toEqual('feedback_1');
-  });
+  it(
+    'should generate content id for new feedbacks using next content' +
+      'id index',
+    () => {
+      expect(gcis.getNextStateId('feedback')).toEqual('feedback_0');
+      expect(gcis.getNextStateId('feedback')).toEqual('feedback_1');
+    }
+  );
 
   it('should generate content id for new worked example', () => {
     expect(
@@ -43,12 +45,14 @@ describe('GenerateContentIdService', () => {
     ).toEqual('worked_example_question_2');
     expect(
       gcis.getNextId(
-        ['worked_example_explanation_1'], 'worked_example_explanation')
+        ['worked_example_explanation_1'],
+        'worked_example_explanation'
+      )
     ).toEqual('worked_example_explanation_2');
   });
 
   it('should throw error for unknown content id', () => {
-    expect(function() {
+    expect(function () {
       gcis.getNextId(['xyz'], 'random_component_name');
     }).toThrowError('Unknown component name provided.');
   });

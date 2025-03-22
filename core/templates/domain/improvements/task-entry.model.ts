@@ -15,8 +15,7 @@
 /**
  * @fileoverview Frontend Model for task entry.
  */
-import { ImprovementsConstants } from
-  'domain/improvements/improvements.constants';
+import {ImprovementsConstants} from 'domain/improvements/improvements.constants';
 
 /**
  * Encodes the back-end response of a task entry. This interface is intended to
@@ -28,17 +27,16 @@ import { ImprovementsConstants } from
  * as a table (where the type doesn't matter).
  */
 export interface TaskEntryBackendDict<TaskType = string> {
-  'entity_type': string;
-  'entity_id': string;
-  'entity_version': number;
-  'task_type': TaskType;
-  'target_type': string;
-  'target_id': string;
-  'issue_description': string | null;
-  'status': string;
-  'resolver_username': string | null;
-  'resolver_profile_picture_data_url': string | null;
-  'resolved_on_msecs': number | null;
+  entity_type: string;
+  entity_id: string;
+  entity_version: number;
+  task_type: TaskType;
+  target_type: string;
+  target_id: string;
+  issue_description: string | null;
+  status: string;
+  resolver_username: string | null;
+  resolved_on_msecs: number | null;
 }
 
 /**
@@ -51,11 +49,11 @@ export interface TaskEntryBackendDict<TaskType = string> {
  * as a table (where the type doesn't matter).
  */
 export interface TaskEntryPayloadDict<TaskType = string> {
-  'entity_version': number;
-  'task_type': TaskType;
-  'target_id': string;
-  'issue_description': string | null;
-  'status': string;
+  entity_version: number;
+  task_type: TaskType;
+  target_id: string;
+  issue_description: string | null;
+  status: string;
 }
 
 /**
@@ -75,7 +73,6 @@ export class TaskEntry<TaskType = string> {
   public readonly targetType: string;
   public readonly targetId: string;
   public readonly resolverUsername: string | null;
-  public readonly resolverProfilePictureDataUrl: string | null;
   public readonly resolvedOnMsecs: number | null;
   protected issueDescription: string | null;
   private taskStatus: string;
@@ -88,8 +85,6 @@ export class TaskEntry<TaskType = string> {
     this.targetType = backendDict.target_type;
     this.targetId = backendDict.target_id;
     this.resolverUsername = backendDict.resolver_username;
-    this.resolverProfilePictureDataUrl = (
-      backendDict.resolver_profile_picture_data_url);
     this.resolvedOnMsecs = backendDict.resolved_on_msecs;
     this.issueDescription = backendDict.issue_description;
     this.taskStatus = backendDict.status;
@@ -110,7 +105,6 @@ export class TaskEntry<TaskType = string> {
       issue_description: this.issueDescription,
       status: this.taskStatus,
       resolver_username: this.resolverUsername,
-      resolver_profile_picture_data_url: this.resolverProfilePictureDataUrl,
       resolved_on_msecs: this.resolvedOnMsecs,
     };
   }

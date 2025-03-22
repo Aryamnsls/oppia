@@ -17,14 +17,15 @@
  * domain objects.
  */
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {Injectable} from '@angular/core';
 
-import { ParamType, ParamTypeObjectFactory } from
-  'domain/exploration/ParamTypeObjectFactory';
+import {
+  ParamType,
+  ParamTypeObjectFactory,
+} from 'domain/exploration/ParamTypeObjectFactory';
 
 export interface ParamSpecBackendDict {
-  'obj_type': string;
+  obj_type: string;
 }
 
 export class ParamSpec {
@@ -52,7 +53,7 @@ export class ParamSpec {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ParamSpecObjectFactory {
   constructor(private paramTypeObjectFactory: ParamTypeObjectFactory) {}
@@ -61,10 +62,12 @@ export class ParamSpecObjectFactory {
    *    backend.
    * @returns {ParamSpec} - A new ParamSpec instance.
    */
-  createFromBackendDict(
-      paramSpecBackendDict: ParamSpecBackendDict): ParamSpec {
-    return new ParamSpec(this.paramTypeObjectFactory.getTypeFromBackendName(
-      paramSpecBackendDict.obj_type));
+  createFromBackendDict(paramSpecBackendDict: ParamSpecBackendDict): ParamSpec {
+    return new ParamSpec(
+      this.paramTypeObjectFactory.getTypeFromBackendName(
+        paramSpecBackendDict.obj_type
+      )
+    );
   }
 
   /** @returns {ParamSpec} - A default instance for ParamSpec. */
@@ -72,6 +75,3 @@ export class ParamSpecObjectFactory {
     return new ParamSpec(this.paramTypeObjectFactory.getDefaultType());
   }
 }
-
-angular.module('oppia').factory(
-  'ParamSpecObjectFactory', downgradeInjectable(ParamSpecObjectFactory));

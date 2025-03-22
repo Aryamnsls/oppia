@@ -16,27 +16,32 @@
  * @fileoverview Utility service for the question player for an exploration.
  */
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {Injectable} from '@angular/core';
 
-import { AppConstants } from 'app.constants';
-import { BindableVoiceovers } from 'domain/exploration/recorded-voiceovers.model';
-import { Question, QuestionObjectFactory } from 'domain/question/QuestionObjectFactory';
-import { State } from 'domain/state/StateObjectFactory';
-import { StateCard } from 'domain/state_card/state-card.model';
-import { ExpressionInterpolationService } from 'expressions/expression-interpolation.service';
-import { InteractionAnswer } from 'interactions/answer-defs';
-import { AnswerClassificationService, InteractionRulesService } from 'pages/exploration-player-page/services/answer-classification.service';
-import { InteractionSpecsConstants } from 'pages/interaction-specs.constants';
-import { AlertsService } from 'services/alerts.service';
-import { ContextService } from 'services/context.service';
-import { ExplorationHtmlFormatterService } from 'services/exploration-html-formatter.service';
-import { FocusManagerService } from 'services/stateful/focus-manager.service';
-import { AudioTranslationLanguageService } from
-  'pages/exploration-player-page/services/audio-translation-language.service';
+import {AppConstants} from 'app.constants';
+import {BindableVoiceovers} from 'domain/exploration/recorded-voiceovers.model';
+import {
+  Question,
+  QuestionObjectFactory,
+} from 'domain/question/QuestionObjectFactory';
+import {State} from 'domain/state/StateObjectFactory';
+import {StateCard} from 'domain/state_card/state-card.model';
+import {ExpressionInterpolationService} from 'expressions/expression-interpolation.service';
+import {InteractionAnswer} from 'interactions/answer-defs';
+import {
+  AnswerClassificationService,
+  InteractionRulesService,
+} from 'pages/exploration-player-page/services/answer-classification.service';
+import {InteractionSpecsConstants} from 'pages/interaction-specs.constants';
+import {AlertsService} from 'services/alerts.service';
+import {ContextService} from 'services/context.service';
+import {ExplorationHtmlFormatterService} from 'services/exploration-html-formatter.service';
+import {FocusManagerService} from 'services/stateful/focus-manager.service';
+import {AudioTranslationLanguageService} from 'pages/exploration-player-page/services/audio-translation-language.service';
+import cloneDeep from 'lodash/cloneDeep';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class QuestionPlayerEngineService {
   private answerIsBeingProcessed: boolean = false;
@@ -45,34 +50,39 @@ export class QuestionPlayerEngineService {
   private nextIndex: number = null;
 
   constructor(
-      private alertsService: AlertsService,
-      private answerClassificationService: AnswerClassificationService,
-      private audioTranslationLanguageService: AudioTranslationLanguageService,
-      private contextService: ContextService,
-      private explorationHtmlFormatterService: ExplorationHtmlFormatterService,
-      private expressionInterpolationService: ExpressionInterpolationService,
-      private focusManagerService: FocusManagerService,
-      private questionObjectFactory: QuestionObjectFactory) {
-  }
+    private alertsService: AlertsService,
+    private answerClassificationService: AnswerClassificationService,
+    private audioTranslationLanguageService: AudioTranslationLanguageService,
+    private contextService: ContextService,
+    private explorationHtmlFormatterService: ExplorationHtmlFormatterService,
+    private expressionInterpolationService: ExpressionInterpolationService,
+    private focusManagerService: FocusManagerService,
+    private questionObjectFactory: QuestionObjectFactory
+  ) {}
 
   // Evaluate feedback.
   private makeFeedback(
-      feedbackHtml: string, envs: Record<string, string>[]): string {
+    feedbackHtml: string,
+    envs: Record<string, string>[]
+  ): string {
     return this.expressionInterpolationService.processHtml(feedbackHtml, envs);
   }
 
   // Evaluate question string.
   private makeQuestion(
-      newState: State, envs: Record<string, string>[]): string {
+    newState: State,
+    envs: Record<string, string>[]
+  ): string {
     return this.expressionInterpolationService.processHtml(
-      newState.content.html, envs);
+      newState.content.html,
+      envs
+    );
   }
 
   private getRandomSuffix(): string {
-    // This is a bit of a hack. When a refresh to a $scope variable
-    // happens,
-    // AngularJS compares the new value of the variable to its previous
-    // value. If they are the same, then the variable is not updated.
+    // This is a bit of a hack. When a refresh to a component property
+    // happens, Angular compares the new value of the property to its previous
+    // value. If they are the same, then the property is not updated.
     // Appending a random suffix makes the new value different from the
     // previous one, and thus indirectly forces a refresh.
     let randomSuffix = '';
@@ -85,10 +95,13 @@ export class QuestionPlayerEngineService {
 
   // This should only be called when 'exploration' is non-null.
   private loadInitialQuestion(
-      successCallback: (initialCard: StateCard, nextFocusLabel: string) => void,
-      errorCallback: () => void): void {
+    successCallback: (initialCard: StateCard, nextFocusLabel: string) => void,
+    errorCallback: () => void
+  ): void {
     this.contextService.setCustomEntityContext(
-      AppConstants.ENTITY_TYPE.QUESTION, this.questions[0].getId());
+      AppConstants.ENTITY_TYPE.QUESTION,
+      this.questions[0].getId()
+    );
     const initialState = this.questions[0].getStateData();
 
     const questionHtml = this.makeQuestion(initialState, []);
@@ -109,15 +122,22 @@ export class QuestionPlayerEngineService {
 
     if (interactionId) {
       interactionHtml = this.explorationHtmlFormatterService.getInteractionHtml(
-        interactionId, interaction.customizationArgs, true, nextFocusLabel,
-        null);
+        interactionId,
+        interaction.customizationArgs,
+        true,
+        nextFocusLabel,
+        null
+      );
     }
-    const initialCard =
-      StateCard.createNewCard(
-        null, questionHtml, interactionHtml, interaction,
-        initialState.recordedVoiceovers,
-        initialState.writtenTranslations, initialState.content.contentId,
-        this.audioTranslationLanguageService);
+    const initialCard = StateCard.createNewCard(
+      null,
+      questionHtml,
+      interactionHtml,
+      interaction,
+      initialState.recordedVoiceovers,
+      initialState.content.contentId,
+      this.audioTranslationLanguageService
+    );
     successCallback(initialCard, nextFocusLabel);
   }
 
@@ -136,13 +156,15 @@ export class QuestionPlayerEngineService {
       this.getNextStateData().interaction.customizationArgs,
       true,
       labelForFocusTarget,
-      null);
+      null
+    );
   }
 
   init(
-      questionObjects: Question[],
-      successCallback: (initialCard: StateCard, nextFocusLabel: string) => void,
-      errorCallback?: () => void): void {
+    questionObjects: Question[],
+    successCallback: (initialCard: StateCard, nextFocusLabel: string) => void,
+    errorCallback?: () => void
+  ): void {
     this.contextService.setQuestionPlayerIsOpen();
     this.setAnswerIsBeingProcessed(false);
     let currentIndex = questionObjects.length;
@@ -153,7 +175,9 @@ export class QuestionPlayerEngineService {
       currentIndex--;
 
       [questionObjects[currentIndex], questionObjects[randomIndex]] = [
-        questionObjects[randomIndex], questionObjects[currentIndex]];
+        questionObjects[randomIndex],
+        questionObjects[currentIndex],
+      ];
     }
     for (let i = 0; i < questionObjects.length; i++) {
       this.addQuestion(questionObjects[i]);
@@ -169,7 +193,9 @@ export class QuestionPlayerEngineService {
   recordNewCardAdded(): void {
     this.currentIndex = this.nextIndex;
     this.contextService.setCustomEntityContext(
-      AppConstants.ENTITY_TYPE.QUESTION, this.getCurrentQuestionId());
+      AppConstants.ENTITY_TYPE.QUESTION,
+      this.getCurrentQuestionId()
+    );
   }
 
   getCurrentIndex(): number {
@@ -217,22 +243,24 @@ export class QuestionPlayerEngineService {
   }
 
   submitAnswer(
-      answer: InteractionAnswer,
-      interactionRulesService: InteractionRulesService,
-      successCallback: (
-          nextCard: StateCard,
-          refreshInteraction: boolean,
-          feedbackHtml: string,
-          feedbackAudioTranslations: BindableVoiceovers,
-          refresherExplorationId,
-          missingPrerequisiteSkillId,
-          remainOnCurrentCard: boolean,
-          taggedSkillMisconceptionId: string,
-          wasOldStateInitial,
-          isFirstHit,
-          isFinalQuestion: boolean,
-          nextCardIfReallyStuck: null,
-          focusLabel: string) => void): boolean {
+    answer: InteractionAnswer,
+    interactionRulesService: InteractionRulesService,
+    successCallback: (
+      nextCard: StateCard,
+      refreshInteraction: boolean,
+      feedbackHtml: string,
+      feedbackAudioTranslations: BindableVoiceovers,
+      refresherExplorationId,
+      missingPrerequisiteSkillId,
+      remainOnCurrentCard: boolean,
+      taggedSkillMisconceptionId: string,
+      wasOldStateInitial,
+      isFirstHit,
+      isFinalQuestion: boolean,
+      nextCardIfReallyStuck: null,
+      focusLabel: string
+    ) => void
+  ): boolean {
     if (this.answerIsBeingProcessed) {
       return;
     }
@@ -241,10 +269,13 @@ export class QuestionPlayerEngineService {
     this.setAnswerIsBeingProcessed(true);
     const oldState = this.getCurrentStateData();
     const recordedVoiceovers = oldState.recordedVoiceovers;
-    const classificationResult = (
+    const classificationResult =
       this.answerClassificationService.getMatchingClassificationResult(
-        null, oldState.interaction, answer,
-        interactionRulesService));
+        null,
+        oldState.interaction,
+        answer,
+        interactionRulesService
+      );
     const answerGroupIndex = classificationResult.answerGroupIndex;
     const answerIsCorrect = classificationResult.outcome.labelledAsCorrect;
     let taggedSkillMisconceptionId = null;
@@ -254,19 +285,18 @@ export class QuestionPlayerEngineService {
           .taggedSkillMisconceptionId;
     }
 
-    // Use angular.copy() to clone the object
+    // Use cloneDeep() to clone the object
     // since classificationResult.outcome points
     // at oldState.interaction.default_outcome.
-    const outcome = angular.copy(classificationResult.outcome);
+    const outcome = cloneDeep(classificationResult.outcome);
     // Compute the data for the next state.
     const oldParams = {
-      answer: answerString
+      answer: answerString,
     };
-    const feedbackHtml =
-      this.makeFeedback(outcome.feedback.html, [oldParams]);
+    const feedbackHtml = this.makeFeedback(outcome.feedback.html, [oldParams]);
     const feedbackContentId = outcome.feedback.contentId;
-    const feedbackAudioTranslations = (
-      recordedVoiceovers.getBindableVoiceovers(feedbackContentId));
+    const feedbackAudioTranslations =
+      recordedVoiceovers.getBindableVoiceovers(feedbackContentId);
     if (feedbackHtml === null) {
       this.setAnswerIsBeingProcessed(false);
       this.alertsService.addWarning('Feedback content should not be empty.');
@@ -274,15 +304,18 @@ export class QuestionPlayerEngineService {
     }
 
     let newState = null;
-    if (answerIsCorrect && (this.currentIndex < this.questions.length - 1)) {
+    if (answerIsCorrect && this.currentIndex < this.questions.length - 1) {
       newState = this.questions[this.currentIndex + 1].getStateData();
     } else {
       newState = oldState;
     }
 
-    let questionHtml = this.makeQuestion(newState, [oldParams, {
-      answer: 'answer'
-    }]);
+    let questionHtml = this.makeQuestion(newState, [
+      oldParams,
+      {
+        answer: 'answer',
+      },
+    ]);
     if (questionHtml === null) {
       this.setAnswerIsBeingProcessed(false);
       this.alertsService.addWarning('Question name should not be empty.');
@@ -291,16 +324,14 @@ export class QuestionPlayerEngineService {
     this.setAnswerIsBeingProcessed(false);
 
     const interactionId = oldState.interaction.id;
-    const interactionIsInline = (
+    const interactionIsInline =
       !interactionId ||
-      InteractionSpecsConstants.
-        INTERACTION_SPECS[interactionId].display_mode ===
-        AppConstants.INTERACTION_DISPLAY_MODE_INLINE);
-    const refreshInteraction = (
-      answerIsCorrect || interactionIsInline);
+      InteractionSpecsConstants.INTERACTION_SPECS[interactionId]
+        .display_mode === AppConstants.INTERACTION_DISPLAY_MODE_INLINE;
+    const refreshInteraction = answerIsCorrect || interactionIsInline;
 
     this.nextIndex = this.currentIndex + 1;
-    const isFinalQuestion = (this.nextIndex === this.questions.length);
+    const isFinalQuestion = this.nextIndex === this.questions.length;
     const onSameCard = !answerIsCorrect;
 
     const _nextFocusLabel = this.focusManagerService.generateFocusLabel();
@@ -312,23 +343,30 @@ export class QuestionPlayerEngineService {
       questionHtml = questionHtml + this.getRandomSuffix();
       nextInteractionHtml = nextInteractionHtml + this.getRandomSuffix();
       nextCard = StateCard.createNewCard(
-        'true', questionHtml, nextInteractionHtml,
+        'true',
+        questionHtml,
+        nextInteractionHtml,
         this.getNextStateData().interaction,
         this.getNextStateData().recordedVoiceovers,
-        this.getNextStateData().writtenTranslations,
         this.getNextStateData().content.contentId,
         this.audioTranslationLanguageService
       );
     }
     successCallback(
-      nextCard, refreshInteraction, feedbackHtml,
+      nextCard,
+      refreshInteraction,
+      feedbackHtml,
       feedbackAudioTranslations,
-      null, null, onSameCard, taggedSkillMisconceptionId,
-      null, null, isFinalQuestion, nextCardIfReallyStuck, _nextFocusLabel);
+      null,
+      null,
+      onSameCard,
+      taggedSkillMisconceptionId,
+      null,
+      null,
+      isFinalQuestion,
+      nextCardIfReallyStuck,
+      _nextFocusLabel
+    );
     return answerIsCorrect;
   }
 }
-
-angular.module('oppia').factory(
-  'QuestionPlayerEngineService',
-  downgradeInjectable(QuestionPlayerEngineService));

@@ -45,7 +45,6 @@ class UserSettingsDict(TypedDict):
     last_logged_in: Optional[datetime.datetime]
     last_created_an_exploration: Optional[datetime.datetime]
     last_edited_an_exploration: Optional[datetime.datetime]
-    profile_picture_data_url: Optional[str]
     default_dashboard: str
     creator_dashboard_display_pref: str
     user_bio: str
@@ -83,8 +82,6 @@ class UserSettings:
             last created an exploration.
         last_edited_an_exploration: datetime.datetime or None. When the user
             last edited an exploration.
-        profile_picture_data_url: str or None. User uploaded profile picture as
-            a dataURI string.
         default_dashboard: str. The default dashboard of the user.
         user_bio: str. User-specified biography.
         subject_interests: list(str) or None. Subject interests specified by
@@ -122,7 +119,6 @@ class UserSettings:
             Optional[datetime.datetime]) = None,
         last_edited_an_exploration: (
             Optional[datetime.datetime]) = None,
-        profile_picture_data_url: Optional[str]=None,
         default_dashboard: str = constants.DASHBOARD_TYPE_LEARNER,
         creator_dashboard_display_pref: str = (
             constants.ALLOWED_CREATOR_DASHBOARD_DISPLAY_PREFS['CARD']),
@@ -161,8 +157,6 @@ class UserSettings:
                 user last created an exploration.
             last_edited_an_exploration: datetime.datetime or None. When the
                 user last edited an exploration.
-            profile_picture_data_url: str or None. User uploaded profile
-                picture as a dataURI string.
             default_dashboard: str. The default dashboard of the user.
             creator_dashboard_display_pref: str. The creator dashboard of the
                 user.
@@ -200,7 +194,6 @@ class UserSettings:
         self.last_logged_in = last_logged_in
         self.last_edited_an_exploration = last_edited_an_exploration
         self.last_created_an_exploration = last_created_an_exploration
-        self.profile_picture_data_url = profile_picture_data_url
         self.default_dashboard = default_dashboard
         self.creator_dashboard_display_pref = creator_dashboard_display_pref
         self.user_bio = user_bio
@@ -407,7 +400,6 @@ class UserSettings:
                 self.last_edited_an_exploration),
             'last_created_an_exploration': (
                 self.last_created_an_exploration),
-            'profile_picture_data_url': self.profile_picture_data_url,
             'default_dashboard': self.default_dashboard,
             'creator_dashboard_display_pref': (
                 self.creator_dashboard_display_pref),
@@ -532,6 +524,114 @@ class UserSettings:
         info modal at least once in their lifetime journey.
         """
         self.has_viewed_lesson_info_modal_once = True
+
+
+class UserGroupDict(TypedDict):
+    """Dictionary representing the UserGroup object."""
+
+    user_group_id: str
+    name: str
+    member_usernames: List[str]
+
+
+class UserGroup:
+    """A domain representation for user group."""
+
+    ALPHANUMERIC_REGEX = r'^[a-zA-Z0-9 ]+$'
+
+    def __init__(
+        self,
+        user_group_id: str,
+        name: str,
+        member_usernames: List[str]
+    ) -> None:
+        """Constructs a UserGroup domain object.
+
+        Args:
+            user_group_id: str. The id of the user group.
+            name: str. The name of the user group.
+            member_usernames: List[str]. The list of user usernames
+                attached to user group.
+        """
+        self.user_group_id = user_group_id
+        self.name = name
+        self.member_usernames = member_usernames
+
+    def validate(self) -> None:
+        """Validate various properties of UserGroup."""
+        if not isinstance(self.name, str):
+            raise utils.ValidationError(
+                'Expected name to be a string, received %s.' % self.name)
+
+        if not re.match(self.ALPHANUMERIC_REGEX, self.name):
+            raise utils.ValidationError(
+                'Invalid user group name %s. User group name can only '
+                'contain alphanumeric characters and spaces.' % self.name
+            )
+
+        if not isinstance(self.member_usernames, list):
+            raise utils.ValidationError(
+                'Expected \'member_usernames\' to be a list, ' +
+                'received %s.' % self.member_usernames
+            )
+
+        for user_username in self.member_usernames:
+            if not isinstance(user_username, str):
+                raise utils.ValidationError(
+                    'Expected each user username to be a string, ' +
+                    'received %s.' % user_username
+                )
+
+    def update_name(self, updated_name: str) -> None:
+        """Update user group name.
+
+        Args:
+            updated_name: str. Updated user group name.
+        """
+        self.name = updated_name
+        self.validate()
+
+    def update_member_usernames(
+        self, updated_member_usernames: List[str]) -> None:
+        """Update member_usernames of user group.
+
+        Args:
+            updated_member_usernames: List[str]. The updated list of
+                user usernames.
+        """
+        self.member_usernames = updated_member_usernames
+        self.validate()
+
+    def to_dict(self) -> UserGroupDict:
+        """Convert the UserGroup domain instance into a dictionary form
+        with its keys as the attributes of this class.
+
+        Returns:
+            dict. A dictionary containing the UserGroup class information
+            in a dictionary form.
+        """
+        return {
+            'user_group_id': self.user_group_id,
+            'name': self.name,
+            'member_usernames': self.member_usernames
+        }
+
+    @classmethod
+    def from_dict(cls, user_group_dict: UserGroupDict) -> UserGroup:
+        """Returns UserGroup domain object from dictionary.
+
+        Args:
+            user_group_dict: UserGroupDict. A dictionary represention of
+                UserGroup object.
+
+        Returns:
+            UserGroup. Returns UserGroup domain object.
+        """
+        return UserGroup(
+            user_group_dict['user_group_id'],
+            user_group_dict['name'],
+            user_group_dict['member_usernames']
+        )
 
 
 class UserActionsInfo:
@@ -1212,6 +1312,14 @@ class UserContributionRights:
             self.can_review_voiceover_for_language_codes or
             self.can_review_questions)
 
+    def can_submit_at_least_one_item(self) -> bool:
+        """Checks whether user has rights to submit at least one item.
+
+        Returns:
+            boolean. Whether user has rights to submit at east one item.
+        """
+        return bool(self.can_submit_questions)
+
     def validate(self) -> None:
         """Validates different attributes of the class."""
         if not isinstance(self.can_review_translation_for_language_codes, list):
@@ -1659,3 +1767,37 @@ class LearnerGroupsUser:
                     'Learner cannot be invited to join learner group '
                     '%s since they are already its learner.' % (
                         learner_group_details.group_id))
+
+
+class TranslationCoordinatorStatsDict(TypedDict):
+    """Dict representation of TranslationCoordinatorStats domain object."""
+
+    language_id: str
+    coordinator_ids: List[str]
+    coordinators_count: int
+
+
+class TranslationCoordinatorStats:
+    """Domain object for the TranslationCoordinatorStatsModel."""
+
+    def __init__(
+        self,
+        language_id: str,
+        coordinator_ids: List[str],
+        coordinators_count: int
+    ) -> None:
+        self.language_id = language_id
+        self.coordinator_ids = coordinator_ids
+        self.coordinators_count = coordinators_count
+
+    def to_dict(self) -> TranslationCoordinatorStatsDict:
+        """Returns a dict representaion of TranslationCoordinatorStats.
+
+        Returns: dict. The dict representation.
+        """
+
+        return {
+            'language_id': self.language_id,
+            'coordinator_ids': self.coordinator_ids,
+            'coordinators_count': self.coordinators_count
+        }

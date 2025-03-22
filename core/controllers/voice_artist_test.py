@@ -62,8 +62,8 @@ class VoiceArtistTest(BaseVoiceArtistControllerTests):
     EXP_ID: Final = 'exp1'
     RECORDED_VOICEOVERS: Final = {
         'voiceovers_mapping': {
-            'ca_placeholder_0': {},
-            'content': {
+            'ca_placeholder_2': {},
+            'content_0': {
                 'en': {
                     'filename': 'testFile.mp3',
                     'file_size_bytes': 12200,
@@ -71,7 +71,7 @@ class VoiceArtistTest(BaseVoiceArtistControllerTests):
                     'duration_secs': 4.5
                 }
             },
-            'default_outcome': {}
+            'default_outcome_1': {}
         }
     }
 
@@ -177,8 +177,8 @@ class VoiceArtistAutosaveTest(BaseVoiceArtistControllerTests):
     OLDER_DATETIME: Final = datetime.datetime.strptime('2015-03-16', '%Y-%m-%d')
     RECORDED_VOICEOVERS: Final = {
         'voiceovers_mapping': {
-            'ca_placeholder_0': {},
-            'content': {
+            'ca_placeholder_2': {},
+            'content_0': {
                 'en': {
                     'filename': 'testFile.mp3',
                     'file_size_bytes': 12200,
@@ -186,7 +186,7 @@ class VoiceArtistAutosaveTest(BaseVoiceArtistControllerTests):
                     'duration_secs': 4.5
                 }
             },
-            'default_outcome': {}
+            'default_outcome_1': {}
         }
     }
     VALID_DRAFT_CHANGELIST: Final = [{
@@ -439,4 +439,21 @@ class VoiceArtistManagementTests(test_utils.GenericTestBase):
             'Schema validation for \'voice_artist\' failed: Validation failed:',
             response['error']
         )
+        self.logout()
+
+    def test_cannot_assign_voice_artist_to_invalid_user(self) -> None:
+        self.login(self.VOICEOVER_ADMIN_EMAIL)
+        params = {
+            'username': 'invalid'
+        }
+        csrf_token = self.get_new_csrf_token()
+        response = self.post_json(
+            '/voice_artist_management_handler/exploration/%s'
+            % self.published_exp_id_1, params, csrf_token=csrf_token,
+            expected_status_int=400)
+        self.assertEqual(
+            response['error'],
+            'Sorry, we could not find the specified user.'
+        )
+
         self.logout()

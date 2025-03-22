@@ -29,20 +29,6 @@ from core.domain import topic_fetchers
 from typing import Dict, List, TypedDict, cast
 
 
-class DiagnosticTestPlayerPage(
-    base.BaseHandler[Dict[str, str], Dict[str, str]]
-):
-    """Renders the diagnostic test player page."""
-
-    URL_PATH_ARGS_SCHEMAS: Dict[str, str] = {}
-    HANDLER_ARGS_SCHEMAS: Dict[str, Dict[str, str]] = {'GET': {}}
-
-    @acl_decorators.open_access
-    def get(self) -> None:
-        """Handles GET requests."""
-        self.render_template('diagnostic-test-player-page.mainpage.html')
-
-
 def normalize_comma_separated_ids(comma_separated_ids: str) -> List[str]:
     """Normalizes a string of comma-separated question IDs into a list of
     question IDs.
@@ -102,6 +88,11 @@ class DiagnosticTestQuestionsHandler(
 
     @acl_decorators.open_access
     def get(self, topic_id: str) -> None:
+        """Retrieves diagnostic test questions for a specific topic.
+
+        Args:
+            topic_id: str. The ID of the topic.
+        """
         # Here we use cast because we are narrowing down the type of
         # 'normalized_request' from Union of request TypedDicts to a
         # particular TypedDict that was defined according to the schemas.
@@ -118,7 +109,7 @@ class DiagnosticTestQuestionsHandler(
 
         topic = topic_fetchers.get_topic_by_id(topic_id, strict=False)
         if topic is None:
-            raise self.PageNotFoundException(
+            raise self.NotFoundException(
                 'No corresponding topic exists for the given topic ID.')
 
         diagnostic_test_skill_ids = topic.skill_ids_for_diagnostic_test

@@ -17,26 +17,34 @@
  */
 
 import {HttpClientTestingModule} from '@angular/common/http/testing';
-import { EventEmitter } from '@angular/core';
-import { fakeAsync, TestBed } from '@angular/core/testing';
+import {EventEmitter} from '@angular/core';
+import {fakeAsync, TestBed} from '@angular/core/testing';
 
-import { AnswerGroupObjectFactory } from 'domain/exploration/AnswerGroupObjectFactory';
-import { AlertsService } from 'services/alerts.service';
-import { ExplorationHtmlFormatterService } from 'services/exploration-html-formatter.service';
-import { Interaction, InteractionObjectFactory } from 'domain/exploration/InteractionObjectFactory';
-import { LoggerService } from 'services/contextual/logger.service';
-import { OutcomeObjectFactory } from 'domain/exploration/OutcomeObjectFactory';
-import { ResponsesService } from 'pages/exploration-editor-page/editor-tab/services/responses.service';
+import {
+  AnswerGroup,
+  AnswerGroupObjectFactory,
+} from 'domain/exploration/AnswerGroupObjectFactory';
+import {AlertsService} from 'services/alerts.service';
+import {ExplorationHtmlFormatterService} from 'services/exploration-html-formatter.service';
+import {
+  Interaction,
+  InteractionObjectFactory,
+} from 'domain/exploration/InteractionObjectFactory';
+import {LoggerService} from 'services/contextual/logger.service';
+import {
+  Outcome,
+  OutcomeObjectFactory,
+} from 'domain/exploration/OutcomeObjectFactory';
+import {ResponsesService} from 'pages/exploration-editor-page/editor-tab/services/responses.service';
 import {
   StateEditorService,
   // eslint-disable-next-line max-len
 } from 'components/state-editor/state-editor-properties-services/state-editor.service';
-import { StateInteractionIdService } from 'components/state-editor/state-editor-properties-services/state-interaction-id.service';
-import { StateSolutionService } from 'components/state-editor/state-editor-properties-services/state-solution.service';
-import {
-  SubtitledHtml,
-} from 'domain/exploration/subtitled-html.model';
-import { Solution } from 'domain/exploration/SolutionObjectFactory';
+import {StateInteractionIdService} from 'components/state-editor/state-editor-properties-services/state-interaction-id.service';
+import {StateSolutionService} from 'components/state-editor/state-editor-properties-services/state-solution.service';
+import {SubtitledHtml} from 'domain/exploration/subtitled-html.model';
+import {Rule} from 'domain/exploration/rule.model';
+import {Solution} from 'domain/exploration/SolutionObjectFactory';
 
 describe('Responses Service', () => {
   let alertsService: AlertsService;
@@ -55,7 +63,7 @@ describe('Responses Service', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule]
+      imports: [HttpClientTestingModule],
     });
     answerGroupObjectFactory = TestBed.get(AnswerGroupObjectFactory);
     alertsService = TestBed.get(AlertsService);
@@ -70,22 +78,12 @@ describe('Responses Service', () => {
     stateInteractionIdService = TestBed.get(StateInteractionIdService);
     stateSolutionService = TestBed.get(StateSolutionService);
 
-    savedMemento = {
-      ehfs: explorationHtmlFormatterService,
-      answerIsExclusive: true,
-      correctAnswer: 'This is the correct answer',
-      explanation: new SubtitledHtml('', 'tesster'),
-      toBackendDict: jasmine.createSpy('toBackendDict'),
-      getSummary: jasmine.createSpy('getSummary'),
-      setCorrectAnswer: jasmine.createSpy('setCorrectAnswer'),
-      setExplanation: jasmine.createSpy('setExplanation'),
-      getOppiaSolutionExplanationResponseHtml: jasmine.createSpy(
-        'getOppiaSolutionExplanationResponseHtml'
-      ),
-      getOppiaShortAnswerResponseHtml: jasmine.createSpy(
-        'getOppiaShortAnswerResponseHtml'
-      ),
-    };
+    savedMemento = new Solution(
+      explorationHtmlFormatterService,
+      true,
+      'This is the correct answer',
+      new SubtitledHtml('', 'tesster')
+    );
 
     interactionData = interactionObjectFactory.createFromBackendDict({
       id: 'TextInput',
@@ -129,8 +127,8 @@ describe('Responses Service', () => {
           value: 1,
         },
         catchMisspellings: {
-          value: false
-        }
+          value: false,
+        },
       },
       hints: [],
       solution: {
@@ -193,8 +191,8 @@ describe('Responses Service', () => {
           value: 1,
         },
         catchMisspellings: {
-          value: false
-        }
+          value: false,
+        },
       },
       hints: [],
       solution: {
@@ -272,58 +270,38 @@ describe('Responses Service', () => {
     responsesService.init(interactionData);
     stateEditorService.setInteraction(interactionData);
 
-    const updatedAnswerGroup = {
-      rules: [
-        {
-          type: 'Contains',
-          inputs: {
+    const updatedAnswerGroup = new AnswerGroup(
+      [
+        new Rule(
+          'Contains',
+          {
             x: {
               contentId: 'rule_input_Contains',
-              normalizedStrSet: ['correct']
+              normalizedStrSet: ['correct'],
             },
           },
-          inputTypes: {},
-          toBackendDict: jasmine.createSpy('toBackendDict'),
-        },
+          {}
+        ),
       ],
-      outcome: {
-        dest: 'State',
-        destIfReallyStuck: null,
-        feedback: new SubtitledHtml('', 'This is a new feedback text'),
-        refresherExplorationId: 'test',
-        missingPrerequisiteSkillId: 'test_skill_id',
-        labelledAsCorrect: true,
-        paramChanges: [],
-        toBackendDict: jasmine.createSpy('toBackendDict'),
-        setDestination: jasmine.createSpy('setDestination'),
-        hasNonemptyFeedback: jasmine.createSpy('hasNonemptyFeedback'),
-        isConfusing: jasmine.createSpy('isConfusing'),
-      },
-      destIfReallyStuck: null,
-      trainingData: ['This is training data text'],
-      taggedSkillMisconceptionId: '',
-      toBackendDict: jasmine.createSpy('toBackendDict'),
-    };
+      new Outcome(
+        'State',
+        null,
+        new SubtitledHtml('', 'This is a new feedback text'),
+        true,
+        [],
+        'test',
+        'test_skill_id'
+      ),
+      ['This is training data text'],
+      ''
+    );
+
     const callbackSpy = jasmine.createSpy('callback');
     responsesService.updateAnswerGroup(0, updatedAnswerGroup, callbackSpy);
 
     // Reassign only updated properties.
     const expectedAnswerGroup = interactionData.answerGroups;
-    expectedAnswerGroup[0].rules = updatedAnswerGroup.rules;
-    expectedAnswerGroup[0].taggedSkillMisconceptionId =
-      updatedAnswerGroup.taggedSkillMisconceptionId;
-    expectedAnswerGroup[0].outcome.feedback =
-      updatedAnswerGroup.outcome.feedback;
-    expectedAnswerGroup[0].outcome.dest = updatedAnswerGroup.outcome.dest;
-    expectedAnswerGroup[0].outcome.destIfReallyStuck =
-      updatedAnswerGroup.outcome.destIfReallyStuck;
-    expectedAnswerGroup[0].outcome.refresherExplorationId =
-      updatedAnswerGroup.outcome.refresherExplorationId;
-    expectedAnswerGroup[0].outcome.missingPrerequisiteSkillId =
-      updatedAnswerGroup.outcome.missingPrerequisiteSkillId;
-    expectedAnswerGroup[0].outcome.labelledAsCorrect =
-      updatedAnswerGroup.outcome.labelledAsCorrect;
-    expectedAnswerGroup[0].trainingData = updatedAnswerGroup.trainingData;
+    expectedAnswerGroup[0] = updatedAnswerGroup;
 
     expect(callbackSpy).toHaveBeenCalledWith(expectedAnswerGroup);
     expect(responsesService.getAnswerGroup(0)).toEqual(expectedAnswerGroup[0]);
@@ -334,19 +312,9 @@ describe('Responses Service', () => {
     stateEditorService.setInteraction(interactionData);
 
     const updatedAnswerGroup = {
-      rules: [
-        {
-          type: 'Contains',
-          inputs: {
-            x: 'correct',
-          },
-          inputTypes: {},
-          toBackendDict: jasmine.createSpy('toBackendDict'),
-        },
-      ],
+      rules: [new Rule('Contains', {x: 'correct'}, {})],
       outcome: {
         dest: 'State',
-        destIfReallyStuck: null,
         feedback: new SubtitledHtml('', 'This is a new feedback text'),
         refresherExplorationId: 'test',
         missingPrerequisiteSkillId: 'test_skill_id',
@@ -360,7 +328,7 @@ describe('Responses Service', () => {
       taggedSkillMisconceptionId: '',
       feedback: new SubtitledHtml('', 'This is a new feedback text'),
       dest: 'State',
-      dest_if_really_stuck: null,
+      destIfReallyStuck: 'destIfReallyStuck',
       refresherExplorationId: 'test',
       missingPrerequisiteSkillId: 'test_skill_id',
       labelledAsCorrect: true,
@@ -385,7 +353,7 @@ describe('Responses Service', () => {
       updatedAnswerGroup.outcome.feedback;
     expectedAnswerGroup[0].outcome.dest = updatedAnswerGroup.outcome.dest;
     expectedAnswerGroup[0].outcome.destIfReallyStuck =
-      updatedAnswerGroup.outcome.destIfReallyStuck;
+      updatedAnswerGroup.destIfReallyStuck;
     expectedAnswerGroup[0].outcome.refresherExplorationId =
       updatedAnswerGroup.outcome.refresherExplorationId;
     expectedAnswerGroup[0].outcome.missingPrerequisiteSkillId =
@@ -821,20 +789,19 @@ describe('Responses Service', () => {
     );
   });
 
-  it('should change interaction when id does not exist in any answer group',
-    () => {
-      responsesService.init(interactionData);
-      stateEditorService.setInteraction(interactionData);
+  it('should change interaction when id does not exist in any answer group', () => {
+    responsesService.init(interactionData);
+    stateEditorService.setInteraction(interactionData);
 
-      const newInteractionId = 'Continue';
-      const callbackSpy = jasmine.createSpy('callback');
-      responsesService.onInteractionIdChanged(newInteractionId, callbackSpy);
+    const newInteractionId = 'Continue';
+    const callbackSpy = jasmine.createSpy('callback');
+    responsesService.onInteractionIdChanged(newInteractionId, callbackSpy);
 
-      expect(callbackSpy).toHaveBeenCalledWith(
-        [],
-        interactionData.defaultOutcome
-      );
-    });
+    expect(callbackSpy).toHaveBeenCalledWith(
+      [],
+      interactionData.defaultOutcome
+    );
+  });
 
   it('should change interaction', () => {
     stateInteractionIdService.init('stateName', 'TextInput');

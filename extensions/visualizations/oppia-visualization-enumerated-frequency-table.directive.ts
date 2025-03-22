@@ -16,18 +16,19 @@
  * @fileoverview Directive for "enumerated frequency table" visualization.
  */
 
-import { Component, Input, OnInit } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { AnswerStats } from 'domain/exploration/answer-stats.model';
+import {Component, Input, OnInit} from '@angular/core';
+import {AnswerStats} from 'domain/exploration/answer-stats.model';
 
 import './oppia-visualization-enumerated-frequency-table.directive.css';
 
 @Component({
   selector: 'oppia-visualization-enumerated-frequency-table',
-  templateUrl: './oppia-visualization-enumerated-frequency-table.directive.html'
+  templateUrl:
+    './oppia-visualization-enumerated-frequency-table.directive.html',
 })
 export class OppiaVisualizationEnumeratedFrequencyTableComponent
-   implements OnInit {
+  implements OnInit
+{
   // These properties below are initialized using Angular lifecycle hooks
   // where we need to do non-null assertion. For more information see
   // https://github.com/oppia/oppia/wiki/Guide-on-defining-types#ts-7-1
@@ -40,7 +41,7 @@ export class OppiaVisualizationEnumeratedFrequencyTableComponent
 
   answerVisible!: boolean[];
 
-  constructor() { }
+  constructor() {}
 
   toggleAnswerVisibility(i: number): void {
     this.answerVisible[i] = !this.answerVisible[i];
@@ -51,8 +52,3 @@ export class OppiaVisualizationEnumeratedFrequencyTableComponent
     this.answerVisible = this.data.map((_, i) => i === 0);
   }
 }
-
-angular.module('oppia').directive('oppiaVisualizationEnumeratedFrequencyTable',
-   downgradeComponent({
-     component: OppiaVisualizationEnumeratedFrequencyTableComponent
-   }) as angular.IDirectiveFactory);

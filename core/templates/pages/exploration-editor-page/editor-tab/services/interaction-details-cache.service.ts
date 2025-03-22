@@ -22,18 +22,16 @@
 
 import cloneDeep from 'lodash/cloneDeep';
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {Injectable} from '@angular/core';
 
-import { InteractionCustomizationArgs } from
-  'interactions/customization-args-defs';
+import {InteractionCustomizationArgs} from 'interactions/customization-args-defs';
 
 interface InteractionDetailsCache {
   [interactionId: string]: InteractionCustomizationArgs;
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class InteractionDetailsCacheService {
   static _cache: InteractionDetailsCache = {};
@@ -51,10 +49,11 @@ export class InteractionDetailsCacheService {
   }
 
   set(
-      interactionId: string,
-      interactionCustomizationArgs: InteractionCustomizationArgs): void {
+    interactionId: string,
+    interactionCustomizationArgs: InteractionCustomizationArgs
+  ): void {
     InteractionDetailsCacheService._cache[interactionId] = {
-      customization: cloneDeep(interactionCustomizationArgs)
+      customization: cloneDeep(interactionCustomizationArgs),
     };
   }
 
@@ -65,7 +64,3 @@ export class InteractionDetailsCacheService {
     return cloneDeep(InteractionDetailsCacheService._cache[interactionId]);
   }
 }
-
-angular.module('oppia').factory(
-  'InteractionDetailsCacheService',
-  downgradeInjectable(InteractionDetailsCacheService));

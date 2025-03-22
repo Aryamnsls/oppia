@@ -34,33 +34,22 @@
  * values in a new tab.
  */
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {Injectable} from '@angular/core';
 
-import isEqual from 'lodash/isEqual';
-
-import { AppConstants } from 'app.constants';
-import { ClientContext } from 'domain/platform_feature/client-context.model';
-import { FeatureNames, FeatureNamesKeys, FeatureStatusChecker, FeatureStatusSummary } from 'domain/platform_feature/feature-status-summary.model';
-import { PlatformFeatureBackendApiService } from 'domain/platform_feature/platform-feature-backend-api.service';
-import { BrowserCheckerService } from 'domain/utilities/browser-checker.service';
-import { LoggerService } from 'services/contextual/logger.service';
-import { UrlService } from 'services/contextual/url.service';
-import { WindowRef } from 'services/contextual/window-ref.service';
-
-interface FeatureFlagsCacheItem {
-  timestamp: number;
-  sessionId: string;
-  featureStatusSummary: FeatureStatusSummary;
-}
+import {
+  FeatureStatusChecker,
+  FeatureStatusSummary,
+} from 'domain/feature-flag/feature-status-summary.model';
+import {FeatureFlagBackendApiService} from 'domain/feature-flag/feature-flag-backend-api.service';
+import {LoggerService} from 'services/contextual/logger.service';
+import {UrlService} from 'services/contextual/url.service';
+import {WindowRef} from 'services/contextual/window-ref.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class PlatformFeatureService {
   private static SESSION_STORAGE_KEY = 'SAVED_FEATURE_FLAGS';
-  // 12 hours.
-  private static SESSION_STORAGE_CACHE_TTL_MSECS = 12 * 60 * 60 * 1000;
 
   // The following attributes are made static to avoid potential inconsistencies
   // caused by multi-instantiation of the service.
@@ -70,12 +59,11 @@ export class PlatformFeatureService {
   static _isSkipped = false;
 
   constructor(
-      private platformFeatureBackendApiService:
-        PlatformFeatureBackendApiService,
-      private windowRef: WindowRef,
-      private loggerService: LoggerService,
-      private urlService: UrlService,
-      private browserCheckerService: BrowserCheckerService) {
+    private featureFlagBackendApiService: FeatureFlagBackendApiService,
+    private windowRef: WindowRef,
+    private loggerService: LoggerService,
+    private urlService: UrlService
+  ) {
     this.initialize();
   }
 
@@ -98,7 +86,8 @@ export class PlatformFeatureService {
    * to get the value of feature flags.
    *
    * Example:
-   *   platformFeatureService.status.DummyFeature.isEnabled === true.
+   *   platformFeatureService.status.DummyFeatureFlagForE2ETests.isEnabled === (
+   *   true).
    *
    * @returns {FeatureStatusChecker} - Status checker object for feature flags.
    * @throws {Error} - If this method is called before inialization.
@@ -116,7 +105,7 @@ export class PlatformFeatureService {
    *
    * @returns {boolean} - True if there is any error during initialization.
    */
-  get isInitialzedWithError(): boolean {
+  get isInitializedWithError(): boolean {
     return PlatformFeatureService._isInitializedWithError;
   }
 
@@ -130,22 +119,14 @@ export class PlatformFeatureService {
   }
 
   /**
-   * Initializes the PlatformFeatureService. It first checks if there is
-   * previously saved feature flag result in the sessionStorage, if there is
-   * and the result is still valid, it will be loaded. Otherwise it sends
-   * a request to the server to get the feature flag result.
+   * Initializes the PlatformFeatureService by sending a request to the server
+   * to get the feature flag result.
    *
    * @returns {Promise} - A promise that is resolved when the initialization
    * is done.
    */
   private async _initialize(): Promise<void> {
     try {
-      const item = this.loadSavedResults();
-      if (item && this.validateSavedResults(item)) {
-        PlatformFeatureService.featureStatusSummary = item.featureStatusSummary;
-        this.saveResults();
-        return;
-      }
       this.clearSavedResults();
 
       // The user is 'partially logged-in' at the signup page, we need to skip
@@ -153,156 +134,44 @@ export class PlatformFeatureService {
       // erased, leading to the 'Registration session expired' error.
       if (this.urlService.getPathname() === '/signup') {
         PlatformFeatureService._isSkipped = true;
-        PlatformFeatureService.featureStatusSummary = (
-          FeatureStatusSummary.createDefault());
+        PlatformFeatureService.featureStatusSummary =
+          FeatureStatusSummary.createDefault();
         return;
       }
 
-      PlatformFeatureService.featureStatusSummary = (
-        await this.loadFeatureFlagsFromServer());
-
-      this.saveResults();
+      PlatformFeatureService.featureStatusSummary =
+        await this.loadFeatureFlagsFromServer();
     } catch (err: unknown) {
       if (err instanceof Error) {
         this.loggerService.error(
           'Error during initialization of PlatformFeatureService: ' +
-          `${err.message ? err.message : err}`);
+            `${err.message ? err.message : err}`
+        );
       }
       // If any error, just disable all features.
-      PlatformFeatureService.featureStatusSummary = (
-        FeatureStatusSummary.createDefault());
+      PlatformFeatureService.featureStatusSummary =
+        FeatureStatusSummary.createDefault();
       PlatformFeatureService._isInitializedWithError = true;
       this.clearSavedResults();
     }
   }
 
   private async loadFeatureFlagsFromServer(): Promise<FeatureStatusSummary> {
-    const context = this.generateClientContext();
-    return this.platformFeatureBackendApiService.fetchFeatureFlags(context);
-  }
-
-  /**
-   * Saves the results in sessionStorage, along with current timestamp and
-   * the current session id.
-   */
-  private saveResults(): void {
-    const item = {
-      timestamp: this.getCurrentTimestamp(),
-      sessionId: this.getSessionIdFromCookie(),
-      featureStatusSummary:
-        PlatformFeatureService.featureStatusSummary.toBackendDict(),
-    };
-    this.windowRef.nativeWindow.sessionStorage.setItem(
-      PlatformFeatureService.SESSION_STORAGE_KEY, JSON.stringify(item));
+    return this.featureFlagBackendApiService.fetchFeatureFlags();
   }
 
   /**
    * Clears results from the sessionStorage, if any.
    */
   private clearSavedResults(): void {
-    this.windowRef.nativeWindow.sessionStorage.removeItem(
-      PlatformFeatureService.SESSION_STORAGE_KEY);
-  }
-
-  /**
-   * Reads and parses feature flag results from the sessionStorage.
-   *
-   * @returns {FeatureFlagsCacheItem|null} - Saved results along with timestamp
-   * and session id. Null if there isn't any saved result.
-   */
-  private loadSavedResults(): FeatureFlagsCacheItem | null {
-    const savedStr = this.windowRef.nativeWindow.sessionStorage.getItem(
-      PlatformFeatureService.SESSION_STORAGE_KEY);
-    if (savedStr) {
-      const savedObj = JSON.parse(savedStr);
-      return {
-        timestamp: savedObj.timestamp,
-        sessionId: savedObj.sessionId,
-        featureStatusSummary: (
-          FeatureStatusSummary.createFromBackendDict(
-            savedObj.featureStatusSummary))
-      };
+    if (this.windowRef.nativeWindow.sessionStorage) {
+      this.windowRef.nativeWindow.sessionStorage.removeItem(
+        PlatformFeatureService.SESSION_STORAGE_KEY
+      );
     }
-    return null;
-  }
-
-  /**
-   * Validates the result saved in sessionStorage. The result is valid only when
-   * all following conditions hold:
-   *   - it hasn't expired.
-   *   - its session id matches the current session id.
-   *   - there isn't any new feature defined in the code base that is not
-   *     presented in the cached result.
-   *
-   * @param {FeatureFlagsCacheItem} item - The result item loaded from
-   * sessionStorage.
-   *
-   * @returns {boolean} - True if the result is valid and can be directly used.
-   */
-  private validateSavedResults(item: FeatureFlagsCacheItem): boolean {
-    if (this.getCurrentTimestamp() - item.timestamp >
-        PlatformFeatureService.SESSION_STORAGE_CACHE_TTL_MSECS) {
-      return false;
-    }
-
-    if (this.getSessionIdFromCookie() !== item.sessionId) {
-      return false;
-    }
-
-    const storedFeatures: string[] = (
-      Array.from(item.featureStatusSummary.featureNameToFlag.keys()));
-    const featureNamesKeys = (
-
-      Object.keys(FeatureNames) as FeatureNamesKeys);
-    const requiredFeatures: string[] = (
-      featureNamesKeys.map(name => FeatureNames[name]));
-    return isEqual(storedFeatures.sort(), requiredFeatures.sort());
-  }
-
-  /**
-   * Generates context containing the client side information required to
-   * request feature flag values.
-   *
-   * @returns {ClientContext} - The ClientContext instance containing required
-   * client information.
-   */
-  private generateClientContext(): ClientContext {
-    const platformType = 'Web';
-    const browserType = this.browserCheckerService.detectBrowserType();
-
-    return ClientContext.create(platformType, browserType);
-  }
-
-  /**
-   * Parse session id from cookies.
-   *
-   * @returns {string|null} - The value of the cookie representing session id.
-   */
-  private getSessionIdFromCookie(): string | null {
-    const cookieStrs = this.windowRef.nativeWindow.document.cookie.split('; ');
-    const cookieMap = new Map(
-      cookieStrs.map(cookieStr => cookieStr.split('=') as [string, string]));
-    const sessionId = (
-      cookieMap.get(AppConstants.FIREBASE_AUTH_SESSION_COOKIE_NAME));
-    if (sessionId !== undefined) {
-      return sessionId;
-    }
-    return null;
-  }
-
-  /**
-   * Gets the current timestamp.
-   *
-   * @returns {number} - The current timestamp.
-   */
-  private getCurrentTimestamp(): number {
-    return Date.now();
   }
 }
 
 export const platformFeatureInitFactory = (service: PlatformFeatureService) => {
-  return async(): Promise<void> => service.initialize();
+  return async (): Promise<void> => service.initialize();
 };
-
-angular.module('oppia').factory(
-  'PlatformFeatureService', downgradeInjectable(PlatformFeatureService));

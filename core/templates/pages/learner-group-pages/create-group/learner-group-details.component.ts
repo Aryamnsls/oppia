@@ -16,16 +16,14 @@
  * @fileoverview Component for the learner group details.
  */
 
-import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
+import {Component, EventEmitter, Input, Output} from '@angular/core';
 
 import './learner-group-details.component.css';
-
 
 @Component({
   selector: 'oppia-learner-group-details',
   templateUrl: './learner-group-details.component.html',
-  styleUrls: ['./learner-group-details.component.css']
+  styleUrls: ['./learner-group-details.component.css'],
 })
 export class LearnerGroupDetailsComponent {
   @Input() learnerGroupTitle!: string;
@@ -50,7 +48,3 @@ export class LearnerGroupDetailsComponent {
     return this.readOnlyMode;
   }
 }
-
-angular.module('oppia').directive(
-  'oppiaLearnerGroupDetails',
-  downgradeComponent({component: LearnerGroupDetailsComponent}));

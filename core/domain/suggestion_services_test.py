@@ -17,6 +17,8 @@
 from __future__ import annotations
 
 import datetime
+import random
+import string
 
 from core import feconf
 from core import utils
@@ -40,6 +42,7 @@ from core.domain import taskqueue_services
 from core.domain import topic_domain
 from core.domain import topic_fetchers
 from core.domain import topic_services
+from core.domain import translation_domain
 from core.domain import user_services
 from core.platform import models
 from core.tests import test_utils
@@ -50,6 +53,7 @@ MYPY = False
 if MYPY:  # pragma: no cover
     from core.domain import change_domain
     from mypy_imports import feedback_models
+    from mypy_imports import opportunity_models
     from mypy_imports import suggestion_models
     from mypy_imports import user_models
 
@@ -68,20 +72,21 @@ if MYPY:  # pragma: no cover
 class SuggestionServicesUnitTests(test_utils.GenericTestBase):
     """Test the functions in suggestion_services."""
 
-    score_category: str = (
-        suggestion_models.SCORE_TYPE_CONTENT +
-        suggestion_models.SCORE_CATEGORY_DELIMITER + 'Algebra')
+    score_category: str = ('%s%sAlgebra' % (
+        suggestion_models.SCORE_TYPE_CONTENT,
+        suggestion_models.SCORE_CATEGORY_DELIMITER)
+    )
 
     target_id: str = 'exp1'
     target_id_2: str = 'exp2'
     target_id_3: str = 'exp3'
     target_version_at_submission: int = 1
-    change: Dict[str, Union[str, Dict[str, str]]] = {
+    change_cmd: Dict[str, Union[str, Dict[str, str]]] = {
         'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
         'property_name': exp_domain.STATE_PROPERTY_CONTENT,
         'state_name': 'state_1',
         'new_value': {
-            'content_id': 'content',
+            'content_id': 'content_0',
             'html': 'new suggestion content'
         }
     }
@@ -109,7 +114,7 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
         self.signup(self.NORMAL_USER_EMAIL, 'normaluser')
         self.normal_user_id = self.get_user_id_from_email(
             self.NORMAL_USER_EMAIL)
-        self.save_new_valid_exploration(
+        self.exploration = self.save_new_valid_exploration(
             self.target_id, self.author_id, category='Algebra')
 
     def assert_suggestion_status(self, suggestion_id: str, status: str) -> None:
@@ -159,7 +164,7 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
                     feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
                     feconf.ENTITY_TYPE_EXPLORATION,
                     target_id, self.target_version_at_submission,
-                    self.author_id, self.change, 'test description')
+                    self.author_id, self.change_cmd, 'test description')
 
     def mock_generate_new_thread_id(
         self, entity_type: str, exp_id: str
@@ -216,12 +221,12 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
             'target_version_at_submission': self.target_version_at_submission,
             'status': suggestion_models.STATUS_IN_REVIEW,
             'author_name': 'author',
-            'change': {
+            'change_cmd': {
                 'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
                 'property_name': exp_domain.STATE_PROPERTY_CONTENT,
                 'state_name': 'state_1',
                 'new_value': {
-                    'content_id': 'content',
+                    'content_id': 'content_0',
                     'html': 'new suggestion content'
                 },
                 'old_value': None
@@ -244,7 +249,7 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
                 'invalid_suggestion_type',
                 feconf.ENTITY_TYPE_EXPLORATION,
                 self.target_id, self.target_version_at_submission,
-                self.author_id, self.change, 'test description')
+                self.author_id, self.change_cmd, 'test description')
 
     def test_cannot_create_suggestion_with_invalid_author_id(self) -> None:
         with self.assertRaisesRegex(
@@ -253,7 +258,7 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
                 feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
                 feconf.ENTITY_TYPE_EXPLORATION,
                 self.target_id, self.target_version_at_submission,
-                'invalid author ID', self.change, 'test description')
+                'invalid author ID', self.change_cmd, 'test description')
 
     def test_cannot_create_translation_suggestion_with_invalid_content_html_raise_error(  # pylint: disable=line-too-long
         self
@@ -261,7 +266,7 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
         add_translation_change_dict = {
             'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
             'state_name': 'Introduction',
-            'content_id': 'content',
+            'content_id': 'content_0',
             'language_code': 'hi',
             'content_html': '<p>The invalid content html</p>',
             'translation_html': '<p>Translation for invalid content.</p>',
@@ -282,12 +287,12 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
             feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
             feconf.ENTITY_TYPE_EXPLORATION,
             self.target_id, self.target_version_at_submission,
-            self.author_id, self.change, '')
+            self.author_id, self.change_cmd, '')
         suggestion_services.create_suggestion(
             feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
             feconf.ENTITY_TYPE_EXPLORATION,
             self.target_id, self.target_version_at_submission,
-            self.author_id, self.change, 'test_description')
+            self.author_id, self.change_cmd, 'test_description')
         suggestions = suggestion_services.get_submitted_suggestions(
             self.author_id, feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT)
         self.assertEqual(len(suggestions), 2)
@@ -299,7 +304,7 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
             feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
             feconf.ENTITY_TYPE_EXPLORATION,
             self.target_id, self.target_version_at_submission,
-            self.author_id, self.change, 'test description')
+            self.author_id, self.change_cmd, 'test description')
 
         with self.swap(
             suggestion_models, 'THRESHOLD_TIME_BEFORE_ACCEPT_IN_MSECS', 0):
@@ -318,9 +323,7 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
         unused_exploration_id: str,
         unused_change_list: str,
         commit_message: str,
-        is_suggestion: bool
     ) -> None:
-        self.assertTrue(is_suggestion)
         self.assertEqual(
             commit_message, 'Accepted suggestion by %s: %s' % (
                 'author', self.COMMIT_MESSAGE))
@@ -330,7 +333,7 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
             feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
             feconf.ENTITY_TYPE_EXPLORATION,
             self.target_id, self.target_version_at_submission,
-            self.author_id, self.change, 'test description')
+            self.author_id, self.change_cmd, 'test description')
 
         suggestion = suggestion_services.query_suggestions(
             [('author_id', self.author_id), (
@@ -348,19 +351,12 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
             suggestion.suggestion_id, suggestion_models.STATUS_IN_REVIEW)
 
     def test_accept_suggestion_and_send_email_to_author(self) -> None:
-        change_list = [exp_domain.ExplorationChange({
-            'cmd': exp_domain.CMD_ADD_STATE,
-            'state_name': 'state 1',
-        })]
-        exp_services.update_exploration(
-            self.author_id, self.target_id, change_list, 'Add state.')
-
         new_suggestion_content = state_domain.SubtitledHtml(
             'content', '<p>new suggestion content html</p>').to_dict()
         change_dict: Dict[str, Union[str, state_domain.SubtitledHtmlDict]] = {
             'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
             'property_name': exp_domain.STATE_PROPERTY_CONTENT,
-            'state_name': 'state 1',
+            'state_name': 'Introduction',
             'new_value': new_suggestion_content
         }
 
@@ -527,7 +523,7 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
             'property_name': exp_domain.STATE_PROPERTY_CONTENT,
             'state_name': 'state_1',
             'new_value': {
-                'content_id': 'content',
+                'content_id': 'content_0',
                 'html': (
                     '<oppia-noninteractive-math raw_latex-with-value="&am'
                     'p;quot;(x - a_1)(x - a_2)(x - a_3)...(x - a_n)&amp;q'
@@ -762,7 +758,7 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
                 'property_name': exp_domain.STATE_PROPERTY_CONTENT,
                 'state_name': 'state_1',
                 'new_value': resubmit_change_content,
-                'old_value': self.change['new_value']
+                'old_value': self.change_cmd['new_value']
             }
         )
 
@@ -777,7 +773,7 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
         # The suggestion's change should be updated.
         suggestion = suggestion_services.get_suggestion_by_id(
             self.suggestion_id)
-        new_value = suggestion.change.new_value
+        new_value = suggestion.change_cmd.new_value
         # Ruling out the possibility of any other type for mypy type checking.
         assert isinstance(new_value, dict)
         self.assertEqual(new_value['html'], resubmit_change_content['html'])
@@ -885,7 +881,7 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
             'property_name': exp_domain.STATE_PROPERTY_CONTENT,
             'state_name': 'state 1',
             'new_value': {
-                'content_id': 'content',
+                'content_id': 'content_0',
                 'html': '<p>old content html</p>'
             }
         })]
@@ -894,7 +890,7 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
         add_translation_change_dict = {
             'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
             'state_name': 'state 1',
-            'content_id': 'content',
+            'content_id': 'content_0',
             'language_code': 'hi',
             'content_html': '<p>old content html</p>',
             'translation_html': '<p>Translation for original content.</p>',
@@ -913,13 +909,16 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
             suggestion.suggestion_id)
 
         self.assertEqual(
-            updated_suggestion.change.translation_html,
+            updated_suggestion.change_cmd.translation_html,
             '<p>Updated translation</p>')
 
     def test_update_question_suggestion_to_change_question_state(self) -> None:
         skill_id = skill_services.get_new_skill_id()
         self.save_new_skill(
             skill_id, self.author_id, description='description')
+        content_id_generator = translation_domain.ContentIdGenerator()
+        state = self._create_valid_question_data(
+            'default_state', content_id_generator)
         suggestion_change: Dict[
             str, Union[str, float, question_domain.QuestionDict]
         ] = {
@@ -929,22 +928,24 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
             'question_dict': {
                 'id': 'test_id',
                 'version': 12,
-                'question_state_data': self._create_valid_question_data(
-                    'default_state').to_dict(),
+                'question_state_data': state.to_dict(),
                 'language_code': 'en',
                 'question_state_data_schema_version': (
                     feconf.CURRENT_STATE_SCHEMA_VERSION),
                 'linked_skill_ids': ['skill_1'],
-                'inapplicable_skill_misconception_ids': ['skillid12345-1']
+                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index)
             },
             'skill_id': skill_id,
             'skill_difficulty': 0.3
         }
+
         new_solution_dict: state_domain.SolutionDict = {
             'answer_is_exclusive': False,
             'correct_answer': 'Solution',
             'explanation': {
-                'content_id': 'solution',
+                'content_id': 'solution_2',
                 'html': '<p>This is the updated solution.</p>',
             },
         }
@@ -958,26 +959,25 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
             suggestion_change['question_dict']
         )
 
-        question_state_data = test_question_dict[
-            'question_state_data']
-        question_state_data['content'][
-            'html'] = '<p>Updated question</p>'
-        question_state_data['interaction'][
-            'solution'] = new_solution_dict
+        question_state_data = test_question_dict['question_state_data']
+        question_state_data['content']['html'] = '<p>Updated question</p>'
+        question_state_data['interaction']['solution'] = new_solution_dict
+        question_state_data['recorded_voiceovers'] = (
+            state.recorded_voiceovers.to_dict())
 
         # Ruling out the possibility of any other type for mypy type checking.
-        assert isinstance(suggestion.change.skill_difficulty, float)
-        skill_difficulty = suggestion.change.skill_difficulty
+        assert isinstance(suggestion.change_cmd.skill_difficulty, float)
         suggestion_services.update_question_suggestion(
             suggestion.suggestion_id,
-            skill_difficulty,
-            question_state_data)
+            suggestion.change_cmd.skill_difficulty,
+            question_state_data,
+            content_id_generator.next_content_id_index)
         updated_suggestion = suggestion_services.get_suggestion_by_id(
             suggestion.suggestion_id)
         # Ruling out the possibility of any other type for mypy type checking.
-        assert isinstance(updated_suggestion.change.question_dict, dict)
+        assert isinstance(updated_suggestion.change_cmd.question_dict, dict)
         question_dict: question_domain.QuestionDict = (
-            updated_suggestion.change.question_dict
+            updated_suggestion.change_cmd.question_dict
         )
         new_question_state_data = question_dict[
             'question_state_data']
@@ -997,6 +997,7 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
         skill_id = skill_services.get_new_skill_id()
         self.save_new_skill(
             skill_id, self.author_id, description='description')
+        content_id_generator = translation_domain.ContentIdGenerator()
         suggestion_change: Dict[
             str, Union[str, float, question_domain.QuestionDict]
         ] = {
@@ -1007,11 +1008,13 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
                 'id': 'test_id',
                 'version': 12,
                 'question_state_data': self._create_valid_question_data(
-                    'default_state').to_dict(),
+                    'default_state', content_id_generator).to_dict(),
                 'language_code': 'en',
                 'question_state_data_schema_version': (
                     feconf.CURRENT_STATE_SCHEMA_VERSION),
                 'linked_skill_ids': ['skill_1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index),
                 'inapplicable_skill_misconception_ids': ['skillid12345-1']
             },
             'skill_id': skill_id,
@@ -1038,8 +1041,27 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
             self.save_new_linear_exp_with_state_names_and_interactions(
                 'exploration1', self.author_id, ['state 1'], ['TextInput'],
                 category='Algebra'))
+        audio_language_codes = set(
+            language['id'] for language in constants.SUPPORTED_AUDIO_LANGUAGES)
+        model = opportunity_models.ExplorationOpportunitySummaryModel(
+            id='exploration1',
+            topic_id='topic_id',
+            topic_name='topic_name',
+            story_id='story_id',
+            story_title='story_title',
+            chapter_title='chapter_title',
+            content_count=2,
+            incomplete_translation_language_codes=(
+                audio_language_codes - set(['en'])),
+            translation_counts={},
+            language_codes_needing_voice_artists=audio_language_codes,
+            language_codes_with_assigned_voice_artists=[]
+        )
+        model.update_timestamps()
+        model.put()
+
         old_content = state_domain.SubtitledHtml(
-            'content', '<p>old content html</p>').to_dict()
+            'content_0', '<p>old content html</p>').to_dict()
         exploration.states['state 1'].update_content(
             state_domain.SubtitledHtml.from_dict(old_content))
         change_list = [exp_domain.ExplorationChange({
@@ -1047,7 +1069,7 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
             'property_name': exp_domain.STATE_PROPERTY_CONTENT,
             'state_name': 'state 1',
             'new_value': {
-                'content_id': 'content',
+                'content_id': 'content_0',
                 'html': '<p>old content html</p>'
             }
         })]
@@ -1056,7 +1078,7 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
         add_translation_change_dict = {
             'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
             'state_name': 'state 1',
-            'content_id': 'content',
+            'content_id': 'content_0',
             'language_code': 'hi',
             'content_html': '<p>old content html</p>',
             'translation_html': '<p>Translation for original content.</p>',
@@ -1076,7 +1098,8 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
             suggestion_services.update_question_suggestion(
                 suggestion.suggestion_id,
                 0.1,
-                exploration.states['state 1'].to_dict()
+                exploration.states['state 1'].to_dict(),
+                5
             )
 
     def test_update_question_suggestion_to_change_skill_difficulty(
@@ -1085,6 +1108,7 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
         skill_id = skill_services.get_new_skill_id()
         self.save_new_skill(
             skill_id, self.author_id, description='description')
+        content_id_generator = translation_domain.ContentIdGenerator()
         suggestion_change: Dict[
             str, Union[str, float, question_domain.QuestionDict]
         ] = {
@@ -1095,12 +1119,15 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
                 'id': 'test_id',
                 'version': 12,
                 'question_state_data': self._create_valid_question_data(
-                    'default_state').to_dict(),
+                    'default_state', content_id_generator).to_dict(),
                 'language_code': 'en',
                 'question_state_data_schema_version': (
                     feconf.CURRENT_STATE_SCHEMA_VERSION),
                 'linked_skill_ids': ['skill_1'],
-                'inapplicable_skill_misconception_ids': ['skillid12345-1']
+                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index
+                )
             },
             'skill_id': skill_id,
             'skill_difficulty': 0.3
@@ -1110,84 +1137,35 @@ class SuggestionServicesUnitTests(test_utils.GenericTestBase):
             feconf.ENTITY_TYPE_SKILL, skill_id, 1,
             self.author_id, suggestion_change, 'test description')
         # Ruling out the possibility of any other type for mypy type checking.
-        assert isinstance(suggestion.change.question_dict, dict)
-        change_question_dict = suggestion.change.question_dict
+        assert isinstance(suggestion.change_cmd.question_dict, dict)
+        change_question_dict = suggestion.change_cmd.question_dict
         question_state_data = change_question_dict[
             'question_state_data']
 
         suggestion_services.update_question_suggestion(
             suggestion.suggestion_id,
             0.6,
-            question_state_data)
+            question_state_data,
+            content_id_generator.next_content_id_index)
         updated_suggestion = suggestion_services.get_suggestion_by_id(
             suggestion.suggestion_id)
 
         self.assertEqual(
-            updated_suggestion.change.skill_difficulty,
+            updated_suggestion.change_cmd.skill_difficulty,
             0.6)
-
-    def test_accept_suggestion_commit_message_after_updating_a_suggestion(
-        self
-    ) -> None:
-        exploration = (
-            self.save_new_linear_exp_with_state_names_and_interactions(
-                'exploration1', self.author_id, ['state 1'], ['TextInput'],
-                category='Algebra'))
-        old_content = state_domain.SubtitledHtml(
-            'content', '<p>old content html</p>').to_dict()
-        exploration.states['state 1'].update_content(
-            state_domain.SubtitledHtml.from_dict(old_content))
-        change_list = [exp_domain.ExplorationChange({
-            'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
-            'property_name': exp_domain.STATE_PROPERTY_CONTENT,
-            'state_name': 'state 1',
-            'new_value': {
-                'content_id': 'content',
-                'html': '<p>old content html</p>'
-            }
-        })]
-        exp_services.update_exploration(
-            self.author_id, exploration.id, change_list, '')
-        add_translation_change_dict = {
-            'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
-            'state_name': 'state 1',
-            'content_id': 'content',
-            'language_code': 'hi',
-            'content_html': '<p>old content html</p>',
-            'translation_html': '<p>Translation for original content.</p>',
-            'data_format': 'html'
-        }
-        suggestion = suggestion_services.create_suggestion(
-            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
-            feconf.ENTITY_TYPE_EXPLORATION,
-            'exploration1', self.target_version_at_submission,
-            self.author_id, add_translation_change_dict, 'test description')
-
-        suggestion_services.update_translation_suggestion(
-            suggestion.suggestion_id, '<p>Updated translation</p>'
-        )
-
-        suggestion_services.accept_suggestion(
-            suggestion.suggestion_id, self.reviewer_id, 'Accepted', 'Done'
-        )
-        snapshots_metadata = exp_services.get_exploration_snapshots_metadata(
-            'exploration1')
-
-        self.assertEqual(
-            snapshots_metadata[2]['commit_message'],
-            'Accepted suggestion by author: Accepted (with edits)')
 
 
 class SuggestionGetServicesUnitTests(test_utils.GenericTestBase):
-    score_category: str = (
-        suggestion_models.SCORE_TYPE_TRANSLATION +
-        suggestion_models.SCORE_CATEGORY_DELIMITER + 'English')
+    score_category: str = '%s%sEnglish' % (
+        suggestion_models.SCORE_TYPE_TRANSLATION,
+        suggestion_models.SCORE_CATEGORY_DELIMITER
+    )
 
     target_id_1: str = 'exp1'
     target_id_2: str = 'exp2'
     target_id_3: str = 'exp3'
     target_version_at_submission: int = 1
-    change: Dict[str, str] = {
+    change_cmd: Dict[str, str] = {
         'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
         'property_name': exp_domain.STATE_PROPERTY_CONTENT,
         'state_name': 'state_1',
@@ -1203,9 +1181,9 @@ class SuggestionGetServicesUnitTests(test_utils.GenericTestBase):
     add_translation_change_dict: Dict[str, str] = {
         'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
         'state_name': 'state_1',
-        'content_id': 'content',
+        'content_id': 'content_0',
         'language_code': 'hi',
-        'content_html': '<p>State name: state_1, Content id: content</p>',
+        'content_html': '<p>State name: state_1, Content id: content_0</p>',
         'translation_html': '<p>This is translated html.</p>',
         'data_format': 'html'
     }
@@ -1246,6 +1224,7 @@ class SuggestionGetServicesUnitTests(test_utils.GenericTestBase):
         self, skill_id: str
     ) -> suggestion_registry.SuggestionAddQuestion:
         """Creates a question suggestion with the given skill_id."""
+        content_id_generator = translation_domain.ContentIdGenerator()
         suggestion_change: Dict[
             str, Union[str, float, question_domain.QuestionDict]
         ] = {
@@ -1256,12 +1235,14 @@ class SuggestionGetServicesUnitTests(test_utils.GenericTestBase):
                 'id': 'test_id',
                 'version': 12,
                 'question_state_data': self._create_valid_question_data(
-                    'default_state').to_dict(),
+                    'default_state', content_id_generator).to_dict(),
                 'language_code': 'en',
                 'question_state_data_schema_version': (
                     feconf.CURRENT_STATE_SCHEMA_VERSION),
                 'linked_skill_ids': ['skill_1'],
-                'inapplicable_skill_misconception_ids': ['skillid12345-1']
+                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index)
             },
             'skill_id': skill_id,
             'skill_difficulty': 0.3
@@ -1290,10 +1271,10 @@ class SuggestionGetServicesUnitTests(test_utils.GenericTestBase):
         add_translation_change_dict = {
             'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
             'state_name': 'state_1',
-            'content_id': 'content',
+            'content_id': 'content_0',
             'language_code': language_code,
             'content_html': (
-                '<p>State name: state_1, Content id: content</p>'),
+                '<p>State name: state_1, Content id: content_0</p>'),
             'translation_html': '<p>This is translated html.</p>',
             'data_format': 'html'
         }
@@ -1338,31 +1319,31 @@ class SuggestionGetServicesUnitTests(test_utils.GenericTestBase):
                 feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
                 feconf.ENTITY_TYPE_EXPLORATION,
                 self.target_id_1, self.target_version_at_submission,
-                self.author_id_1, self.change, 'test description')
+                self.author_id_1, self.change_cmd, 'test description')
 
             suggestion_services.create_suggestion(
                 feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
                 feconf.ENTITY_TYPE_EXPLORATION,
                 self.target_id_1, self.target_version_at_submission,
-                self.author_id_1, self.change, 'test description')
+                self.author_id_1, self.change_cmd, 'test description')
 
             suggestion_services.create_suggestion(
                 feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
                 feconf.ENTITY_TYPE_EXPLORATION,
                 self.target_id_1, self.target_version_at_submission,
-                self.author_id_1, self.change, 'test description')
+                self.author_id_1, self.change_cmd, 'test description')
 
             suggestion_services.create_suggestion(
                 feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
                 feconf.ENTITY_TYPE_EXPLORATION,
                 self.target_id_1, self.target_version_at_submission,
-                self.author_id_2, self.change, 'test description')
+                self.author_id_2, self.change_cmd, 'test description')
 
             suggestion_services.create_suggestion(
                 feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
                 feconf.ENTITY_TYPE_EXPLORATION,
                 self.target_id_2, self.target_version_at_submission,
-                self.author_id_2, self.change, 'test description')
+                self.author_id_2, self.change_cmd, 'test description')
 
     def test_get_by_author(self) -> None:
         queries = [('author_id', self.author_id_1)]
@@ -1596,6 +1577,34 @@ class SuggestionGetServicesUnitTests(test_utils.GenericTestBase):
             question_suggestions[1].status,
             suggestion_models.STATUS_IN_REVIEW)
 
+    def test_get_translation_suggestions_in_review(self) -> None:
+        self._create_translation_suggestion_with_language_code('hi')
+        self._create_translation_suggestion_with_language_code('hi')
+
+        suggestions = (
+            suggestion_services
+            .get_translation_suggestions_in_review(self.target_id_1))
+
+        # Ruling out the possibility of None for mypy type checking.
+        assert suggestions[0] is not None
+        self.assertEqual(len(suggestions), 2)
+        self.assertEqual(suggestions[0].target_id, self.target_id_1)
+        self.assertEqual(
+            suggestions[0].suggestion_type,
+            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT)
+        self.assertEqual(
+            suggestions[0].status,
+            suggestion_models.STATUS_IN_REVIEW)
+        # Ruling out the possibility of None for mypy type checking.
+        assert suggestions[1] is not None
+        self.assertEqual(suggestions[1].target_id, self.target_id_1)
+        self.assertEqual(
+            suggestions[1].suggestion_type,
+            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT)
+        self.assertEqual(
+            suggestions[1].status,
+            suggestion_models.STATUS_IN_REVIEW)
+
     def test_get_translation_suggestions_in_review_by_exploration(self) -> None:
         self._create_translation_suggestion_with_language_code('hi')
         self._create_translation_suggestion_with_language_code('hi')
@@ -1670,11 +1679,54 @@ class SuggestionGetServicesUnitTests(test_utils.GenericTestBase):
         self.assertEqual(len(suggestions), 3)
         self.assertEqual(offset, 3)
         actual_language_code_list = [
-            suggestion.change.language_code
+            suggestion.change_cmd.language_code
             for suggestion in suggestions
         ]
         expected_language_code_list = ['hi', 'hi', 'pt']
         self.assertEqual(actual_language_code_list, expected_language_code_list)
+
+    def test_get_reviewable_translation_suggestions_for_single_exploration( # pylint: disable=line-too-long
+        self
+    ) -> None:
+         # Add a few translation suggestions in different languages.
+        self._create_translation_suggestion_with_language_code('hi')
+        self._create_translation_suggestion_with_language_code('hi')
+        self._create_translation_suggestion_with_language_code('pt')
+        self._create_translation_suggestion_with_language_code('bn')
+        self._create_translation_suggestion_with_language_code('bn')
+        # Provide the user permission to review suggestions in particular
+        # languages.
+        user_services.allow_user_to_review_translation_in_language(
+            self.reviewer_id_1, 'hi')
+        user_settings = user_services.get_user_settings(self.reviewer_id_1)
+        user_settings.preferred_translation_language_code = 'hi'
+        user_services.save_user_settings(user_settings)
+       # Get all reviewable translation suggestions.
+        opportunity_summary_id = self.opportunity_summary_ids[0]
+        suggestions, _ = suggestion_services.get_reviewable_translation_suggestions_for_single_exp( # pylint: disable=line-too-long
+            self.reviewer_id_1, opportunity_summary_id, 'hi')
+        self.assertEqual(len(suggestions), 2)
+
+    def test_get_reviewable_translation_suggestions_for_single_exploration__with_no_reviewable_languages( # pylint: disable=line-too-long
+        self
+    ) -> None:
+        # Add a few translation suggestions in different languages.
+        self._create_translation_suggestion_with_language_code('hi')
+        self._create_translation_suggestion_with_language_code('hi')
+        self._create_translation_suggestion_with_language_code('pt')
+        self._create_translation_suggestion_with_language_code('bn')
+        self._create_translation_suggestion_with_language_code('bn')
+
+        # Get all reviewable translation suggestions.
+        opportunity_summary_id = self.opportunity_summary_ids[0]
+        suggestions, _ = (
+            suggestion_services.
+            get_reviewable_translation_suggestions_for_single_exp(
+                self.reviewer_id_1, opportunity_summary_id, 'hi'))
+
+        # The user does not have rights to review any languages, so expect an
+        # empty result.
+        self.assertEqual(len(suggestions), 0)
 
     def test_get_reviewable_translation_suggestions_with_empty_exp_ids( # pylint: disable=line-too-long
         self
@@ -1726,7 +1778,7 @@ class SuggestionGetServicesUnitTests(test_utils.GenericTestBase):
         self.assertEqual(len(suggestions), 3)
         self.assertEqual(offset, 3)
         actual_language_code_list = [
-            suggestion.change.language_code
+            suggestion.change_cmd.language_code
             for suggestion in suggestions
         ]
         expected_language_code_list = ['hi', 'hi', 'pt']
@@ -1781,8 +1833,8 @@ class SuggestionGetServicesUnitTests(test_utils.GenericTestBase):
         # Expect that the results correspond to translation suggestions that the
         # user has rights to review.
         self.assertEqual(len(suggestions), 2)
-        self.assertEqual(suggestions[0].change.language_code, 'hi')
-        self.assertEqual(suggestions[1].change.language_code, 'hi')
+        self.assertEqual(suggestions[0].change_cmd.language_code, 'hi')
+        self.assertEqual(suggestions[1].change_cmd.language_code, 'hi')
 
         # Get reviewable translation suggestions in Spanish (there are none).
         language_to_filter = 'es'
@@ -1796,11 +1848,77 @@ class SuggestionGetServicesUnitTests(test_utils.GenericTestBase):
         # user has rights to review.
         self.assertEqual(len(suggestions), 0)
         actual_language_code_list = [
-            suggestion.change.language_code
+            suggestion.change_cmd.language_code
             for suggestion in suggestions
         ]
         expected_language_code_list: List[str] = []
         self.assertEqual(actual_language_code_list, expected_language_code_list)
+
+    def test_get_target_ids_of_reviewable_translation_suggestions_for_user(
+        self
+    ) -> None:
+        language_code = 'hi'
+        fetched_target_id_1, fetched_target_id_2 = ('exp1', 'exp2')
+        self._create_translation_suggestion(language_code, fetched_target_id_1)
+        self._create_translation_suggestion(language_code, fetched_target_id_2)
+        self._create_translation_suggestion(language_code, fetched_target_id_2)
+        self._create_translation_suggestion('bn', 'exp3')
+        user_services.allow_user_to_review_translation_in_language(
+            self.reviewer_id_1, 'hi'
+        )
+
+        target_ids = (
+            suggestion_services.
+            get_reviewable_translation_suggestion_target_ids(
+                self.reviewer_id_1, language_code
+            )
+        )
+
+        self.assertCountEqual(
+            target_ids, [fetched_target_id_1, fetched_target_id_2]
+        )
+
+    def test_get_target_ids_of_translations_in_user_reviewable_languages_when_not_filtering_by_language( # pylint: disable=line-too-long
+        self
+    ) -> None:
+        fetched_target_id_1, fetched_target_id_2 = ('exp1', 'exp2')
+        self._create_translation_suggestion('hi', fetched_target_id_1)
+        self._create_translation_suggestion('fr', fetched_target_id_2)
+        user_services.allow_user_to_review_translation_in_language(
+            self.reviewer_id_1, 'hi'
+        )
+        user_services.allow_user_to_review_translation_in_language(
+            self.reviewer_id_1, 'fr'
+        )
+        language_code = None
+
+        target_ids = (
+            suggestion_services.
+            get_reviewable_translation_suggestion_target_ids(
+                self.reviewer_id_1, language_code
+            )
+        )
+
+        self.assertCountEqual(
+            target_ids, [fetched_target_id_1, fetched_target_id_2]
+        )
+
+    def test_get_no_translation_target_ids_when_user_cannot_review_in_given_language( # pylint: disable=line-too-long
+        self
+    ) -> None:
+        language_code = 'cs'
+        user_services.allow_user_to_review_translation_in_language(
+            self.reviewer_id_1, 'hi'
+        )
+
+        target_ids = (
+            suggestion_services.
+            get_reviewable_translation_suggestion_target_ids(
+                self.reviewer_id_1, language_code
+            )
+        )
+
+        self.assertCountEqual(target_ids, [])
 
     def test_get_reviewable_question_suggestions(self) -> None:
         # Add a few translation suggestions in different languages.
@@ -1811,6 +1929,7 @@ class SuggestionGetServicesUnitTests(test_utils.GenericTestBase):
         # Add a few question suggestions.
         self._create_question_suggestion_with_skill_id('skill1')
         self._create_question_suggestion_with_skill_id('skill2')
+        self._create_question_suggestion_with_skill_id('skill3')
         # Provide the user permission to review suggestions in particular
         # languages.
         user_services.allow_user_to_review_translation_in_language(
@@ -1826,14 +1945,15 @@ class SuggestionGetServicesUnitTests(test_utils.GenericTestBase):
                 self.reviewer_id_1,
                 limit=constants.OPPORTUNITIES_PAGE_SIZE,
                 offset=0,
-                sort_key=constants.SUGGESTIONS_SORT_KEY_DATE))
+                sort_key=constants.SUGGESTIONS_SORT_KEY_DATE,
+                skill_ids=['skill1', 'skill2']))
 
         # Expect that the results correspond to question suggestions.
         self.assertEqual(len(suggestions), 2)
-        self.assertEqual(offset, 2)
+        self.assertEqual(offset, 3)
         expected_suggestion_type_list = ['skill2', 'skill1']
         actual_suggestion_type_list = [
-            suggestion.change.skill_id
+            suggestion.change_cmd.skill_id
             for suggestion in suggestions
         ]
         self.assertEqual(
@@ -1915,7 +2035,7 @@ class SuggestionGetServicesUnitTests(test_utils.GenericTestBase):
 
         # Change the question_dict of the question suggestion that got rejected
         # so we can resubmit the suggestion for review.
-        resubmit_question_change = suggestion_1.change
+        resubmit_question_change = suggestion_1.change_cmd
         # Ruling out the possibility of any other type for mypy type checking.
         assert isinstance(resubmit_question_change.question_dict, dict)
         resubmit_question_change.question_dict['linked_skill_ids'] = ['skill1']
@@ -1983,19 +2103,19 @@ class SuggestionGetServicesUnitTests(test_utils.GenericTestBase):
             feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
             feconf.ENTITY_TYPE_EXPLORATION,
             'exp1', 1, suggestion_models.STATUS_IN_REVIEW, 'author_3',
-            'reviewer_2', self.change, 'category1',
+            'reviewer_2', self.change_cmd, 'category1',
             'exploration.exp1.thread_1', None)
         suggestion_models.GeneralSuggestionModel.create(
             feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
             feconf.ENTITY_TYPE_EXPLORATION, 'exp1', 1,
             suggestion_models.STATUS_IN_REVIEW, 'author_3',
-            'reviewer_2', self.change, 'category2',
+            'reviewer_2', self.change_cmd, 'category2',
             'exploration.exp1.thread_2', None)
         suggestion_models.GeneralSuggestionModel.create(
             feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
             feconf.ENTITY_TYPE_EXPLORATION, 'exp1', 1,
             suggestion_models.STATUS_IN_REVIEW, 'author_3',
-            'reviewer_2', self.change, 'category3',
+            'reviewer_2', self.change_cmd, 'category3',
             'exploration.exp1.thread_3', None)
         # This suggestion does not count as a suggestion that can be reviewed
         # by a user because it has already been rejected.
@@ -2003,13 +2123,13 @@ class SuggestionGetServicesUnitTests(test_utils.GenericTestBase):
             feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
             feconf.ENTITY_TYPE_EXPLORATION, 'exp1', 1,
             suggestion_models.STATUS_REJECTED, 'author_3',
-            'reviewer_2', self.change, 'category1',
+            'reviewer_2', self.change_cmd, 'category1',
             'exploration.exp1.thread_4', None)
         suggestion_models.GeneralSuggestionModel.create(
             feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
             feconf.ENTITY_TYPE_EXPLORATION, 'exp1', 1,
             suggestion_models.STATUS_IN_REVIEW, 'author_3',
-            'reviewer_2', self.change, 'category2',
+            'reviewer_2', self.change_cmd, 'category2',
             'exploration.exp1.thread_5', None)
 
         self.assertEqual(len(
@@ -2029,9 +2149,10 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
 
     AUTHOR_EMAIL: Final = 'author@example.com'
 
-    score_category: str = (
-        suggestion_models.SCORE_TYPE_CONTENT +
-        suggestion_models.SCORE_CATEGORY_DELIMITER + 'Algebra')
+    score_category: str = ('%s%s%s' % (
+        suggestion_models.SCORE_TYPE_CONTENT,
+        suggestion_models.SCORE_CATEGORY_DELIMITER, 'Algebra')
+    )
 
     THREAD_ID: Final = 'exploration.exp1.thread_1'
 
@@ -2066,14 +2187,13 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
             self.save_new_linear_exp_with_state_names_and_interactions(
                 self.EXP_ID, self.editor_id,
                 ['State 1', 'State 2', 'End State'],
-                ['TextInput'], category='Algebra',
-                correctness_feedback_enabled=True))
+                ['TextInput'], category='Algebra'))
 
         self.old_content = state_domain.SubtitledHtml(
-            'content', '<p>old content</p>').to_dict()
+            'content_0', '<p>old content</p>').to_dict()
         recorded_voiceovers_dict: state_domain.RecordedVoiceoversDict = {
             'voiceovers_mapping': {
-                'content': {
+                'content_0': {
                     self.TRANSLATION_LANGUAGE_CODE: {
                         'filename': 'filename3.mp3',
                         'file_size_bytes': 3000,
@@ -2081,8 +2201,8 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
                         'duration_secs': 42.43
                     }
                 },
-                'default_outcome': {},
-                'ca_placeholder_0': {}
+                'default_outcome_1': {},
+                'ca_placeholder_6': {}
             }
         }
         self.old_recorded_voiceovers = (
@@ -2112,7 +2232,7 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
         self.new_content = state_domain.SubtitledHtml(
             'content', '<p>new content</p>').to_dict()
 
-        self.change: Dict[
+        self.change_cmd: Dict[
             str, Union[str, state_domain.SubtitledHtmlDict]
         ] = {
             'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
@@ -2164,11 +2284,12 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
         # Gets the html content in the exploration to be translated.
         exploration = exp_fetchers.get_exploration_by_id(exp_id)
         content_html = exploration.states['State 1'].content.html
+        content_id = exploration.states['State 1'].content.content_id
 
         add_translation_change_dict = {
             'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
             'state_name': 'State 1',
-            'content_id': 'content',
+            'content_id': content_id,
             'language_code': 'hi',
             'content_html': content_html,
             'translation_html': '<p>This is translated html.</p>',
@@ -2201,7 +2322,7 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
                 feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
                 feconf.ENTITY_TYPE_EXPLORATION,
                 self.EXP_ID, self.target_version_at_submission,
-                self.author_id, self.change, 'test description')
+                self.author_id, self.change_cmd, 'test description')
 
         suggestion_id = self.THREAD_ID
 
@@ -2361,19 +2482,28 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
 
         Returns:
             Mapping[str, change_domain.AcceptableChangeDictTypes]. A dictionary
-            of the change object for the translations.
+            of the change_cmd object for the translations.
         """
         explorations = [self.save_new_valid_exploration(
             '%s' % i,
             self.owner_id,
             title='title %d' % i,
             category=constants.ALL_CATEGORIES[i],
-            end_state_name='End State',
-            correctness_feedback_enabled=True
-        ) for i in range(2)]
+            end_state_name='End State'
+        ) for i in range(3)]
 
         for exp in explorations:
             self.publish_exploration(self.owner_id, exp.id)
+            exp_services.update_exploration(
+                self.owner_id, exp.id, [exp_domain.ExplorationChange({
+                    'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
+                    'property_name': exp_domain.STATE_PROPERTY_CONTENT,
+                    'state_name': 'Introduction',
+                    'new_value': {
+                        'content_id': 'content_0',
+                        'html': '<p>A content to translate.</p>'
+                    }
+                })], 'Changes content.')
 
         topic_id = '0'
         topic = topic_domain.Topic.create_default_topic(
@@ -2388,10 +2518,120 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
             self.owner_id, self.admin_id, 'story_id_02', topic_id, '1')
 
         return {
-            'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
-            'content_id': 'content',
+            'cmd': 'add_written_translation',
+            'content_id': 'content_0',
             'language_code': 'hi',
-            'content_html': '',
+            'content_html': '<p>A content to translate.</p>',
+            'state_name': 'Introduction',
+            'translation_html': '<p>Translation for content.</p>',
+            'data_format': 'html'
+        }
+
+    def _set_up_topics_and_100_stories_for_translations(self) -> Mapping[
+        str, change_domain.AcceptableChangeDictTypes]:
+        """Sets up required topics and stories for translations. It does the
+        following.
+        1. Create 2 explorations and publish them.
+        2. Create a default topic.
+        3. Publish the topic with two story IDs.
+        4. Create 100 stories for translation opportunities.
+
+        Returns:
+            Mapping[str, change_domain.AcceptableChangeDictTypes]. A dictionary
+            of the change_cmd object for the translations.
+        """
+        explorations = [self.save_new_valid_exploration(
+            '%s' % i,
+            self.owner_id,
+            title='title %d' % i,
+            category='Algebra',
+            end_state_name='End State'
+        ) for i in range(103)]
+
+        for exp in explorations:
+            self.publish_exploration(self.owner_id, exp.id)
+            exp_services.update_exploration(
+                self.owner_id, exp.id, [exp_domain.ExplorationChange({
+                    'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
+                    'property_name': exp_domain.STATE_PROPERTY_CONTENT,
+                    'state_name': 'Introduction',
+                    'new_value': {
+                        'content_id': 'content_0',
+                        'html': '<p>A content to translate.</p>'
+                    }
+                })], 'Changes content.')
+
+        topic_id = '0'
+        topic = topic_domain.Topic.create_default_topic(
+            topic_id, 'topic_name', 'abbrev', 'description', 'fragm')
+        skill_id_0 = 'skill_id_0'
+        skill_id_1 = 'skill_id_1'
+        self._publish_valid_topic(topic, [skill_id_0, skill_id_1])
+
+        for i in range(103):
+            self.create_story_for_translation_opportunity(
+                self.owner_id, self.admin_id, ('story_id_%s' % (i)), topic_id,
+                '%s' % i)
+
+        return {
+            'cmd': 'add_written_translation',
+            'content_id': 'content_0',
+            'language_code': 'hi',
+            'content_html': '<p>A content to translate.</p>',
+            'state_name': 'Introduction',
+            'translation_html': '<p>Translation for content.</p>',
+            'data_format': 'html'
+        }
+
+    def _set_up_a_topic_and_stories_for_translations(self) -> Mapping[
+        str, change_domain.AcceptableChangeDictTypes]:
+        """Sets up required topics and stories for translations. It does the
+        following.
+        1. Create 2 explorations and publish them.
+        2. Create a topic with topic_id A.
+        3. Publish the topic with one story ID.
+        4. Create 1 story for translation opportunities.
+
+        Returns:
+            Mapping[str, change_domain.AcceptableChangeDictTypes]. A dictionary
+            of the change_cmd object for the translations.
+        """
+        explorations = [self.save_new_valid_exploration(
+            '%s' % i,
+            self.owner_id,
+            title='title %d' % i,
+            category=constants.ALL_CATEGORIES[i],
+            end_state_name='End State'
+        ) for i in range(2, 4)]
+
+        for exp in explorations:
+            self.publish_exploration(self.owner_id, exp.id)
+            exp_services.update_exploration(
+                self.owner_id, exp.id, [exp_domain.ExplorationChange({
+                    'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
+                    'property_name': exp_domain.STATE_PROPERTY_CONTENT,
+                    'state_name': 'Introduction',
+                    'new_value': {
+                        'content_id': 'content_0',
+                        'html': '<p>A content to translate.</p>'
+                    }
+                })], 'Changes content.')
+
+        topic_id = 'A'
+        topic = topic_domain.Topic.create_default_topic(
+            topic_id, 'topic_name_a', 'abbrev-a', 'description', 'fragm-a')
+        skill_id_2 = 'skill_id_2'
+        skill_id_3 = 'skill_id_3'
+        self._publish_valid_topic(topic, [skill_id_2, skill_id_3])
+
+        self.create_story_for_translation_opportunity(
+            self.owner_id, self.admin_id, 'story_id_03', topic_id, '2')
+
+        return {
+            'cmd': 'add_written_translation',
+            'content_id': 'content_0',
+            'language_code': 'hi',
+            'content_html': '<p>A content to translate.</p>',
             'state_name': 'Introduction',
             'translation_html': '<p>Translation for content.</p>',
             'data_format': 'html'
@@ -2399,66 +2639,21 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
 
     def _get_change_with_normalized_string(self) -> Mapping[
         str, change_domain.AcceptableChangeDictTypes]:
-        """Provides change dictionary with normalized translation html.
+        """Provides change_cmd dictionary with normalized translation html.
 
         Returns:
             Mapping[str, change_domain.AcceptableChangeDictTypes]. A dictionary
-            of the change object for the translations.
+            of the change_cmd object for the translations.
         """
         return {
             'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
-            'content_id': 'content',
+            'content_id': 'content_0',
             'language_code': 'hi',
-            'content_html': '',
+            'content_html': '<p>A content to translate.</p>',
             'state_name': 'Introduction',
             'translation_html': ['translated text1', 'translated text2'],
             'data_format': 'set_of_normalized_string'
         }
-
-    def test_update_translation_contribution_stats_without_language_codes(
-        self
-    ) -> None:
-        translation_contribution_stats = (
-            suggestion_registry.TranslationContributionStats(
-                None, 'user1', 'topic1', 1, 1, 1, 0, 1, 0, 0,
-                {datetime.date.fromtimestamp(1616173836)}
-            )
-        )
-        with self.assertRaisesRegex(
-            Exception,
-            'Language code should not be None.'):
-            suggestion_services._update_translation_contribution_stats_models(  # pylint: disable=protected-access
-                [translation_contribution_stats])
-
-    def test_update_translation_contribution_stats_without_contributor_id(
-        self
-    ) -> None:
-        translation_contribution_stats = (
-            suggestion_registry.TranslationContributionStats(
-                'hi', None, 'topic1', 1, 1, 1, 0, 1, 0, 0,
-                {datetime.date.fromtimestamp(1616173836)}
-            )
-        )
-        with self.assertRaisesRegex(
-            Exception,
-            'Contributor user ID should not be None.'):
-            suggestion_services._update_translation_contribution_stats_models(  # pylint: disable=protected-access
-                [translation_contribution_stats])
-
-    def test_update_translation_contribution_stats_without_topic_id(
-        self
-    ) -> None:
-        translation_contribution_stats = (
-            suggestion_registry.TranslationContributionStats(
-                'hi', 'user1', None, 1, 1, 1, 0, 1, 0, 0,
-                {datetime.date.fromtimestamp(1616173836)}
-            )
-        )
-        with self.assertRaisesRegex(
-            Exception,
-            'Topic ID should not be None.'):
-            suggestion_services._update_translation_contribution_stats_models(  # pylint: disable=protected-access
-                [translation_contribution_stats])
 
     def test_get_translation_contribution_stats_for_invalid_id_with_strict_true(
         self
@@ -2554,6 +2749,13 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
             feconf.ENTITY_TYPE_EXPLORATION,
             '1', 1, self.author_id, new_change_dict, 'description')
 
+        change_dict_for_a_topic = (
+            self._set_up_a_topic_and_stories_for_translations())
+        topic_suggestion = suggestion_services.create_suggestion(
+            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+            feconf.ENTITY_TYPE_EXPLORATION,
+            '2', 1, self.author_id, change_dict_for_a_topic, 'description')
+
         suggestion_services.update_translation_contribution_stats_at_submission(
             initial_suggestion
         )
@@ -2588,6 +2790,60 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
             0
         )
 
+        translation_submitter_total_stats_model = (
+            suggestion_models.TranslationSubmitterTotalContributionStatsModel
+            .get(
+                'hi', self.author_id
+            )
+        )
+        assert translation_submitter_total_stats_model is not None
+        self.assertEqual(
+            (
+                translation_submitter_total_stats_model
+                .submitted_translations_count
+            ),
+            2
+        )
+        self.assertEqual(
+            (
+                translation_submitter_total_stats_model
+                .submitted_translation_word_count
+            ),
+            7
+        )
+        self.assertEqual(
+            (
+                translation_submitter_total_stats_model
+                .accepted_translations_count
+            ),
+            0
+        )
+        self.assertEqual(
+            (
+                translation_submitter_total_stats_model
+                .topic_ids_with_translation_submissions
+            ),
+            ['0']
+        )
+
+        suggestion_services.update_translation_contribution_stats_at_submission(
+            topic_suggestion
+        )
+        updated_translation_submitter_total_stats_model = (
+            suggestion_models.TranslationSubmitterTotalContributionStatsModel
+            .get(
+                'hi', self.author_id
+            )
+        )
+        assert updated_translation_submitter_total_stats_model is not None
+        self.assertItemsEqual(
+            (
+                updated_translation_submitter_total_stats_model
+                .topic_ids_with_translation_submissions
+            ),
+            ['0', 'A']
+        )
+
     def test_update_translation_review_stats_when_suggestion_is_accepted(
         self) -> None:
         # This test case will check stats of the reviewer and the submitter
@@ -2607,6 +2863,22 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
             feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
             feconf.ENTITY_TYPE_EXPLORATION,
             '1', 1, self.author_id, new_change_dict, 'description')
+        change_dict_for_a_topic = (
+            self._set_up_a_topic_and_stories_for_translations())
+        topic_suggestion = suggestion_services.create_suggestion(
+            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+            feconf.ENTITY_TYPE_EXPLORATION,
+            '2', 1, self.author_id, change_dict_for_a_topic, 'description')
+
+        suggestion_services.update_translation_contribution_stats_at_submission(
+            suggestion_services.get_suggestion_by_id(
+                initial_suggestion.suggestion_id)
+        )
+        suggestion_services.update_translation_contribution_stats_at_submission(
+            suggestion_services.get_suggestion_by_id(
+                latest_suggestion.suggestion_id)
+        )
+
         suggestion_services.accept_suggestion(
             initial_suggestion.suggestion_id, self.reviewer_id, 'Accepted',
             'Accepted')
@@ -2661,6 +2933,102 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
         self.assertEqual(
             translation_contribution_stats_model.accepted_translations_count,
             2
+        )
+
+        translation_reviewer_total_stats_model = (
+            suggestion_models.TranslationReviewerTotalContributionStatsModel
+            .get(
+                'hi', self.reviewer_id
+            )
+        )
+        translation_submitter_total_stats_model = (
+            suggestion_models.TranslationSubmitterTotalContributionStatsModel
+            .get(
+                'hi', self.author_id
+            )
+        )
+        # Assert translation review stats after the review.
+        # At this point we can confirm that there should be an associated
+        # translation review stat object for the given IDs since we have
+        # called update_translation_review_stats function to create/update
+        # translation review stats.
+        assert translation_reviewer_total_stats_model is not None
+        self.assertEqual(
+            translation_reviewer_total_stats_model.accepted_translations_count,
+            2
+        )
+        self.assertEqual(
+            (
+                translation_reviewer_total_stats_model
+                .reviewed_translations_count
+            ),
+            2
+        )
+        assert translation_submitter_total_stats_model is not None
+        self.assertEqual(
+            (
+                translation_submitter_total_stats_model
+                .accepted_translation_word_count
+            ),
+            7
+        )
+        self.assertEqual(
+            translation_submitter_total_stats_model.accepted_translations_count,
+            2
+        )
+        self.assertEqual(
+            (
+                translation_submitter_total_stats_model
+                .recent_review_outcomes
+            ),
+            ['accepted', 'accepted']
+        )
+        self.assertEqual(
+            (
+                translation_submitter_total_stats_model
+                .recent_performance
+            ),
+            2
+        )
+        self.assertEqual(
+            (
+                translation_submitter_total_stats_model
+                .overall_accuracy
+            ),
+            100.0
+        )
+
+        suggestion_services.accept_suggestion(
+            topic_suggestion.suggestion_id, self.reviewer_id, 'Accepted',
+            'Accepted')
+        suggestion_services.update_translation_review_stats(
+            suggestion_services.get_suggestion_by_id(
+                topic_suggestion.suggestion_id)
+        )
+        translation_reviewer_total_stats_model_for_a_topic = (
+            suggestion_models.TranslationReviewerTotalContributionStatsModel
+            .get(
+                'hi', self.reviewer_id
+            )
+        )
+        translation_submitter_total_stats_model_for_a_topic = (
+            suggestion_models.TranslationSubmitterTotalContributionStatsModel
+            .get(
+                'hi', self.author_id
+            )
+        )
+        assert translation_reviewer_total_stats_model_for_a_topic is not None
+        assert translation_submitter_total_stats_model_for_a_topic is not None
+        self.assertItemsEqual(
+            translation_reviewer_total_stats_model_for_a_topic.
+            topic_ids_with_translation_reviews,
+            ['0', 'A']
+        )
+
+        self.assertItemsEqual(
+            translation_submitter_total_stats_model_for_a_topic.
+            topic_ids_with_translation_submissions,
+            ['0', 'A']
         )
 
     def test_update_translation_review_stats_when_suggestion_is_rejected(
@@ -2745,6 +3113,81 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
         self.assertEqual(
             translation_contribution_stats_model.accepted_translations_count,
             0
+        )
+
+        translation_reviewer_total_stats_model = (
+            suggestion_models.TranslationReviewerTotalContributionStatsModel
+            .get(
+                'hi', self.reviewer_id
+            )
+        )
+        translation_submitter_total_stats_model = (
+            suggestion_models.TranslationSubmitterTotalContributionStatsModel
+            .get(
+                'hi', self.author_id
+            )
+        )
+
+        # Assert translation review stats after the review.
+        # At this point we can confirm that there should be an associated
+        # translation review stat object for the given IDs since we have
+        # called update_translation_review_stats function to create/update
+        # translation review stats.
+        assert translation_reviewer_total_stats_model is not None
+        self.assertEqual(
+            translation_reviewer_total_stats_model.reviewed_translations_count,
+            2
+        )
+        self.assertEqual(
+            translation_reviewer_total_stats_model.accepted_translations_count,
+            0
+        )
+        self.assertEqual(
+            (
+                translation_reviewer_total_stats_model
+                .accepted_translation_word_count
+            ),
+            0
+        )
+        assert translation_submitter_total_stats_model is not None
+        self.assertEqual(
+            translation_submitter_total_stats_model.rejected_translations_count,
+            2
+        )
+        self.assertEqual(
+            (
+                translation_submitter_total_stats_model
+                .rejected_translations_count
+            ),
+            2
+        )
+        self.assertEqual(
+            (
+                translation_submitter_total_stats_model
+                .accepted_translations_count
+            ),
+            0
+        )
+        self.assertEqual(
+            (
+                translation_submitter_total_stats_model
+                .recent_review_outcomes
+            ),
+            ['rejected', 'rejected']
+        )
+        self.assertEqual(
+            (
+                translation_submitter_total_stats_model
+                .recent_performance
+            ),
+            -4
+        )
+        self.assertEqual(
+            (
+                translation_submitter_total_stats_model
+                .overall_accuracy
+            ),
+            0.0
         )
 
     def test_update_translation_review_stats_without_a_reviewer_id(
@@ -2884,6 +3327,240 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
             0
         )
 
+        translation_reviewer_total_stats_model = (
+            suggestion_models.TranslationReviewerTotalContributionStatsModel
+            .get(
+                'hi', self.reviewer_id
+            )
+        )
+        translation_submitter_total_stats_model = (
+            suggestion_models.TranslationSubmitterTotalContributionStatsModel
+            .get(
+                'hi', self.author_id
+            )
+        )
+        # Assert translation review stats after the review.
+        # At this point we can confirm that there should be an associated
+        # translation review stat object for the given IDs since we have
+        # called update_translation_review_stats function to create/update
+        # translation review stats.
+        assert translation_reviewer_total_stats_model is not None
+        self.assertEqual(
+            translation_reviewer_total_stats_model.accepted_translations_count,
+            2
+        )
+        self.assertEqual(
+            (
+                translation_reviewer_total_stats_model
+                .accepted_translation_word_count
+            ),
+            2
+        )
+        self.assertEqual(
+            translation_reviewer_total_stats_model
+            .accepted_translations_with_reviewer_edits_count,
+            2
+        )
+        assert translation_submitter_total_stats_model is not None
+        self.assertEqual(
+            (
+                translation_submitter_total_stats_model
+                .submitted_translations_count
+            ),
+            2
+        )
+        self.assertEqual(
+            (
+                translation_submitter_total_stats_model
+                .submitted_translation_word_count
+            ),
+            6
+        )
+        self.assertEqual(
+            translation_submitter_total_stats_model.recent_performance,
+            2
+        )
+        self.assertEqual(
+            translation_submitter_total_stats_model.overall_accuracy,
+            100.0
+        )
+        self.assertEqual(
+            translation_submitter_total_stats_model.accepted_translations_count,
+            2
+        )
+        self.assertEqual(
+            (
+                translation_submitter_total_stats_model
+                .accepted_translations_without_reviewer_edits_count
+            ),
+            0
+        )
+
+    def test_increment_translation_stats_for_than_100_suggestions_accepted(
+        self) -> None:
+
+        change_dict = self._set_up_topics_and_100_stories_for_translations()
+        initial_suggestion = suggestion_services.create_suggestion(
+            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+            feconf.ENTITY_TYPE_EXPLORATION,
+            '0', 0, self.author_id, change_dict, 'description')
+        suggestion_services.update_translation_contribution_stats_at_submission(
+            suggestion_services.get_suggestion_by_id(
+                initial_suggestion.suggestion_id)
+        )
+        for i in range(1, 102):
+            common_change_dict = self._get_change_with_normalized_string()
+            suggestion = suggestion_services.create_suggestion(
+                feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+                feconf.ENTITY_TYPE_EXPLORATION,
+                ('%s' % (i)), i, self.author_id, common_change_dict,
+                'description')
+            suggestion_services.update_translation_contribution_stats_at_submission( # pylint: disable=line-too-long
+                suggestion_services.get_suggestion_by_id(
+                    suggestion.suggestion_id))
+            suggestion_services.accept_suggestion(
+                suggestion.suggestion_id, self.reviewer_id, 'Accepted',
+                'Accepted')
+            suggestion_services.update_translation_review_stats(
+                suggestion_services.get_suggestion_by_id(
+                    suggestion.suggestion_id)
+            )
+
+        updated_translation_submitter_total_stats_model = (
+            suggestion_models.TranslationSubmitterTotalContributionStatsModel
+            .get(
+                'hi', self.author_id
+            )
+        )
+        assert updated_translation_submitter_total_stats_model is not None
+        self.assertEqual(
+            len(
+                updated_translation_submitter_total_stats_model
+                .recent_review_outcomes),
+            100
+        )
+
+        new_change_dict = self._get_change_with_normalized_string()
+        latest_suggestion = suggestion_services.create_suggestion(
+            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+            feconf.ENTITY_TYPE_EXPLORATION,
+            '102', 102, self.author_id, new_change_dict, 'description')
+        suggestion_services.update_translation_contribution_stats_at_submission(
+            suggestion_services.get_suggestion_by_id(
+                latest_suggestion.suggestion_id)
+        )
+        suggestion_services.reject_suggestion(
+            latest_suggestion.suggestion_id, self.reviewer_id, 'Rejected'
+        )
+
+        suggestion_services.update_translation_review_stats(
+            suggestion_services.get_suggestion_by_id(
+                latest_suggestion.suggestion_id)
+        )
+
+        rejected_translation_submitter_total_stats_model = (
+            suggestion_models.TranslationSubmitterTotalContributionStatsModel
+            .get(
+                'hi', self.author_id
+            )
+        )
+        assert rejected_translation_submitter_total_stats_model is not None
+
+        self.assertEqual(
+            len(
+                rejected_translation_submitter_total_stats_model
+                .recent_review_outcomes),
+            100
+        )
+
+        self.assertEqual(
+            rejected_translation_submitter_total_stats_model
+            .recent_review_outcomes[99],
+            suggestion_models.REVIEW_OUTCOME_REJECTED
+        )
+
+    def test_increment_translation_stats_for_than_100_suggestions_rejected(
+        self) -> None:
+
+        change_dict = self._set_up_topics_and_100_stories_for_translations()
+        initial_suggestion = suggestion_services.create_suggestion(
+            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+            feconf.ENTITY_TYPE_EXPLORATION,
+            '0', 0, self.author_id, change_dict, 'description')
+        suggestion_services.update_translation_contribution_stats_at_submission(
+            suggestion_services.get_suggestion_by_id(
+                initial_suggestion.suggestion_id)
+        )
+        for i in range(1, 102):
+            common_change_dict = self._get_change_with_normalized_string()
+            suggestion = suggestion_services.create_suggestion(
+                feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+                feconf.ENTITY_TYPE_EXPLORATION,
+                ('%s' % (i)), i, self.author_id, common_change_dict,
+                'description')
+            suggestion_services.update_translation_contribution_stats_at_submission( # pylint: disable=line-too-long
+                suggestion_services.get_suggestion_by_id(
+                    suggestion.suggestion_id))
+            suggestion_services.reject_suggestion(
+                suggestion.suggestion_id, self.reviewer_id, 'Rejected')
+            suggestion_services.update_translation_review_stats(
+                suggestion_services.get_suggestion_by_id(
+                    suggestion.suggestion_id)
+            )
+
+        updated_translation_submitter_total_stats_model = (
+            suggestion_models.TranslationSubmitterTotalContributionStatsModel
+            .get(
+                'hi', self.author_id
+            )
+        )
+        assert updated_translation_submitter_total_stats_model is not None
+        self.assertEqual(
+            len(
+                updated_translation_submitter_total_stats_model
+                .recent_review_outcomes),
+            100
+        )
+
+        new_change_dict = self._get_change_with_normalized_string()
+        latest_suggestion = suggestion_services.create_suggestion(
+            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+            feconf.ENTITY_TYPE_EXPLORATION,
+            '102', 102, self.author_id, new_change_dict, 'description')
+        suggestion_services.update_translation_contribution_stats_at_submission(
+            suggestion_services.get_suggestion_by_id(
+                latest_suggestion.suggestion_id)
+        )
+        suggestion_services.accept_suggestion(
+            latest_suggestion.suggestion_id, self.reviewer_id, 'Accepted',
+            'Accepted'
+        )
+
+        suggestion_services.update_translation_review_stats(
+            suggestion_services.get_suggestion_by_id(
+                latest_suggestion.suggestion_id)
+        )
+
+        accepted_translation_submitter_total_stats_model = (
+            suggestion_models.TranslationSubmitterTotalContributionStatsModel
+            .get(
+                'hi', self.author_id
+            )
+        )
+        assert accepted_translation_submitter_total_stats_model is not None
+        self.assertEqual(
+            len(
+                accepted_translation_submitter_total_stats_model
+                .recent_review_outcomes),
+            100
+        )
+
+        self.assertEqual(
+            accepted_translation_submitter_total_stats_model
+            .recent_review_outcomes[99],
+            suggestion_models.REVIEW_OUTCOME_ACCEPTED
+        )
+
     def _create_question_suggestion(
         self,
         skill_id: str
@@ -2896,6 +3573,7 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
         Returns:
             SuggestionAddQuestion. A new question suggestion.
         """
+        content_id_generator = translation_domain.ContentIdGenerator()
         suggestion_change: Dict[
             str,
             Union[str, float, Dict[str, Union[
@@ -2905,11 +3583,14 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
                 .CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION),
             'question_dict': {
                 'question_state_data': self._create_valid_question_data(
-                    'default_state').to_dict(),
+                    'default_state', content_id_generator).to_dict(),
                 'language_code': 'en',
                 'question_state_data_schema_version': (
                     feconf.CURRENT_STATE_SCHEMA_VERSION),
                 'linked_skill_ids': ['skill_2'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index
+                ),
                 'inapplicable_skill_misconception_ids': ['skillid12345-1']
             },
             'skill_id': skill_id,
@@ -2959,9 +3640,21 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
         # 3. Create a question suggestion.
         skill_id_1 = self._create_skill()
         skill_id_2 = self._create_skill()
+        skill_id_3 = self._create_skill()
+        skill_id_4 = self._create_skill()
         topic_id = self._create_topic(skill_id_1, skill_id_2)
+        topic_id_2 = topic_fetchers.get_new_topic_id()
+        self.save_new_topic(
+            topic_id_2, 'topic_admin', name='Topic2',
+            abbreviated_name='topic-three-1', url_fragment='topic-three-a',
+            description='Description',
+            canonical_story_ids=[],
+            additional_story_ids=[],
+            uncategorized_skill_ids=[skill_id_3, skill_id_4],
+            subtopics=[], next_subtopic_id=1)
         initial_suggestion = self._create_question_suggestion(skill_id_1)
         latest_suggestion = self._create_question_suggestion(skill_id_2)
+        topic_id_2_suggestion = self._create_question_suggestion(skill_id_3)
 
         # Action to update question contribution stats.
         suggestion_services.update_question_contribution_stats_at_submission(
@@ -2991,6 +3684,57 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
             0
         )
 
+        question_submitter_total_stats_model = (
+            suggestion_models.QuestionSubmitterTotalContributionStatsModel
+            .get_by_id(
+                self.author_id
+            )
+        )
+        # Assert question contribution stats before the review.
+        # At this point we can confirm that there should be an associated
+        # question contribution stat object for the given IDs since we have
+        # called update_question_contribution_stats_at_submission function to
+        # create/update question contribution stats.
+        assert question_submitter_total_stats_model is not None
+        self.assertEqual(
+            question_submitter_total_stats_model.submitted_questions_count,
+            2
+        )
+        self.assertEqual(
+            question_submitter_total_stats_model.accepted_questions_count,
+            0
+        )
+        self.assertEqual(
+            question_submitter_total_stats_model.recent_review_outcomes,
+            []
+        )
+        self.assertEqual(
+            question_submitter_total_stats_model.recent_performance,
+            0
+        )
+        self.assertEqual(
+            question_submitter_total_stats_model.overall_accuracy,
+            0.0
+        )
+
+        suggestion_services.update_question_contribution_stats_at_submission(
+            topic_id_2_suggestion
+        )
+        question_submitter_total_stats_model_with_topic_id_2 = (
+            suggestion_models.QuestionSubmitterTotalContributionStatsModel
+            .get_by_id(
+                self.author_id
+            )
+        )
+
+        self.assertItemsEqual(
+            (
+                question_submitter_total_stats_model_with_topic_id_2.
+                topic_ids_with_question_submissions
+            ),
+            [topic_id, topic_id_2]
+        )
+
     def test_update_question_stats_when_suggestion_is_accepted(
         self) -> None:
         # This test case will check stats of the reviewer and the submitter
@@ -3001,9 +3745,32 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
         # 3. Create a question suggestion.
         skill_id_1 = self._create_skill()
         skill_id_2 = self._create_skill()
+        skill_id_3 = self._create_skill()
+        skill_id_4 = self._create_skill()
         topic_id = self._create_topic(skill_id_1, skill_id_2)
+        topic_id_2 = topic_fetchers.get_new_topic_id()
+        self.save_new_topic(
+            topic_id_2, 'topic_admin', name='Topic2',
+            abbreviated_name='topic-three-1', url_fragment='topic-three-a',
+            description='Description',
+            canonical_story_ids=[],
+            additional_story_ids=[],
+            uncategorized_skill_ids=[skill_id_3, skill_id_4],
+            subtopics=[], next_subtopic_id=1)
         initial_suggestion = self._create_question_suggestion(skill_id_1)
         latest_suggestion = self._create_question_suggestion(skill_id_2)
+
+        suggestion_services.update_question_contribution_stats_at_submission(
+            suggestion_services.get_suggestion_by_id(
+                initial_suggestion.suggestion_id
+            )
+        )
+        suggestion_services.update_question_contribution_stats_at_submission(
+            suggestion_services.get_suggestion_by_id(
+                latest_suggestion.suggestion_id
+            )
+        )
+
         suggestion_services.accept_suggestion(
             initial_suggestion.suggestion_id, self.reviewer_id, 'Accepted',
             'Accepted')
@@ -3059,6 +3826,90 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
                 .accepted_questions_without_reviewer_edits_count
             ),
             2
+        )
+
+        question_reviewer_total_stats_model = (
+            suggestion_models.QuestionReviewerTotalContributionStatsModel
+            .get_by_id(
+                self.reviewer_id
+            )
+        )
+        question_submitter_total_stats_model = (
+            suggestion_models.QuestionSubmitterTotalContributionStatsModel
+            .get_by_id(
+                self.author_id
+            )
+        )
+        # Assert question review stats after the review.
+        # At this point we can confirm that there should be an associated
+        # question review stat object for the given IDs since we have
+        # called update_question_review_stats function to create/update question
+        # review stats.
+        assert question_reviewer_total_stats_model is not None
+        self.assertEqual(
+            question_reviewer_total_stats_model.accepted_questions_count,
+            2
+        )
+        self.assertEqual(
+            (
+                question_reviewer_total_stats_model
+                .reviewed_questions_count
+            ),
+            2
+        )
+        assert question_submitter_total_stats_model is not None
+        self.assertEqual(
+            question_submitter_total_stats_model.submitted_questions_count,
+            2
+        )
+        self.assertEqual(
+            question_submitter_total_stats_model.accepted_questions_count,
+            2
+        )
+        self.assertEqual(
+            (
+                question_submitter_total_stats_model
+                .accepted_questions_without_reviewer_edits_count
+            ),
+            2
+        )
+        self.assertEqual(
+            (
+                question_submitter_total_stats_model
+                .recent_review_outcomes
+            ),
+            ['accepted', 'accepted']
+        )
+        self.assertEqual(
+            question_submitter_total_stats_model.recent_performance,
+            2
+        )
+        self.assertEqual(
+            question_submitter_total_stats_model.overall_accuracy,
+            100.0
+        )
+
+        topic_id_2_suggestion = self._create_question_suggestion(skill_id_3)
+        suggestion_services.accept_suggestion(
+            topic_id_2_suggestion.suggestion_id, self.reviewer_id, 'Accepted',
+            'Accepted')
+        suggestion_services.update_question_review_stats(
+            suggestion_services.get_suggestion_by_id(
+                topic_id_2_suggestion.suggestion_id)
+        )
+        question_reviewer_total_stats_model_with_topic_id_2 = (
+            suggestion_models.QuestionReviewerTotalContributionStatsModel
+            .get_by_id(
+                self.reviewer_id
+            )
+        )
+
+        self.assertItemsEqual(
+            (
+                question_reviewer_total_stats_model_with_topic_id_2
+                .topic_ids_with_question_reviews
+            ),
+            [topic_id, topic_id_2]
         )
 
     def test_update_question_stats_when_suggestion_is_rejected(
@@ -3133,6 +3984,68 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
             0
         )
 
+        question_reviewer_total_stats_model = (
+            suggestion_models.QuestionReviewerTotalContributionStatsModel
+            .get_by_id(
+                self.reviewer_id
+            )
+        )
+        question_submitter_total_stats_model = (
+            suggestion_models.QuestionSubmitterTotalContributionStatsModel
+            .get_by_id(
+                self.author_id
+            )
+        )
+        # Assert question review stats after the review.
+        # At this point we can confirm that there should be an associated
+        # question review stat object for the given IDs since we have
+        # called update_question_review_stats function to create/update question
+        # review stats.
+        assert question_reviewer_total_stats_model is not None
+        self.assertEqual(
+            question_reviewer_total_stats_model.reviewed_questions_count,
+            2
+        )
+        self.assertEqual(
+            question_reviewer_total_stats_model.accepted_questions_count,
+            0
+        )
+        self.assertEqual(
+            question_reviewer_total_stats_model.rejected_questions_count,
+            2
+        )
+        self.assertEqual(
+            (
+                question_reviewer_total_stats_model
+                .reviewed_questions_count
+            ),
+            2
+        )
+        assert question_submitter_total_stats_model is not None
+        self.assertEqual(
+            question_submitter_total_stats_model.accepted_questions_count,
+            0
+        )
+        self.assertEqual(
+            question_submitter_total_stats_model.rejected_questions_count,
+            2
+        )
+        self.assertEqual(
+            (
+                question_submitter_total_stats_model
+                .accepted_questions_without_reviewer_edits_count
+            ),
+            0
+        )
+        self.assertEqual(
+            question_submitter_total_stats_model.recent_performance,
+            -4
+        )
+        self.assertEqual(
+            question_submitter_total_stats_model.overall_accuracy,
+            0.0
+        )
+
     def test_update_question_stats_when_suggestion_is_edited(
         self
     ) -> None:
@@ -3147,8 +4060,17 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
         topic_id = self._create_topic(skill_id_1, skill_id_2)
         initial_suggestion = self._create_question_suggestion(skill_id_1)
         latest_suggestion = self._create_question_suggestion(skill_id_2)
+        content_id_generator = translation_domain.ContentIdGenerator()
         question_state_data = self._create_valid_question_data(
-            'default_state').to_dict()
+            'default_state', content_id_generator).to_dict()
+        suggestion_services.update_question_contribution_stats_at_submission(
+            suggestion_services.get_suggestion_by_id(
+                initial_suggestion.suggestion_id)
+        )
+        suggestion_services.update_question_contribution_stats_at_submission(
+            suggestion_services.get_suggestion_by_id(
+                latest_suggestion.suggestion_id)
+        )
         suggestion_services.accept_suggestion(
             initial_suggestion.suggestion_id, self.reviewer_id, 'Accepted',
             'Accepted')
@@ -3156,9 +4078,11 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
             latest_suggestion.suggestion_id, self.reviewer_id, 'Accepted',
             'Accepted')
         suggestion_services.update_question_suggestion(
-            initial_suggestion.suggestion_id, 0.6, question_state_data)
+            initial_suggestion.suggestion_id, 0.6, question_state_data,
+            content_id_generator.next_content_id_index)
         suggestion_services.update_question_suggestion(
-            latest_suggestion.suggestion_id, 0.6, question_state_data)
+            latest_suggestion.suggestion_id, 0.6, question_state_data,
+            content_id_generator.next_content_id_index)
 
         # Actual action to update stats when reviewing.
         suggestion_services.update_question_review_stats(
@@ -3214,6 +4138,250 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
             0
         )
 
+        question_reviewer_total_stats_model = (
+            suggestion_models.QuestionReviewerTotalContributionStatsModel
+            .get_by_id(
+                self.reviewer_id
+            )
+        )
+        question_submitter_total_stats_model = (
+            suggestion_models.QuestionSubmitterTotalContributionStatsModel
+            .get_by_id(
+                self.author_id
+            )
+        )
+        # Assert question review stats.
+        # At this point we can confirm that there should be an associated
+        # question review stat object for the given IDs since we have
+        # called update_question_review_stats function to create/update question
+        # review stats.
+        assert question_reviewer_total_stats_model is not None
+        self.assertEqual(
+            question_reviewer_total_stats_model.reviewed_questions_count,
+            2
+        )
+        self.assertEqual(
+            question_reviewer_total_stats_model.accepted_questions_count,
+            2
+        )
+        self.assertEqual(
+            (
+                question_reviewer_total_stats_model
+                .accepted_questions_with_reviewer_edits_count
+            ),
+            2
+        )
+        assert question_submitter_total_stats_model is not None
+        self.assertEqual(
+            question_submitter_total_stats_model.submitted_questions_count,
+            2
+        )
+        self.assertEqual(
+            question_submitter_total_stats_model.accepted_questions_count,
+            2
+        )
+        self.assertEqual(
+            (
+                question_submitter_total_stats_model
+                .accepted_questions_without_reviewer_edits_count
+            ),
+            0
+        )
+        self.assertEqual(
+            (
+                question_submitter_total_stats_model
+                .recent_review_outcomes
+            ),
+            ['accepted_with_edits', 'accepted_with_edits']
+        )
+        self.assertEqual(
+            question_submitter_total_stats_model.recent_performance,
+            2
+        )
+        self.assertEqual(
+            question_submitter_total_stats_model.overall_accuracy,
+            100.0
+        )
+
+    def generate_random_string(self, length: int) -> str:
+        """Generate a random string of given length.
+
+        Args:
+            length: int. Length of the string to be generated.
+
+        Returns:
+            str. Generated string.
+        """
+        letters = string.ascii_letters
+        return (''.join(random.choice(letters) for _ in range(length))).lower()
+
+    def test_increment_question_stats_for_than_100_suggestions_accepted(
+        self) -> None:
+
+        for i in range(102):
+            skill_id = self._create_skill()
+            topic_id = topic_fetchers.get_new_topic_id()
+            self.save_new_topic(
+                topic_id, 'topic_admin', name='Topic %s' % (i),
+                abbreviated_name='topic-three-1',
+                url_fragment=self.generate_random_string(20),
+                description='Description',
+                canonical_story_ids=[],
+                additional_story_ids=[],
+                uncategorized_skill_ids=[skill_id],
+                subtopics=[], next_subtopic_id=i)
+            suggestion = self._create_question_suggestion(skill_id)
+            suggestion_services.update_question_contribution_stats_at_submission( # pylint: disable=line-too-long
+                suggestion_services.get_suggestion_by_id(
+                    suggestion.suggestion_id
+                )
+            )
+            suggestion_services.accept_suggestion(
+                suggestion.suggestion_id, self.reviewer_id, 'Accepted',
+                'Accepted')
+            suggestion_services.update_question_review_stats(
+                suggestion_services.get_suggestion_by_id(
+                    suggestion.suggestion_id)
+            )
+
+        updated_question_submitter_total_stats_model = (
+            suggestion_models.QuestionSubmitterTotalContributionStatsModel
+            .get_by_id(self.author_id)
+        )
+
+        self.assertEqual(
+            len(
+                updated_question_submitter_total_stats_model
+                .recent_review_outcomes),
+            100
+        )
+
+        new_skill_id = self._create_skill()
+        new_topic_id = topic_fetchers.get_new_topic_id()
+        self.save_new_topic(
+            new_topic_id, 'topic_admin', name='New Topic Rejected',
+            abbreviated_name='topic-three-1',
+            url_fragment=self.generate_random_string(20),
+            description='Description',
+            canonical_story_ids=[],
+            additional_story_ids=[],
+            uncategorized_skill_ids=[new_skill_id],
+            subtopics=[], next_subtopic_id=102)
+        latest_suggestion = self._create_question_suggestion(new_skill_id)
+        suggestion_services.update_question_contribution_stats_at_submission(
+            suggestion_services.get_suggestion_by_id(
+                latest_suggestion.suggestion_id
+            )
+        )
+        suggestion_services.reject_suggestion(
+            latest_suggestion.suggestion_id, self.reviewer_id, 'Rejected')
+
+        suggestion_services.update_question_review_stats(
+            suggestion_services.get_suggestion_by_id(
+                latest_suggestion.suggestion_id)
+        )
+
+        rejected_question_submitter_total_stats_model = (
+            suggestion_models.QuestionSubmitterTotalContributionStatsModel
+            .get_by_id(self.author_id)
+        )
+
+        self.assertEqual(
+            len(
+                rejected_question_submitter_total_stats_model
+                .recent_review_outcomes),
+            100
+        )
+
+        self.assertEqual(
+            rejected_question_submitter_total_stats_model
+            .recent_review_outcomes[99],
+            suggestion_models.REVIEW_OUTCOME_REJECTED
+        )
+
+    def test_increment_question_stats_for_than_100_suggestions_rejected(
+        self) -> None:
+
+        for i in range(102):
+            skill_id = self._create_skill()
+            topic_id = topic_fetchers.get_new_topic_id()
+            self.save_new_topic(
+                topic_id, 'topic_admin', name='Topic %s' % (i),
+                abbreviated_name='topic-three-1',
+                url_fragment=self.generate_random_string(20),
+                description='Description',
+                canonical_story_ids=[],
+                additional_story_ids=[],
+                uncategorized_skill_ids=[skill_id],
+                subtopics=[], next_subtopic_id=i)
+            suggestion = self._create_question_suggestion(skill_id)
+            suggestion_services.update_question_contribution_stats_at_submission( # pylint: disable=line-too-long
+                suggestion_services.get_suggestion_by_id(
+                    suggestion.suggestion_id
+                )
+            )
+            suggestion_services.reject_suggestion(
+                suggestion.suggestion_id, self.reviewer_id, 'Rejected')
+            suggestion_services.update_question_review_stats(
+                suggestion_services.get_suggestion_by_id(
+                    suggestion.suggestion_id)
+            )
+
+        updated_question_submitter_total_stats_model = (
+            suggestion_models.QuestionSubmitterTotalContributionStatsModel
+            .get_by_id(self.author_id)
+        )
+
+        self.assertEqual(
+            len(
+                updated_question_submitter_total_stats_model
+                .recent_review_outcomes),
+            100
+        )
+
+        new_skill_id = self._create_skill()
+        new_topic_id = topic_fetchers.get_new_topic_id()
+        self.save_new_topic(
+            new_topic_id, 'topic_admin', name='New Topic Rejected',
+            abbreviated_name='topic-three-1',
+            url_fragment=self.generate_random_string(20),
+            description='Description',
+            canonical_story_ids=[],
+            additional_story_ids=[],
+            uncategorized_skill_ids=[new_skill_id],
+            subtopics=[], next_subtopic_id=102)
+        latest_suggestion = self._create_question_suggestion(new_skill_id)
+        suggestion_services.update_question_contribution_stats_at_submission(
+            suggestion_services.get_suggestion_by_id(
+                latest_suggestion.suggestion_id
+            )
+        )
+        suggestion_services.accept_suggestion(
+            latest_suggestion.suggestion_id, self.reviewer_id, 'Accepted',
+            'Accepted')
+        suggestion_services.update_question_review_stats(
+            suggestion_services.get_suggestion_by_id(
+                latest_suggestion.suggestion_id)
+        )
+
+        accepted_question_submitter_total_stats_model = (
+            suggestion_models.QuestionSubmitterTotalContributionStatsModel
+            .get_by_id(self.author_id)
+        )
+
+        self.assertEqual(
+            len(
+                accepted_question_submitter_total_stats_model
+                .recent_review_outcomes),
+            100
+        )
+
+        self.assertEqual(
+            accepted_question_submitter_total_stats_model
+            .recent_review_outcomes[99],
+            suggestion_models.REVIEW_OUTCOME_ACCEPTED
+        )
+
     def test_create_and_reject_suggestion(self) -> None:
         with self.swap(
             feedback_models.GeneralFeedbackThreadModel,
@@ -3222,7 +4390,7 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
                 feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
                 feconf.ENTITY_TYPE_EXPLORATION,
                 self.EXP_ID, self.target_version_at_submission,
-                self.author_id, self.change, 'test description')
+                self.author_id, self.change_cmd, 'test description')
 
         suggestion_id = self.THREAD_ID
 
@@ -3249,7 +4417,7 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
                 feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
                 feconf.ENTITY_TYPE_EXPLORATION,
                 self.EXP_ID, self.target_version_at_submission,
-                self.author_id, self.change, 'test description')
+                self.author_id, self.change_cmd, 'test description')
 
         suggestion_id = self.THREAD_ID
 
@@ -3270,9 +4438,31 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
         suggestion = suggestion_services.get_suggestion_by_id(suggestion_id)
         self.assertEqual(suggestion.status, suggestion_models.STATUS_ACCEPTED)
 
+    def test_auto_reject_translation_suggestions_for_content_ids(self) -> None:
+        with self.swap(
+            feedback_models.GeneralFeedbackThreadModel,
+            'generate_new_thread_id', self.mock_generate_new_thread_id):
+            self.create_translation_suggestion_associated_with_exp(
+                self.EXP_ID, self.author_id)
+        suggestion_id = self.THREAD_ID
+
+        suggestion_services.auto_reject_translation_suggestions_for_content_ids(
+            self.EXP_ID, {'content_0'})
+
+        thread_messages = feedback_services.get_messages(self.THREAD_ID)
+        last_message = thread_messages[len(thread_messages) - 1]
+        self.assertEqual(
+            last_message.text,
+            constants.OBSOLETE_TRANSLATION_SUGGESTION_REVIEW_MSG)
+        suggestion = suggestion_services.get_suggestion_by_id(suggestion_id)
+        self.assertEqual(
+            suggestion.final_reviewer_id, feconf.SUGGESTION_BOT_USER_ID)
+        self.assertEqual(suggestion.status, suggestion_models.STATUS_REJECTED)
+
     def test_delete_skill_rejects_question_suggestion(self) -> None:
         skill_id = skill_services.get_new_skill_id()
         self.save_new_skill(skill_id, self.author_id, description='description')
+        content_id_generator = translation_domain.ContentIdGenerator()
         suggestion_change: Dict[
             str, Union[str, float, question_domain.QuestionDict]
         ] = {
@@ -3283,12 +4473,14 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
                 'id': 'test_id',
                 'version': 12,
                 'question_state_data': self._create_valid_question_data(
-                    'default_state').to_dict(),
+                    'default_state', content_id_generator).to_dict(),
                 'language_code': 'en',
                 'question_state_data_schema_version': (
                     feconf.CURRENT_STATE_SCHEMA_VERSION),
                 'linked_skill_ids': ['skill_1'],
-                'inapplicable_skill_misconception_ids': ['skillid12345-1']
+                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index)
             },
             'skill_id': skill_id,
             'skill_difficulty': 0.3
@@ -3336,22 +4528,22 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
         self.assertEqual(
             suggestions[0].status, suggestion_models.STATUS_REJECTED)
 
-    def test_remove_exp_from_story_rejects_translation_suggestion(self) -> None:
+    def test_swap_exp_from_story_rejects_translation_suggestion(self) -> None:
         self.create_translation_suggestion_associated_with_exp(
             self.EXP_ID, self.author_id)
         self.assert_created_suggestion_is_valid(self.EXP_ID, self.author_id)
 
-        # Removes the exploration from the story.
+        # Swaps the exploration from the story.
         story_services.update_story(
             self.owner_id, self.STORY_ID, [story_domain.StoryChange({
                 'cmd': 'update_story_node_property',
                 'property_name': 'exploration_id',
                 'node_id': 'node_1',
                 'old_value': self.EXP_ID,
-                'new_value': None
-            })], 'Removed exploration.')
+                'new_value': 'another_exp_id'
+            })], 'Changed exploration.')
 
-        # Suggestion should be rejected after exploration is removed from the
+        # Suggestion should be rejected after exploration is swapped in the
         # story.
         suggestions = suggestion_services.query_suggestions(
             [('author_id', self.author_id), ('target_id', self.EXP_ID)])
@@ -3367,7 +4559,7 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
         add_translation_change_dict = {
             'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
             'state_name': state_name,
-            'content_id': 'content',
+            'content_id': exploration.states[state_name].content.content_id,
             'language_code': 'hi',
             'content_html': exploration.states[state_name].content.html,
             'translation_html': '<p>This is translated html.</p>',
@@ -3391,39 +4583,18 @@ class SuggestionIntegrationTests(test_utils.GenericTestBase):
 
         # Should return the created translation suggestion.
         filtered_translatable_suggestions = (
-            suggestion_services.get_suggestions_with_translatable_explorations(
+            suggestion_services.get_suggestions_with_editable_explorations(
                 translatable_suggestions
             )
         )
         self.assertEqual(len(filtered_translatable_suggestions), 1)
 
-        # Delete the exploration state corresponding to the translation
-        # suggestion.
-        init_state = exploration.states[exploration.init_state_name]
-        outcome_object = init_state.interaction.default_outcome
-        # Ruling out the possibility of None for mypy type checking.
-        assert outcome_object is not None
-        default_outcome_dict = outcome_object.to_dict()
-        default_outcome_dict['dest'] = 'End State'
-        exp_services.update_exploration(
-            self.owner_id, self.EXP_ID, [
-                exp_domain.ExplorationChange({
-                    'cmd': exp_domain.CMD_EDIT_STATE_PROPERTY,
-                    'property_name': (
-                        exp_domain.STATE_PROPERTY_INTERACTION_DEFAULT_OUTCOME),
-                    'state_name': exploration.init_state_name,
-                    'new_value': default_outcome_dict
-                }),
-                exp_domain.ExplorationChange({
-                    'cmd': exp_domain.CMD_DELETE_STATE,
-                    'state_name': state_name,
-                }),
-            ], 'delete state')
+        # Disable exploration editing.
+        exp_services.set_exploration_edits_allowed(self.EXP_ID, False)
 
-        # The suggestion no longer corresponds to an existing exploration state,
-        # so it should not be returned.
+        # Should not return the created translation suggestion.
         filtered_translatable_suggestions = (
-            suggestion_services.get_suggestions_with_translatable_explorations(
+            suggestion_services.get_suggestions_with_editable_explorations(
                 translatable_suggestions
             )
         )
@@ -3514,9 +4685,9 @@ class ReviewableSuggestionEmailInfoUnitTests(
         add_translation_change_dict = {
             'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
             'state_name': feconf.DEFAULT_INIT_STATE_NAME,
-            'content_id': feconf.DEFAULT_NEW_STATE_CONTENT_ID,
+            'content_id': 'content_0',
             'language_code': self.language_code,
-            'content_html': feconf.DEFAULT_INIT_STATE_CONTENT_STR,
+            'content_html': feconf.DEFAULT_STATE_CONTENT_STR,
             'translation_html': translation_html,
             'data_format': 'html'
         }
@@ -3536,7 +4707,8 @@ class ReviewableSuggestionEmailInfoUnitTests(
         question in the question suggestion.
         """
         with self.swap(
-            feconf, 'DEFAULT_INIT_STATE_CONTENT_STR', question_html_content):
+            feconf, 'DEFAULT_STATE_CONTENT_STR', question_html_content):
+            content_id_generator = translation_domain.ContentIdGenerator()
             add_question_change_dict: Dict[
                 str, Union[str, float, question_domain.QuestionDict]
             ] = {
@@ -3547,12 +4719,14 @@ class ReviewableSuggestionEmailInfoUnitTests(
                     'id': 'test_id',
                     'version': 12,
                     'question_state_data': self._create_valid_question_data(
-                        'default_state').to_dict(),
+                        'default_state', content_id_generator).to_dict(),
                     'language_code': self.language_code,
                     'question_state_data_schema_version': (
                         feconf.CURRENT_STATE_SCHEMA_VERSION),
                     'linked_skill_ids': ['skill_1'],
-                    'inapplicable_skill_misconception_ids': ['skillid12345-1']
+                    'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                    'next_content_id_index': (
+                        content_id_generator.next_content_id_index)
                 },
                 'skill_id': self.skill_id,
                 'skill_difficulty': 0.3
@@ -3578,11 +4752,11 @@ class ReviewableSuggestionEmailInfoUnitTests(
             'property_name': exp_domain.STATE_PROPERTY_CONTENT,
             'state_name': 'Introduction',
             'new_value': {
-                'content_id': 'content',
+                'content_id': 'content_0',
                 'html': 'new html content'
             },
             'old_value': {
-                'content_id': 'content',
+                'content_id': 'content_0',
                 'html': 'old html content'
             }
         }
@@ -4218,6 +5392,7 @@ class GetSuggestionsWaitingForReviewInfoToNotifyReviewersUnitTests(
     """
 
     target_id: str = 'exp1'
+    skill_id: str = 'skill_123456'
     language_code: str = 'en'
     AUTHOR_EMAIL: Final = 'author1@example.com'
     REVIEWER_1_EMAIL: Final = 'reviewer1@community.org'
@@ -4233,9 +5408,9 @@ class GetSuggestionsWaitingForReviewInfoToNotifyReviewersUnitTests(
         add_translation_change_dict = {
             'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
             'state_name': feconf.DEFAULT_INIT_STATE_NAME,
-            'content_id': feconf.DEFAULT_NEW_STATE_CONTENT_ID,
+            'content_id': 'content_0',
             'language_code': language_code,
-            'content_html': feconf.DEFAULT_INIT_STATE_CONTENT_STR,
+            'content_html': feconf.DEFAULT_STATE_CONTENT_STR,
             'translation_html': '<p>This is the translated content.</p>',
             'data_format': 'html'
         }
@@ -4252,6 +5427,7 @@ class GetSuggestionsWaitingForReviewInfoToNotifyReviewersUnitTests(
         self, skill_id: str, author_id: str
     ) -> suggestion_registry.SuggestionAddQuestion:
         """Creates a question suggestion with the given skill_id."""
+        content_id_generator = translation_domain.ContentIdGenerator()
         add_question_change_dict: Dict[
             str, Union[str, float, question_domain.QuestionDict]
         ] = {
@@ -4260,12 +5436,14 @@ class GetSuggestionsWaitingForReviewInfoToNotifyReviewersUnitTests(
                 'id': 'test_id',
                 'version': 12,
                 'question_state_data': self._create_valid_question_data(
-                    'default_state').to_dict(),
+                    'default_state', content_id_generator).to_dict(),
                 'language_code': self.language_code,
                 'question_state_data_schema_version': (
                     feconf.CURRENT_STATE_SCHEMA_VERSION),
                 'linked_skill_ids': ['skill_1'],
-                'inapplicable_skill_misconception_ids': ['skillid12345-1']
+                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index)
             },
             'skill_id': skill_id,
             'skill_difficulty': 0.3
@@ -4340,14 +5518,36 @@ class GetSuggestionsWaitingForReviewInfoToNotifyReviewersUnitTests(
     def setUp(self) -> None:
         super().setUp()
         self.signup(self.AUTHOR_EMAIL, 'author')
-        self.author_id = self.get_user_id_from_email(self.AUTHOR_EMAIL)
+        self.author_id = self.get_user_id_from_email(
+            self.AUTHOR_EMAIL)
         self.signup(self.REVIEWER_1_EMAIL, 'reviewer1')
         self.reviewer_1_id = self.get_user_id_from_email(
             self.REVIEWER_1_EMAIL)
         self.signup(self.REVIEWER_2_EMAIL, 'reviewer2')
         self.reviewer_2_id = self.get_user_id_from_email(
             self.REVIEWER_2_EMAIL)
-        self.save_new_valid_exploration(self.target_id, self.author_id)
+        exploration = self.save_new_valid_exploration(
+            self.target_id, self.author_id)
+        audio_language_codes = set(
+            language['id'] for language in constants.SUPPORTED_AUDIO_LANGUAGES)
+        model = opportunity_models.ExplorationOpportunitySummaryModel(
+            id=exploration.id,
+            topic_id='topic_id',
+            topic_name='topic_name',
+            story_id='story_id',
+            story_title='story_title',
+            chapter_title='chapter_title',
+            content_count=2,
+            incomplete_translation_language_codes=(
+                audio_language_codes - set(['en'])),
+            translation_counts={},
+            language_codes_needing_voice_artists=audio_language_codes,
+            language_codes_with_assigned_voice_artists=[]
+        )
+        model.update_timestamps()
+        model.put()
+
+        self.save_new_skill(self.skill_id, self.author_id)
 
     def test_get_returns_empty_for_reviewers_who_authored_the_suggestions(
         self
@@ -4862,9 +6062,9 @@ class CommunityContributionStatsUnitTests(test_utils.GenericTestBase):
         add_translation_change_dict = {
             'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
             'state_name': feconf.DEFAULT_INIT_STATE_NAME,
-            'content_id': feconf.DEFAULT_NEW_STATE_CONTENT_ID,
+            'content_id': 'content_0',
             'language_code': language_code,
-            'content_html': feconf.DEFAULT_INIT_STATE_CONTENT_STR,
+            'content_html': feconf.DEFAULT_STATE_CONTENT_STR,
             'translation_html': '<p>This is the translated content.</p>',
             'data_format': 'html'
         }
@@ -4881,6 +6081,7 @@ class CommunityContributionStatsUnitTests(test_utils.GenericTestBase):
         self
     ) -> suggestion_registry.SuggestionAddQuestion:
         """Creates a question suggestion."""
+        content_id_generator = translation_domain.ContentIdGenerator()
         add_question_change_dict: Dict[
             str, Union[str, float, question_domain.QuestionDict]
         ] = {
@@ -4889,12 +6090,14 @@ class CommunityContributionStatsUnitTests(test_utils.GenericTestBase):
                 'id': 'test_id',
                 'version': 12,
                 'question_state_data': self._create_valid_question_data(
-                    'default_state').to_dict(),
+                    'default_state', content_id_generator).to_dict(),
                 'language_code': self.language_code,
                 'question_state_data_schema_version': (
                     feconf.CURRENT_STATE_SCHEMA_VERSION),
                 'linked_skill_ids': ['skill_1'],
-                'inapplicable_skill_misconception_ids': ['skillid12345-1']
+                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index)
             },
             'skill_id': self.skill_id,
             'skill_difficulty': 0.3
@@ -4920,11 +6123,11 @@ class CommunityContributionStatsUnitTests(test_utils.GenericTestBase):
             'property_name': exp_domain.STATE_PROPERTY_CONTENT,
             'state_name': 'Introduction',
             'new_value': {
-                'content_id': 'content',
+                'content_id': 'content_0',
                 'html': 'new html content'
             },
             'old_value': {
-                'content_id': 'content',
+                'content_id': 'content_0',
                 'html': 'old html content'
             }
         }
@@ -4968,7 +6171,27 @@ class CommunityContributionStatsUnitTests(test_utils.GenericTestBase):
         self.signup(self.REVIEWER_EMAIL, 'reviewer')
         self.reviewer_id = self.get_user_id_from_email(
             self.REVIEWER_EMAIL)
-        self.save_new_valid_exploration(self.target_id, self.author_id)
+        exploration = self.save_new_valid_exploration(
+            self.target_id, self.author_id)
+        audio_language_codes = set(
+            language['id'] for language in constants.SUPPORTED_AUDIO_LANGUAGES)
+        model = opportunity_models.ExplorationOpportunitySummaryModel(
+            id=exploration.id,
+            topic_id='topic_id',
+            topic_name='topic_name',
+            story_id='story_id',
+            story_title='story_title',
+            chapter_title='chapter_title',
+            content_count=2,
+            incomplete_translation_language_codes=(
+                audio_language_codes - set(['en'])),
+            translation_counts={},
+            language_codes_needing_voice_artists=audio_language_codes,
+            language_codes_with_assigned_voice_artists=[]
+        )
+        model.update_timestamps()
+        model.put()
+
         self.save_new_skill(self.skill_id, self.author_id)
 
     def test_create_edit_state_content_suggestion_does_not_change_the_counts(
@@ -5032,7 +6255,7 @@ class CommunityContributionStatsUnitTests(test_utils.GenericTestBase):
         self._assert_community_contribution_stats_is_in_default_state()
         # Change the new_value of the html of the suggestion that got rejected
         # so we can resubmit the suggestion for review.
-        resubmit_suggestion_change = edit_state_content_suggestion.change
+        resubmit_suggestion_change = edit_state_content_suggestion.change_cmd
         # Ruling out the possibility of any other type for mypy type checking.
         assert isinstance(resubmit_suggestion_change.new_value, dict)
         resubmit_suggestion_change.new_value['html'] = 'new html to resubmit'
@@ -5152,7 +6375,7 @@ class CommunityContributionStatsUnitTests(test_utils.GenericTestBase):
         self._assert_community_contribution_stats_is_in_default_state()
         # Change the question_dict of the question suggestion that got rejected
         # so we can resubmit the suggestion for review.
-        resubmit_question_change = question_suggestion.change
+        resubmit_question_change = question_suggestion.change_cmd
         # Ruling out the possibility of any other type for mypy type checking.
         assert isinstance(resubmit_question_change.question_dict, dict)
         resubmit_question_change.question_dict['linked_skill_ids'] = ['skill1']
@@ -5233,7 +6456,7 @@ class CommunityContributionStatsUnitTests(test_utils.GenericTestBase):
 
         suggestion_services.accept_suggestion(
             translation_suggestion.suggestion_id, self.reviewer_id,
-            self.COMMIT_MESSAGE, 'review message')
+                self.COMMIT_MESSAGE, 'review message')
 
         self._assert_community_contribution_stats_is_in_default_state()
 
@@ -5413,9 +6636,9 @@ class GetSuggestionsWaitingTooLongForReviewInfoForAdminsUnitTests(
         add_translation_change_dict = {
             'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
             'state_name': feconf.DEFAULT_INIT_STATE_NAME,
-            'content_id': feconf.DEFAULT_NEW_STATE_CONTENT_ID,
+            'content_id': 'content_0',
             'language_code': self.language_code,
-            'content_html': feconf.DEFAULT_INIT_STATE_CONTENT_STR,
+            'content_html': feconf.DEFAULT_STATE_CONTENT_STR,
             'translation_html': '<p>This is the translated content.</p>',
             'data_format': 'html'
         }
@@ -5432,6 +6655,7 @@ class GetSuggestionsWaitingTooLongForReviewInfoForAdminsUnitTests(
         self
     ) -> suggestion_registry.SuggestionAddQuestion:
         """Creates a question suggestion."""
+        content_id_generator = translation_domain.ContentIdGenerator()
         add_question_change_dict: Dict[
             str, Union[str, float, question_domain.QuestionDict]
         ] = {
@@ -5440,12 +6664,14 @@ class GetSuggestionsWaitingTooLongForReviewInfoForAdminsUnitTests(
                 'id': 'test_id',
                 'version': 12,
                 'question_state_data': self._create_valid_question_data(
-                    'default_state').to_dict(),
+                    'default_state', content_id_generator).to_dict(),
                 'language_code': self.language_code,
                 'question_state_data_schema_version': (
                     feconf.CURRENT_STATE_SCHEMA_VERSION),
                 'linked_skill_ids': ['skill_1'],
-                'inapplicable_skill_misconception_ids': ['skillid12345-1']
+                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index)
             },
             'skill_id': self.skill_id,
             'skill_difficulty': 0.3
@@ -5593,6 +6819,39 @@ class GetSuggestionsWaitingTooLongForReviewInfoForAdminsUnitTests(
         self.assertEqual(
             len(info_about_suggestions_waiting_too_long_for_review), 0)
 
+    def test_get_new_suggestions_for_reviewer_notifications_past_threshold(
+        self) -> None:
+        max_suggestions = 3
+        threshold_days = 2
+        creation_time = datetime.datetime(2020, 6, 14, 5)
+        creation_time_in_millisecs = int(creation_time.timestamp() * 1000)
+        mock_value = creation_time_in_millisecs
+
+        mock_get_current_time_in_millisecs = lambda: mock_value
+
+        with self.swap(
+            utils, 'get_current_time_in_millisecs',
+            mock_get_current_time_in_millisecs):
+            with self.mock_datetime_utcnow(self.mocked_datetime_utcnow):
+
+                # Create and save new suggestion models.
+                suggestions = []
+                for _ in range(1, max_suggestions + 1):
+                    suggestion = self._create_translation_suggestion()
+                    suggestions.append(suggestion)
+
+                # Set the review wait time threshold.
+                with self.swap(
+                    suggestion_models,
+                    'SUGGESTION_REVIEW_WAIT_TIME_THRESHOLD_IN_DAYS',
+                    threshold_days):
+                    suggestion_info = (
+                        suggestion_services.
+                            get_new_suggestions_for_reviewer_notifications())
+
+                # Assert that the correct number of suggestions is returned.
+                self.assertEqual(len(suggestion_info), 3)
+
     def test_get_returns_empty_if_suggestions_have_waited_threshold_review_time(
         self
     ) -> None:
@@ -5708,9 +6967,9 @@ class GetSuggestionTypesThatNeedReviewersUnitTests(test_utils.GenericTestBase):
         add_translation_change_dict = {
             'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
             'state_name': feconf.DEFAULT_INIT_STATE_NAME,
-            'content_id': feconf.DEFAULT_NEW_STATE_CONTENT_ID,
+            'content_id': 'content_0',
             'language_code': language_code,
-            'content_html': feconf.DEFAULT_INIT_STATE_CONTENT_STR,
+            'content_html': feconf.DEFAULT_STATE_CONTENT_STR,
             'translation_html': '<p>This is the translated content.</p>',
             'data_format': 'html'
         }
@@ -5727,6 +6986,7 @@ class GetSuggestionTypesThatNeedReviewersUnitTests(test_utils.GenericTestBase):
         self
     ) -> suggestion_registry.SuggestionAddQuestion:
         """Creates a question suggestion."""
+        content_id_generator = translation_domain.ContentIdGenerator()
         add_question_change_dict: Dict[
             str, Union[str, float, question_domain.QuestionDict]
         ] = {
@@ -5735,12 +6995,14 @@ class GetSuggestionTypesThatNeedReviewersUnitTests(test_utils.GenericTestBase):
                 'id': 'test_id',
                 'version': 12,
                 'question_state_data': self._create_valid_question_data(
-                    'default_state').to_dict(),
+                    'default_state', content_id_generator).to_dict(),
                 'language_code': constants.DEFAULT_LANGUAGE_CODE,
                 'question_state_data_schema_version': (
                     feconf.CURRENT_STATE_SCHEMA_VERSION),
                 'linked_skill_ids': ['skill_1'],
-                'inapplicable_skill_misconception_ids': ['skillid12345-1']
+                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index)
             },
             'skill_id': self.skill_id,
             'skill_difficulty': 0.3
@@ -6048,4 +7310,380 @@ class EmailsTaskqueueTests(test_utils.GenericTestBase):
                 user_id, feconf.CONTRIBUTION_TYPE_TRANSLATION,
                 'test', 'hi',
                 'Initial Contributor'
+            )
+
+
+class ContributorCertificateTests(test_utils.GenericTestBase):
+    """Tests for contributor certificate generation."""
+
+    AUTHOR_EMAIL: Final = 'author@example.com'
+
+    def setUp(self) -> None:
+        super().setUp()
+
+        self.signup(self.AUTHOR_EMAIL, 'author')
+        self.author_id = self.get_user_id_from_email(self.AUTHOR_EMAIL)
+        self.username = user_services.get_username(self.author_id)
+        self.from_date = datetime.datetime.today() - datetime.timedelta(days=1)
+        self.to_date = datetime.datetime.today() + datetime.timedelta(days=1)
+
+    def _get_change_with_normalized_string(self) -> Mapping[
+        str, change_domain.AcceptableChangeDictTypes]:
+        """Provides change_cmd dictionary with normalized translation html.
+
+        Returns:
+            Mapping[str, change_domain.AcceptableChangeDictTypes]. A dictionary
+            of the change_cmd object for the translations.
+        """
+        return {
+            'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
+            'content_id': 'content_0',
+            'language_code': 'hi',
+            'content_html': '<p>A content to translate.</p>',
+            'state_name': 'Introduction',
+            'translation_html': ['translated text1', 'translated text2'],
+            'data_format': 'set_of_normalized_string'
+        }
+
+    def _calculate_translation_contribution_hours(
+        self, numer_of_words: int
+    ) -> str:
+        """Provides translatoin contribution hours when number of translated
+        words are provided. We calculate the time taken to translate
+        a word according to the following document.
+        https://docs.google.com/spreadsheets/d/1ykSNwPLZ5qTCkuO21VLdtm_2SjJ5QJ0z0PlVjjSB4ZQ/edit#gid=0
+
+        Args:
+            numer_of_words: int. The number of translated words.
+
+        Returns:
+            str. A string that represent the translatoin contribution hours.
+        """
+        return str(round(numer_of_words / 300, 2))
+
+    def _calculate_question_contribution_hours(
+        self, images_included: bool
+    ) -> str:
+        """Provides question contribution hours when number of questions
+        are provided. We calculate the time taken to submit
+        a question according to the following document.
+        https://docs.google.com/spreadsheets/d/1ykSNwPLZ5qTCkuO21VLdtm_2SjJ5QJ0z0PlVjjSB4ZQ/edit#gid=0
+
+        Args:
+            images_included: bool. A flag that says whether the question
+                contains images.
+
+        Returns:
+            str. A string that represent the question contribution hours.
+        """
+        minutes_contributed = 0
+
+        if images_included:
+            minutes_contributed += 20
+        else:
+            minutes_contributed += 12
+        return str(round(minutes_contributed / 60, 2))
+
+    def test_create_translation_contributor_certificate(self) -> None:
+        score_category: str = ('%s%sEnglish' % (
+            suggestion_models.SCORE_TYPE_TRANSLATION,
+            suggestion_models.SCORE_CATEGORY_DELIMITER)
+        )
+        change_cmd = {
+            'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
+            'content_id': 'content',
+            'language_code': 'hi',
+            'content_html': '',
+            'state_name': 'Introduction',
+            'translation_html': '<p>Translation for content.</p>',
+            'data_format': 'html'
+        }
+        suggestion_models.GeneralSuggestionModel.create(
+            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+            feconf.ENTITY_TYPE_EXPLORATION,
+            'exp1', 1, suggestion_models.STATUS_ACCEPTED, self.author_id,
+            'reviewer_1', change_cmd, score_category,
+            'exploration.exp1.thread_6', 'hi')
+
+        certificate_data = (
+            suggestion_services.generate_contributor_certificate_data(
+                self.username,
+                feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+                'hi',
+                self.from_date,
+                self.to_date,
+            ))
+
+        # Ruling out the possibility of None for mypy type checking.
+        assert certificate_data is not None
+
+        self.assertEqual(
+            certificate_data['contribution_hours'],
+            self._calculate_translation_contribution_hours(3)
+        )
+        self.assertEqual(certificate_data['language'], 'Hindi')
+
+    def test_create_translation_contributor_certificate_for_rule_translation(
+        self
+    ) -> None:
+        score_category: str = '%s%sEnglish' % (
+            suggestion_models.SCORE_TYPE_TRANSLATION,
+            suggestion_models.SCORE_CATEGORY_DELIMITER
+        )
+
+        change_cmd = self._get_change_with_normalized_string()
+        suggestion_models.GeneralSuggestionModel.create(
+            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+            feconf.ENTITY_TYPE_EXPLORATION,
+            'exp1', 1, suggestion_models.STATUS_ACCEPTED, self.author_id,
+            'reviewer_1', change_cmd, score_category,
+            'exploration.exp1.thread_6', 'hi')
+
+        certificate_data = (
+            suggestion_services.generate_contributor_certificate_data(
+                self.username,
+                feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+                'hi',
+                self.from_date,
+                self.to_date,
+            ))
+
+        # Ruling out the possibility of None for mypy type checking.
+        assert certificate_data is not None
+
+        self.assertEqual(
+            certificate_data['contribution_hours'],
+            self._calculate_translation_contribution_hours(4)
+        )
+        self.assertEqual(certificate_data['language'], 'Hindi')
+
+    def test_create_translation_contributor_certificate_for_english(
+        self
+    ) -> None:
+        score_category: str = '%s%sEnglish' % (
+            suggestion_models.SCORE_TYPE_TRANSLATION,
+            suggestion_models.SCORE_CATEGORY_DELIMITER
+        )
+
+        change_cmd = {
+            'cmd': exp_domain.CMD_ADD_WRITTEN_TRANSLATION,
+            'content_id': 'content',
+            'language_code': 'en',
+            'content_html': '',
+            'state_name': 'Introduction',
+            'translation_html': '<p>Translation for content.</p>',
+            'data_format': 'html'
+        }
+        suggestion_models.GeneralSuggestionModel.create(
+            feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+            feconf.ENTITY_TYPE_EXPLORATION,
+            'exp1', 1, suggestion_models.STATUS_ACCEPTED, self.author_id,
+            'reviewer_1', change_cmd, score_category,
+            'exploration.exp1.thread_6', 'en')
+
+        certificate_data = (
+            suggestion_services.generate_contributor_certificate_data(
+                self.username,
+                feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+                'en',
+                self.from_date,
+                self.to_date,
+            ))
+
+        # Ruling out the possibility of None for mypy type checking.
+        assert certificate_data is not None
+
+        self.assertEqual(
+            certificate_data['contribution_hours'],
+            self._calculate_translation_contribution_hours(3)
+        )
+        self.assertEqual(certificate_data['language'], 'English')
+
+    def test_create_question_contributor_certificate(self) -> None:
+        content_id_generator = translation_domain.ContentIdGenerator()
+        suggestion_change: Dict[
+            str, Union[str, float, question_domain.QuestionDict]
+        ] = {
+            'cmd': (
+                question_domain
+                .CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION),
+            'question_dict': {
+                'id': 'test_id',
+                'version': 12,
+                'question_state_data': self._create_valid_question_data(
+                    'default_state', content_id_generator).to_dict(),
+                'language_code': 'en',
+                'question_state_data_schema_version': (
+                    feconf.CURRENT_STATE_SCHEMA_VERSION),
+                'linked_skill_ids': ['skill_1'],
+                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index)
+            },
+            'skill_id': 1,
+            'skill_difficulty': 0.3
+        }
+        # Ruling out the possibility of any other type for mypy type checking.
+        assert isinstance(suggestion_change['question_dict'], dict)
+        test_question_dict: question_domain.QuestionDict = (
+            suggestion_change['question_dict']
+        )
+
+        question_state_data = test_question_dict['question_state_data']
+        question_state_data['content']['html'] = '<p>No image content</p>'
+        suggestion_models.GeneralSuggestionModel.create(
+            feconf.SUGGESTION_TYPE_ADD_QUESTION,
+            feconf.ENTITY_TYPE_SKILL,
+            'skill_1', 1,
+            suggestion_models.STATUS_ACCEPTED, self.author_id,
+            'reviewer_2', suggestion_change, 'category1',
+            'thread_1', 'en')
+
+        certificate_data = (
+            suggestion_services.generate_contributor_certificate_data(
+                self.username,
+                feconf.SUGGESTION_TYPE_ADD_QUESTION,
+                None,
+                self.from_date,
+                self.to_date,
+            ))
+
+        # Ruling out the possibility of None for mypy type checking.
+        assert certificate_data is not None
+
+        self.assertEqual(
+            certificate_data['contribution_hours'],
+            self._calculate_question_contribution_hours(False)
+        )
+
+    def test_create_question_contributor_certificate_with_image_content(
+        self
+    ) -> None:
+        content_id_generator = translation_domain.ContentIdGenerator()
+        suggestion_change: Dict[
+            str, Union[str, float, question_domain.QuestionDict]
+        ] = {
+            'cmd': (
+                question_domain
+                .CMD_CREATE_NEW_FULLY_SPECIFIED_QUESTION),
+            'question_dict': {
+                'id': 'test_id',
+                'version': 12,
+                'question_state_data': self._create_valid_question_data(
+                    'default_state', content_id_generator).to_dict(),
+                'language_code': 'en',
+                'question_state_data_schema_version': (
+                    feconf.CURRENT_STATE_SCHEMA_VERSION),
+                'linked_skill_ids': ['skill_1'],
+                'inapplicable_skill_misconception_ids': ['skillid12345-1'],
+                'next_content_id_index': (
+                    content_id_generator.next_content_id_index)
+            },
+            'skill_id': 1,
+            'skill_difficulty': 0.3
+        }
+        # Ruling out the possibility of any other type for mypy type checking.
+        assert isinstance(suggestion_change['question_dict'], dict)
+        test_question_dict: question_domain.QuestionDict = (
+            suggestion_change['question_dict']
+        )
+
+        question_state_data = test_question_dict['question_state_data']
+        question_state_data['content']['html'] = (
+            '<oppia-noninteractive-image></oppia-noninteractive-image>')
+        suggestion_models.GeneralSuggestionModel.create(
+            feconf.SUGGESTION_TYPE_ADD_QUESTION,
+            feconf.ENTITY_TYPE_SKILL,
+            'skill_1', 1,
+            suggestion_models.STATUS_ACCEPTED, self.author_id,
+            'reviewer_2', suggestion_change, 'category1',
+            'thread_1', 'en')
+
+        certificate_data = (
+            suggestion_services.generate_contributor_certificate_data(
+                self.username,
+                feconf.SUGGESTION_TYPE_ADD_QUESTION,
+                None,
+                self.from_date,
+                self.to_date,
+            ))
+
+        # Ruling out the possibility of None for mypy type checking.
+        assert certificate_data is not None
+
+        self.assertEqual(
+            certificate_data['contribution_hours'],
+            self._calculate_question_contribution_hours(True)
+        )
+
+    def test_create_certificate_returns_none_for_no_translation_suggestions(
+        self
+    ) -> None:
+        certificate_data = (
+            suggestion_services.generate_contributor_certificate_data(
+                self.username,
+                feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+                'hi',
+                self.from_date,
+                self.to_date,
+            ))
+
+        self.assertIsNone(certificate_data)
+
+    def test_create_certificate_returns_none_for_no_question_suggestions(
+        self
+    ) -> None:
+        certificate_data = (
+            suggestion_services.generate_contributor_certificate_data(
+                self.username,
+                feconf.SUGGESTION_TYPE_ADD_QUESTION,
+                None,
+                self.from_date,
+                self.to_date,
+            ))
+
+        self.assertIsNone(certificate_data)
+
+    def test_create_contributor_certificate_raises_exception_for_wrong_language(
+        self
+    ) -> None:
+        with self.assertRaisesRegex(
+            Exception, 'The provided language is invalid.'
+        ):
+            suggestion_services.generate_contributor_certificate_data(
+                self.username,
+                feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+                'test',
+                self.from_date,
+                self.to_date,
+            )
+
+    def test_create_contributor_certificate_raises_exception_for_wrong_username(
+        self
+    ) -> None:
+        username = 'wrong_user'
+
+        with self.assertRaisesRegex(
+            Exception, 'There is no user for the given username.'
+        ):
+            suggestion_services.generate_contributor_certificate_data(
+                username,
+                feconf.SUGGESTION_TYPE_TRANSLATE_CONTENT,
+                'hi',
+                self.from_date,
+                self.to_date,
+            )
+
+    def test_create_contributor_certificate_raises_exception_for_wrong_type(
+        self
+    ) -> None:
+        with self.assertRaisesRegex(
+            Exception, 'The suggestion type is invalid.'
+        ):
+            suggestion_services.generate_contributor_certificate_data(
+                self.username,
+                feconf.SUGGESTION_TYPE_EDIT_STATE_CONTENT,
+                'test',
+                self.from_date,
+                self.to_date,
             )

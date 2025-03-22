@@ -19,34 +19,80 @@
 
 export default {
   // The term 'staging' is used instead of the classroom url fragment field
-  // in the URL for topics that are not yet attached to a classroom.
+  // in the URL and classroom name for topics that are not yet attached to a classroom.
   "CLASSROOM_URL_FRAGMENT_FOR_UNATTACHED_TOPICS": "staging",
+  "CLASSROOM_NAME_FOR_UNATTACHED_TOPICS": "staging",
 
   // Acceptable URL schemes for links.
   "ACCEPTABLE_SCHEMES": ["https", ""],
 
-  // The default classroom URL fragment to use when the provided classroom URL
-  // fragment in the controller is invalid.
-  "DEFAULT_CLASSROOM_URL_FRAGMENT": "math",
+  "FEATURED_TRANSLATION_LANGUAGES": [
+    {
+      "language_code": "pt",
+      "explanation": "For learners in Brazil, Angola and Mozambique."
+    },
+    {
+      "language_code": "ar",
+      // eslint-disable-next-line max-len
+      "explanation": "For learners in Arabic-speaking countries in the Middle East."
+    },
+    {
+      "language_code": "pcm",
+      "explanation": "For learners in Nigeria."
+    },
+    {
+      "language_code": "es",
+      "explanation": "For learners in Latin America and South America."
+    },
+    {
+      "language_code": "sw",
+      "explanation": "For learners in Kenya and Tanzania."
+    },
+    {
+      "language_code": "hi",
+      "explanation": "For learners in India"
+    },
+    {
+      "language_code": "ha",
+      "explanation": "For learners in Nigeria."
+    },
+    {
+      "language_code": "ig",
+      "explanation": "For learners in Nigeria."
+    },
+    {
+      "language_code": "yo",
+      "explanation": "For learners in Nigeria."
+    }],
+
+  "LIST_OF_DEFAULT_TAGS_FOR_BLOG_POST": [
+    "News", "International", "Educators", "Learners", "Community",
+    "Partnerships", "Volunteer", "Stories", "Languages", "New features",
+    "New lessons", "Software development", "Content", "Teacher story"],
 
   "ALL_CATEGORIES": ["Algebra", "Algorithms", "Architecture", "Arithmetic",
     "Art", "Astronomy", "Biology", "Business", "Calculus", "Chemistry",
     "Combinatorics", "Computing", "Economics", "Education", "Engineering",
-    "English", "Environment", "Gaulish", "Geography", "Geometry", "Government",
+    "English", "Environment", "Finance", "Gaulish", "Geography", "Geometry", "Government",
     "Graph Theory", "History", "Languages", "Latin", "Law", "Logic",
     "Mathematics", "Medicine", "Music", "Philosophy", "Physics", "Poetry",
-    "Probability", "Programming", "Puzzles", "Reading", "Spanish", "Sport",
+    "Probability", "Programming", "Puzzles", "Reading", "Science", "Spanish", "Sport",
     "Statistics", "Trigonometry", "Welcome"],
   "ACTIVITY_TYPE_EXPLORATION": "exploration",
+  "ACTIVITY_TYPE_EXPLORATION_TRANSLATIONS": "exp_translations",
   "ACTIVITY_TYPE_COLLECTION": "collection",
   "ACTIVITY_TYPE_STORY": "story",
+  "ACTIVITY_TYPE_SKILL": "skill",
+  "ACTIVITY_TYPE_SUBTOPIC": "subtopic",
   "ACTIVITY_TYPE_LEARN_TOPIC": "learntopic",
+  "ACTIVITY_TYPE_CLASSROOM": "classroom",
   "DISABLED_EXPLORATION_IDS": ["5"],
   "TESTING_CONSTANT": "test",
   "LIBRARY_TILE_WIDTH_PX": 208,
   "LIBRARY_MOBILE_TILE_WIDTH_PX": 350,
   "DASHBOARD_TYPE_CREATOR": "creator",
   "DASHBOARD_TYPE_LEARNER": "learner",
+  "DASHBOARD_TYPE_CONTRIBUTOR": "contributor",
   "DEFAULT_COLOR": "#a33f40",
   "DEFAULT_THUMBNAIL_ICON": "Lightbulb",
   "DEFAULT_CATEGORY_ICON": "Lightbulb",
@@ -66,12 +112,38 @@ export default {
     "IncreasingUpdatedOn": "Most Recently Updated",
     "DecreasingUpdatedOn": "Least Recently Updated"
   },
+  "TOPIC_SKILL_DASHBOARD_SORTING_OPTIONS": {
+    "IncreasingCreatedOn": "Newly Created",
+    "DecreasingCreatedOn": "Oldest Created",
+    "IncreasingUpdatedOn": "Most Recently Updated",
+    "DecreasingUpdatedOn": "Least Recently Updated",
+    "DecreasingUpcomingLaunches": "Most Upcoming Launches",
+    "DecreasingOverdueLaunches": "Most Launches Behind Schedule"
+  },
+
+  // Sorting categories for contributor admin dashboard.
+  "CD_ADMIN_STATS_SORT_OPTIONS": {
+    "IncreasingLastActivity": "Most Recently Active",
+    "DecreasingLastActivity": "Least Recently Active",
+    "IncreasingPerformance": "Lowest to Highest Performance",
+    "DecreasingPerformance": "Highest to Lowest Performance",
+    "IncreasingAccuracy": "Lowest to Highest Accuracy",
+    "DecreasingAccuracy": "Highest to Lowest Accuracy",
+    "IncreasingSubmissions": "Lowest to Highest Submitted Contributions",
+    "DecreasingSubmissions": "Highest to Lowest Submitted Contributions",
+    "IncreasingReviewedTranslations": "Lowest to Highest Reviewed Translations",
+    "DecreasingReviewedTranslations": "Highest to Lowest Reviewed Translations",
+    "IncreasingReviewedQuestions": "Lowest to Highest Reviewed Questions",
+    "DecreasingReviewedQuestions": "Highest to Lowest Reviewed Questions",
+    "DecreasingCoordinatorCounts": "Highest to Lowest Coordinators Count",
+    "IncreasingCoordinatorCounts": "Lowest to Highest Coordinators Count"
+  },
   // These categories are shown in the library navbar. The categories should
   // be in sorted order.
   "SEARCH_DROPDOWN_CATEGORIES": ["Algorithms", "Architecture", "Art",
-    "Biology", "Business", "Chemistry", "Economics", "English", "Geography",
+    "Biology", "Business", "Chemistry", "Economics", "English", "Finance", "Geography",
     "History", "Mathematics", "Medicine", "Music", "Physics", "Programming",
-    "Reading", "Statistics"],
+    "Reading", "Science", "Statistics"],
 
   // These classrooms are shown in the add learner group syllabus filters.
   "SEARCH_DROPDOWN_CLASSROOMS": ["math"],
@@ -88,7 +160,8 @@ export default {
   // previous one is deleted.
   // TODO(#14645): Remove these keys once translation service is extended.
   "HACKY_TRANSLATION_KEYS": [
-    "I18N_CLASSROOM_MATH_TITLE",
+    "I18N_CLASSROOM_MATH_NAME",
+    "I18N_CLASSROOM_MATH_COURSE_DETAILS",
     "I18N_TOPIC_iX9kYCjnouWN_TITLE",
     "I18N_TOPIC_sWBXKH4PZcK6_TITLE",
     "I18N_TOPIC_C4fqwrvqWpRm_TITLE",
@@ -96,6 +169,9 @@ export default {
     "I18N_TOPIC_dLmjjMDbCcrf_TITLE",
     "I18N_TOPIC_0abdeaJhmfPm_TITLE",
     "I18N_TOPIC_5g0nxGUmx5J5_TITLE",
+    "I18N_TOPIC_VjCpR1DB2MVN_TITLE",
+    "I18N_TOPIC_F4vMtwKMS6jR_TITLE",
+    "I18N_TOPIC_5cbCOcglPdrn_TITLE",
     "I18N_TOPIC_iX9kYCjnouWN_DESCRIPTION",
     "I18N_TOPIC_sWBXKH4PZcK6_DESCRIPTION",
     "I18N_TOPIC_C4fqwrvqWpRm_DESCRIPTION",
@@ -103,6 +179,9 @@ export default {
     "I18N_TOPIC_dLmjjMDbCcrf_DESCRIPTION",
     "I18N_TOPIC_0abdeaJhmfPm_DESCRIPTION",
     "I18N_TOPIC_5g0nxGUmx5J5_DESCRIPTION",
+    "I18N_TOPIC_VjCpR1DB2MVN_DESCRIPTION",
+    "I18N_TOPIC_F4vMtwKMS6jR_DESCRIPTION",
+    "I18N_TOPIC_5cbCOcglPdrn_DESCRIPTION",
     "I18N_EXPLORATION_K645IfRNzpKy_TITLE",
     "I18N_EXPLORATION_K645IfRNzpKy_DESCRIPTION",
     "I18N_EXPLORATION_Knvx24p24qPO_TITLE",
@@ -223,6 +302,47 @@ export default {
     "I18N_EXPLORATION_aqJ07xrTFNLF_DESCRIPTION",
     "I18N_EXPLORATION_0X0KC9DXWwra_TITLE",
     "I18N_EXPLORATION_0X0KC9DXWwra_DESCRIPTION",
+    "I18N_EXPLORATION_l0S8zoUrVQNd_TITLE",
+    "I18N_EXPLORATION_l0S8zoUrVQNd_DESCRIPTION",
+    "I18N_EXPLORATION_YnhDmpzewUYI_TITLE",
+    "I18N_EXPLORATION_YnhDmpzewUYI_DESCRIPTION",
+    "I18N_EXPLORATION_bWHHbghtVQKU_TITLE",
+    "I18N_EXPLORATION_bWHHbghtVQKU_DESCRIPTION",
+    "I18N_EXPLORATION_C8QUgzIETvRv_TITLE",
+    "I18N_EXPLORATION_C8QUgzIETvRv_DESCRIPTION",
+    "I18N_EXPLORATION_jgGYHzds2WeL_TITLE",
+    "I18N_EXPLORATION_jgGYHzds2WeL_DESCRIPTION",
+    "I18N_EXPLORATION_WuyjwUCVJuIn_TITLE",
+    "I18N_EXPLORATION_WuyjwUCVJuIn_DESCRIPTION",
+    "I18N_EXPLORATION_bf9RrsgNWZmI_TITLE",
+    "I18N_EXPLORATION_bf9RrsgNWZmI_DESCRIPTION",
+    "I18N_EXPLORATION_Gh6AzOEDLcz2_TITLE",
+    "I18N_EXPLORATION_Gh6AzOEDLcz2_DESCRIPTION",
+    "I18N_EXPLORATION_FMH1Ii1ztP4j_TITLE",
+    "I18N_EXPLORATION_FMH1Ii1ztP4j_DESCRIPTION",
+    "I18N_EXPLORATION_xtbP46LKl1uj_TITLE",
+    "I18N_EXPLORATION_xtbP46LKl1uj_DESCRIPTION",
+    "I18N_EXPLORATION_W50hotX4h_Up_TITLE",
+    "I18N_EXPLORATION_W50hotX4h_Up_DESCRIPTION",
+    "I18N_EXPLORATION_BlhHWkwlpOPL_TITLE",
+    "I18N_EXPLORATION_BlhHWkwlpOPL_DESCRIPTION",
+    "I18N_EXPLORATION_Ui9Gnop0WhAW_TITLE",
+    "I18N_EXPLORATION_Ui9Gnop0WhAW_DESCRIPTION",
+    "I18N_EXPLORATION_iW85v9kiZyH2_TITLE",
+    "I18N_EXPLORATION_iW85v9kiZyH2_DESCRIPTION",
+    "I18N_EXPLORATION_ksezbx9FUWFh_TITLE",
+    "I18N_EXPLORATION_ksezbx9FUWFh_DESCRIPTION",
+    "I18N_EXPLORATION_5uvM7exYOqAI_TITLE",
+    "I18N_EXPLORATION_5uvM7exYOqAI_DESCRIPTION",
+    "I18N_EXPLORATION_ua7FTOXRaRjb_TITLE",
+    "I18N_EXPLORATION_sRqParMOyWWB_TITLE",
+    "I18N_EXPLORATION_fRXacq7caMoO_TITLE",
+    "I18N_EXPLORATION_Sl4TGJQhSjmk_TITLE",
+    "I18N_EXPLORATION_2EOuIfQHljkN_TITLE",
+    "I18N_EXPLORATION_9S3bMbqFwDMR_TITLE",
+    "I18N_EXPLORATION_JCZC79V2FeIl_TITLE",
+    "I18N_EXPLORATION_4HssuJT0enVP_TITLE",
+    "I18N_EXPLORATION_Uwpgt08xfr9I_TITLE",
     "I18N_STORY_RRVMHsZ5Mobh_TITLE",
     "I18N_STORY_RRVMHsZ5Mobh_DESCRIPTION",
     "I18N_STORY_Qu6THxP29tOy_TITLE",
@@ -237,6 +357,12 @@ export default {
     "I18N_STORY_JhiDkq01dqgC_DESCRIPTION",
     "I18N_STORY_ialKSV0VYV0B_TITLE",
     "I18N_STORY_ialKSV0VYV0B_DESCRIPTION",
+    "I18N_STORY_Aadv1RN3npAP_TITLE",
+    "I18N_STORY_Aadv1RN3npAP_DESCRIPTION",
+    "I18N_STORY_gvf2KlV8A8ie_TITLE",
+    "I18N_STORY_gvf2KlV8A8ie_DESCRIPTION",
+    "I18N_STORY_6ZbyRnajbHXy_TITLE",
+    "I18N_STORY_6ZbyRnajbHXy_DESCRIPTION",
     "I18N_SUBTOPIC_iX9kYCjnouWN_place-names-and-values_TITLE",
     "I18N_SUBTOPIC_iX9kYCjnouWN_naming-numbers_TITLE",
     "I18N_SUBTOPIC_iX9kYCjnouWN_comparing-numbers_TITLE",
@@ -245,7 +371,7 @@ export default {
     "I18N_SUBTOPIC_sWBXKH4PZcK6_subtracting-numbers_TITLE",
     "I18N_SUBTOPIC_sWBXKH4PZcK6_addition-subtraction_TITLE",
     "I18N_SUBTOPIC_sWBXKH4PZcK6_estimation_TITLE",
-    "I18N_SUBTOPIC_sWBXKH4PZcK6_sequences _TITLE",
+    "I18N_SUBTOPIC_sWBXKH4PZcK6_sequences_TITLE",
     "I18N_SUBTOPIC_C4fqwrvqWpRm_basic-concepts_TITLE",
     "I18N_SUBTOPIC_C4fqwrvqWpRm_memorizing-expressions_TITLE",
     "I18N_SUBTOPIC_C4fqwrvqWpRm_multiplication-techniques_TITLE",
@@ -272,15 +398,35 @@ export default {
     "I18N_SUBTOPIC_5g0nxGUmx5J5_what-is-a-ratio_TITLE",
     "I18N_SUBTOPIC_5g0nxGUmx5J5_equivalent-ratios_TITLE",
     "I18N_SUBTOPIC_5g0nxGUmx5J5_calculations-with-ratios_TITLE",
-    "I18N_SUBTOPIC_5g0nxGUmx5J5_combining-ratios_TITLE"
+    "I18N_SUBTOPIC_5g0nxGUmx5J5_combining-ratios_TITLE",
+    "I18N_SUBTOPIC_VjCpR1DB2MVN_place-values_TITLE",
+    "I18N_SUBTOPIC_VjCpR1DB2MVN_number-line_TITLE",
+    "I18N_SUBTOPIC_VjCpR1DB2MVN_adding-decimals_TITLE",
+    "I18N_SUBTOPIC_VjCpR1DB2MVN_subtracting-decimals_TITLE",
+    "I18N_SUBTOPIC_VjCpR1DB2MVN_multiplying-decimals_TITLE",
+    "I18N_SUBTOPIC_VjCpR1DB2MVN_dividing-decimals_TITLE",
+    "I18N_SUBTOPIC_VjCpR1DB2MVN_fractions-and-decimals_TITLE",
+    "I18N_SUBTOPIC_F4vMtwKMS6jR_what-is-a-percentage_TITLE",
+    "I18N_SUBTOPIC_F4vMtwKMS6jR_percentage-conversions_TITLE",
+    "I18N_SUBTOPIC_F4vMtwKMS6jR_relating-to-actual-values_TITLE",
+    "I18N_SUBTOPIC_F4vMtwKMS6jR_solving-problems_TITLE"
   ],
 
   "ALLOWED_THUMBNAIL_BG_COLORS": {
     "chapter": ["#F8BF74", "#D68F78", "#8EBBB6", "#B3D8F1"],
+    "classroom": ["transparent", "#C8F5CD", "#AED2E9"],
     "topic": ["#C6DCDA"],
     "subtopic": ["#FFFFFF"],
     "story": ["#F8BF74", "#D68F78", "#8EBBB6", "#B3D8F1"]
   },
+
+  "ALLOWED_STORY_NODE_STATUS": ["Draft", "Ready To Publish", "Published"],
+  "ALLOWED_STORY_NODE_UNPUBLISHING_REASONS": ["BAD_CONTENT",
+    "CHAPTER_NEEDS_SPLITTING"],
+  "STORY_NODE_STATUS_PUBLISHED": "Published",
+  "STORY_NODE_STATUS_READY_TO_PUBLISH": "Ready To Publish",
+  "STORY_NODE_STATUS_DRAFT": "Draft",
+  "CHAPTER_PUBLICATION_NOTICE_PERIOD_IN_DAYS": 14,
 
   "ALLOWED_IMAGE_FORMATS": ["svg", "png", "jpeg", "jpg", "gif"],
   "MAX_ALLOWED_IMAGE_SIZE_IN_KB_FOR_BLOG": 1024,
@@ -312,11 +458,21 @@ export default {
   // The supported tags for the mailing list subscriptions.
   "MAILING_LIST_ANDROID_TAG": "Android",
   "MAILING_LIST_WEB_TAG": "Web",
+
+  // The error message to be displayed when the user tries to subscribe to the
+  // mailing list but fails.
+  // eslint-disable-next-line max-len
+  "MAILING_LIST_UNEXPECTED_ERROR_MESSAGE": "Sorry, an unexpected error occurred. Please email admin@oppia.org to be added to the mailing list.",
+
   // Regex to validate the format of Math rich-text component SVGs. If this is
   // changed in the future, the existing filenames on the server should be
   // handled as well.
   // eslint-disable-next-line max-len
   "MATH_SVG_FILENAME_REGEX": "mathImg_[a-z0-9_]+_height_[0-9d]+_width_[0-9d]+_vertical_[0-9d]+.(svg)$",
+
+  // This regex validates whether a given string is in the format of YYYY-MM-DD
+  // format.
+  "DATE_REGEX": "^[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}$",
 
   // The SVG tag-specific attribute allowlist is based on the list of tags and
   // and attributes specified in this project:
@@ -4904,29 +5060,30 @@ export default {
   // color associated with it. Each category also has a thumbnail icon whose
   // filename is '{{CategoryName}}.svg'.
   "CATEGORIES_TO_COLORS": {
-    "Mathematics": "#cd672b",
-    "Algebra": "#cd672b",
-    "Arithmetic": "#d68453",
-    "Calculus": "#b86330",
-    "Logic": "#d68453",
-    "Combinatorics": "#cf5935",
-    "Graph Theory": "#cf5935",
-    "Probability": "#cf5935",
-    "Statistics": "#cd672b",
-    "Geometry": "#d46949",
-    "Trigonometry": "#d46949",
+    "Mathematics": "#cc4b00",
+    "Algebra": "#cc4b00",
+    "Arithmetic": "#ae511b",
+    "Calculus": "#ae5f2d",
+    "Logic": "#ae511b",
+    "Combinatorics": "#c54f2b",
+    "Graph Theory": "#c54f2b",
+    "Probability": "#c54f2b",
+    "Statistics": "#cc4b00",
+    "Geometry": "#be5637",
+    "Trigonometry": "#be5637",
 
-    "Algorithms": "#d0982a",
-    "Computing": "#bb8b2f",
-    "Programming": "#d9aa53",
+    "Algorithms": "#9d6901",
+    "Computing": "#927117",
+    "Programming": "#886628",
 
-    "Astronomy": "#879d6c",
-    "Biology": "#97a766",
-    "Chemistry": "#aab883",
-    "Engineering": "#8b9862",
-    "Environment": "#aba86d",
-    "Medicine": "#97a766",
-    "Physics": "#879d6c",
+    "Astronomy": "#58613a",
+    "Biology": "#657030",
+    "Chemistry": "#6c7c36",
+    "Engineering": "#6f7a48",
+    "Environment": "#747142",
+    "Medicine": "#657030",
+    "Physics": "#58613a",
+    "Science": "#6f7a48",
 
     "Architecture": "#6e3466",
     "Art": "#895a83",
@@ -4942,11 +5099,12 @@ export default {
     "Gaulish": "#1b4174",
 
     "Business": "#387163",
-    "Economics": "#5d8b7f",
+    "Economics": "#2f836d",
+    "Finance": "#387163",
     "Geography": "#3c6d62",
-    "Government": "#538270",
+    "Government": "#507c6b",
     "History": "#3d6b52",
-    "Law": "#538270",
+    "Law": "#507c6b",
 
     "Education": "#942e20",
     "Puzzles": "#a8554a",
@@ -4954,7 +5112,9 @@ export default {
     "Welcome": "#992a2b"
   },
 
-  "INVALID_RTE_COMPONENTS_FOR_BLOG_POST_EDITOR": ["tabs", "skillreview"],
+  "INVALID_RTE_COMPONENTS_FOR_BLOG_POST_EDITOR": [
+    "tabs", "math", "collapsible", "skillreview"
+  ],
 
   // This is linked to VALID_RTE_COMPONENTS in android_validation_constants.
   "VALID_RTE_COMPONENTS_FOR_ANDROID": ["image", "math", "skillreview"],
@@ -4974,277 +5134,368 @@ export default {
     "code": "en",
     "description": "English",
     "direction": "ltr",
-    "decimal_separator": "."
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "English"
   }, {
-    "code": "ar",
-    "description": "العربية (Arabic)",
-    "direction": "rtl",
-    "decimal_separator": ","
+    "code": "ak",
+    "description": "Ákán (Akan)",
+    "direction": "ltr",
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Akan"
   }, {
     "code": "sq",
     "description": "shqip (Albanian)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Albanian"
   }, {
     "code": "am",
     "description": "አማርኛ (Amharic)",
     "direction": "ltr",
-    "decimal_separator": "."
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Amharic"
+  }, {
+    "code": "ar",
+    "description": "العربية (Arabic)",
+    "direction": "rtl",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Arabic"
   }, {
     "code": "az",
     "description": "Azeri (Azerbaijani)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Azerbaijani"
   }, {
     "code": "bg",
     "description": "български (Bulgarian)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Bulgarian"
   }, {
     "code": "bn",
     "description": "বাংলা (Bangla)",
     "direction": "ltr",
-    "decimal_separator": "."
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Bangla"
+  }, {
+    "code": "ms",
+    "description": "بهاس ملايو (Bahasa Melayu)",
+    "direction": "ltr",
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Bahasa Melayu"
   }, {
     "code": "ca",
     "description": "català (Catalan)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Catalan"
   }, {
     "code": "zh",
     "description": "中文 (Chinese)",
     "direction": "ltr",
-    "decimal_separator": "."
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Chinese"
   }, {
     "code": "hr",
     "description": "hrvatski (Croatian)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Croatian"
   }, {
     "code": "cs",
     "description": "čeština (Czech)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Czech"
   }, {
     "code": "da",
     "description": "dansk (Danish)",
     "direction": "ltr",
-    "decimal_separator": ","
-  }, {
-    "code": "nl",
-    "description": "Nederlands (Dutch)",
-    "direction": "ltr",
-    "decimal_separator": ","
-  }, {
-    "code": "fat",
-    "description": "Fanti",
-    "direction": "ltr",
-    "decimal_separator": "."
-  }, {
-    "code": "tl",
-    "description": "Filipino (Filipino)",
-    "direction": "ltr",
-    "decimal_separator": "."
-  }, {
-    "code": "fi",
-    "description": "suomi (Finnish)",
-    "direction": "ltr",
-    "decimal_separator": ","
-  }, {
-    "code": "fr",
-    "description": "français (French)",
-    "direction": "ltr",
-    "decimal_separator": ","
-  }, {
-    "code": "lg",
-    "description": "Luganda (Ganda)",
-    "direction": "ltr",
-    "decimal_separator": "."
-  }, {
-    "code": "de",
-    "description": "Deutsch (German)",
-    "direction": "ltr",
-    "decimal_separator": ","
-  }, {
-    "code": "el",
-    "description": "ελληνικά (Greek)",
-    "direction": "ltr",
-    "decimal_separator": ","
-  }, {
-    "code": "ha",
-    "description": "Halshen Hausa (Hausa)",
-    "direction": "ltr",
-    "decimal_separator": "."
-  }, {
-    "code": "he",
-    "description": "עברית (Hebrew)",
-    "direction": "rtl",
-    "decimal_separator": "."
-  }, {
-    "code": "hi",
-    "description": "हिन्दी (Hindi)",
-    "direction": "ltr",
-    "decimal_separator": "."
-  }, {
-    "code": "hi-en",
-    "description": "Hinglish",
-    "direction": "ltr",
-    "decimal_separator": "."
-  }, {
-    "code": "hu",
-    "description": "magyar (Hungarian)",
-    "direction": "ltr",
-    "decimal_separator": ","
-  }, {
-    "code": "id",
-    "description": "Bahasa Indonesia (Indonesian)",
-    "direction": "ltr",
-    "decimal_separator": ","
-  }, {
-    "code": "ig",
-    "description": "Ásụ̀sụ́ Ìgbò (Igbo)",
-    "direction": "ltr",
-    "decimal_separator": "."
-  }, {
-    "code": "it",
-    "description": "italiano (Italian)",
-    "direction": "ltr",
-    "decimal_separator": ","
-  }, {
-    "code": "ja",
-    "description": "日本語 (Japanese)",
-    "direction": "ltr",
-    "decimal_separator": "."
-  }, {
-    "code": "kab",
-    "description": "Taqbaylit (Kabyle)",
-    "direction": "ltr",
-    "decimal_separator": ","
-  }, {
-    "code": "ko",
-    "description": "한국어 (Korean)",
-    "direction": "ltr",
-    "decimal_separator": "."
-  }, {
-    "code": "lv",
-    "description": "latviešu (Latvian)",
-    "direction": "ltr",
-    "decimal_separator": ","
-  }, {
-    "code": "lt",
-    "description": "lietuvių (Lithuanian)",
-    "direction": "ltr",
-    "decimal_separator": ","
-  }, {
-    "code": "mr",
-    "description": "मराठी (Marathi)",
-    "direction": "ltr",
-    "decimal_separator": "."
-  }, {
-    "code": "no",
-    "description": "Norsk (Norwegian)",
-    "direction": "ltr",
-    "decimal_separator": ","
-  }, {
-    "code": "fa",
-    "description": "فارسی (Persian)",
-    "direction": "rtl",
-    "decimal_separator": ","
-  }, {
-    "code": "pcm",
-    "description": "Naijá (Nigerian Pidgin)",
-    "direction": "ltr",
-    "decimal_separator": ","
-  }, {
-    "code": "pl",
-    "description": "polszczyzna (Polish)",
-    "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Danish"
   }, {
     "code": "prs",
     "description": "دری (Dari)",
     "direction": "rtl",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Dari"
+  }, {
+    "code": "nl",
+    "description": "Nederlands (Dutch)",
+    "direction": "ltr",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Dutch"
+  }, {
+    "code": "ee",
+    "description": "Eʋegbe (Ewe)",
+    "direction": "ltr",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Ewe"
+  }, {
+    "code": "fat",
+    "description": "Fanti",
+    "direction": "ltr",
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Fanti"
+  }, {
+    "code": "tl",
+    "description": "Filipino (Filipino)",
+    "direction": "ltr",
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Filipino"
+  }, {
+    "code": "fi",
+    "description": "suomi (Finnish)",
+    "direction": "ltr",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Finnish"
+  }, {
+    "code": "fr",
+    "description": "français (French)",
+    "direction": "ltr",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "French"
+  }, {
+    "code": "lg",
+    "description": "Luganda (Ganda)",
+    "direction": "ltr",
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Ganda"
+  }, {
+    "code": "de",
+    "description": "Deutsch (German)",
+    "direction": "ltr",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "German"
+  }, {
+    "code": "el",
+    "description": "Ελληνικά (Greek)",
+    "direction": "ltr",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Greek"
+  }, {
+    "code": "gaa",
+    "description": "Gã (Ga)",
+    "direction": "ltr",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Ga"
+  }, {
+    "code": "ha",
+    "description": "Harshen Hausa (Hausa)",
+    "direction": "ltr",
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Hausa"
+  }, {
+    "code": "he",
+    "description": "עברית (Hebrew)",
+    "direction": "rtl",
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Hebrew"
+  }, {
+    "code": "hi",
+    "description": "हिन्दी (Hindi)",
+    "direction": "ltr",
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Hindi"
+  }, {
+    "code": "hi-en",
+    "description": "Hinglish",
+    "direction": "ltr",
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Hinglish"
+  }, {
+    "code": "hu",
+    "description": "magyar (Hungarian)",
+    "direction": "ltr",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Hungarian"
+  }, {
+    "code": "id",
+    "description": "Bahasa Indonesia (Indonesian)",
+    "direction": "ltr",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Indonesian"
+  }, {
+    "code": "ig",
+    "description": "Ásụ̀sụ́ Ìgbò (Igbo)",
+    "direction": "ltr",
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Igbo"
+  }, {
+    "code": "it",
+    "description": "italiano (Italian)",
+    "direction": "ltr",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Italian"
+  }, {
+    "code": "ja",
+    "description": "日本語 (Japanese)",
+    "direction": "ltr",
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Japanese"
+  }, {
+    "code": "kab",
+    "description": "Taqbaylit (Kabyle)",
+    "direction": "ltr",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Kabyle"
+  }, {
+    "code": "ko",
+    "description": "한국어 (Korean)",
+    "direction": "ltr",
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Korean"
+  }, {
+    "code": "lv",
+    "description": "latviešu (Latvian)",
+    "direction": "ltr",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Latvian"
+  }, {
+    "code": "lt",
+    "description": "lietuvių (Lithuanian)",
+    "direction": "ltr",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Lithuanian"
+  }, {
+    "code": "mr",
+    "description": "मराठी (Marathi)",
+    "direction": "ltr",
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Marathi"
+  }, {
+    "code": "no",
+    "description": "Norsk (Norwegian)",
+    "direction": "ltr",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Norwegian"
+  }, {
+    "code": "fa",
+    "description": "فارسی (Persian)",
+    "direction": "rtl",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Persian"
+  }, {
+    "code": "pcm",
+    "description": "Naijá (Nigerian Pidgin)",
+    "direction": "ltr",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Nigerian Pidgin"
+  }, {
+    "code": "pl",
+    "description": "polszczyzna (Polish)",
+    "direction": "ltr",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Polish"
   }, {
     "code": "pt",
     "description": "português (Portuguese)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Portuguese"
+  }, {
+    "code": "ps",
+    "description": "پښتو (Pashto)",
+    "direction": "rtl",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Pashto"
   }, {
     "code": "ro",
     "description": "română (Romanian)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Romanian"
   }, {
     "code": "ru",
     "description": "pусский (Russian)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Russian"
   }, {
     "code": "sr",
     "description": "cрпски (Serbian)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Serbian"
   }, {
     "code": "sk",
     "description": "slovenčina (Slovak)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Slovak"
   }, {
     "code": "sl",
     "description": "slovenščina (Slovenian)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Slovenian"
   }, {
     "code": "es",
     "description": "español (Spanish)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Spanish"
   }, {
     "code": "sw",
     "description": "kiswahili (Swahili)",
     "direction": "ltr",
-    "decimal_separator": "."
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Swahili"
   }, {
     "code": "sv",
     "description": "svenska (Swedish)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Swedish"
   }, {
     "code": "ta",
     "description": "தமிழ் (Tamil)",
     "direction": "ltr",
-    "decimal_separator": "."
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Tamil"
+  }, {
+    "code": "te",
+    "description": "తెలుగు (Telugu)",
+    "direction": "ltr",
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Telugu"
   }, {
     "code": "th",
     "description": "ภาษาไทย (Thai)",
     "direction": "ltr",
-    "decimal_separator": "."
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Thai"
   }, {
     "code": "tr",
     "description": "Türkçe (Turkish)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Turkish"
   }, {
     "code": "uk",
     "description": "yкраїнська (Ukrainian)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Ukrainian"
   }, {
     "code": "ur",
     "description": "اُردُو (Urdu)",
     "direction": "rtl",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Urdu"
   }, {
     "code": "vi",
     "description": "Tiếng Việt (Vietnamese)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Vietnamese"
   }, {
     "code": "yo",
     "description": "Èdè Yoùbá (Yoruba)",
     "direction": "ltr",
-    "decimal_separator": "."
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Yoruba"
   }],
 
   // NOTE TO DEVELOPERS: While adding another language, please ensure that the
@@ -5256,87 +5507,110 @@ export default {
     "id": "en",
     "text": "English",
     "direction": "ltr",
-    "decimal_separator": "."
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "English"
   }, {
     "id": "pt-br",
     "text": "Português (Brasil)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Portuguese"
   }, {
     "id": "ar",
     "text": "العربية",
     "direction": "rtl",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Arabic"
   }, {
     "id": "hi",
     "text": "हिन्दी",
     "direction": "ltr",
-    "decimal_separator": "."
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Hindi"
   }, {
     "id": "es",
     "text": "Español",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Spanish"
   }, {
     "id": "bn",
     "text": "বাংলা",
     "direction": "ltr",
-    "decimal_separator": "."
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Bangla"
   }, {
     "id": "fr",
     "text": "français",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "French"
   }, {
     "id": "id",
     "text": "Bahasa Indonesia",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Indonesian"
   }, {
     "id": "pcm",
     "text": "Naijá (Nigerian Pidgin)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Nigerian"
   }, {
     "id": "uk",
     "text": "украї́нська мо́ва",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Ukrainian"
   }, {
     "id": "sk",
     "text": "slovenčina",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Slovak"
   }, {
     "id": "nl",
     "text": "Nederlands",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Nederlands"
   }, {
     "id": "kab",
     "text": "Taqbaylit (Kabyle)",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Berber"
   }, {
     "id": "vi",
     "text": "Tiếng Việt",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Vietnamese"
   }, {
     "id": "tr",
     "text": "Türkçe",
     "direction": "ltr",
-    "decimal_separator": ","
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Turkish"
   }, {
     "id": "zh-hans",
     "text": "中文(简体)",
     "direction": "ltr",
-    "decimal_separator": "."
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Simplified Chinese"
   }, {
     "id": "zh-hant",
     "text": "中文(繁體)",
     "direction": "ltr",
-    "decimal_separator": "."
+    "decimal_separator": ".",
+    "ariaLabelInEnglish": "Traditional Chinese"
+  }, {
+    "id": "el",
+    "text": "Ελληνικά",
+    "direction": "ltr",
+    "decimal_separator": ",",
+    "ariaLabelInEnglish": "Greek"
   }],
 
   // List of supported audio languages in which we have audio and translations
@@ -5470,7 +5744,7 @@ export default {
     "direction": "ltr"
   }, {
     "id": "ha",
-    "description": "Halshen Hausa (Hausa)",
+    "description": "Harshen Hausa (Hausa)",
     "relatedLanguages": ["ha"],
     "direction": "ltr"
   }, {
@@ -5849,12 +6123,15 @@ export default {
   "MIN_CHOICES_IN_MULTIPLE_CHOICE_INPUT_CURATED_EXP": 4,
   "MIN_CHOICES_IN_MULTIPLE_CHOICE_INPUT_REGULAR_EXP": 2,
 
-  "CONTRIBUTION_RIGHT_CATEGORY_REVIEW_TRANSLATION": "translation",
-  "CONTRIBUTION_RIGHT_CATEGORY_REVIEW_VOICEOVER": "voiceover",
-  "CONTRIBUTION_RIGHT_CATEGORY_REVIEW_QUESTION": "question",
-  "CONTRIBUTION_RIGHT_CATEGORY_SUBMIT_QUESTION": "submit_question",
-  "CONTRIBUTION_RIGHT_CATEGORIES": [
-    "translation", "voiceover", "question", "submit_question"
+  "CD_USER_RIGHTS_CATEGORY_REVIEW_TRANSLATION": "translation",
+  "CD_USER_RIGHTS_CATEGORY_REVIEW_VOICEOVER": "voiceover",
+  "CD_USER_RIGHTS_CATEGORY_REVIEW_QUESTION": "question",
+  "CD_USER_RIGHTS_CATEGORY_SUBMIT_QUESTION": "submit_question",
+  "CD_USER_RIGHTS_CATEGORIES": [
+    "translation",
+    "question",
+    "voiceover",
+    "submit_question"
   ],
 
   "SUGGESTIONS_SORT_KEY_DATE": "Date",
@@ -5867,7 +6144,7 @@ export default {
   // Interaction IDs for which answer details cannot be solicited.
   "INTERACTION_IDS_WITHOUT_ANSWER_DETAILS": ["EndExploration", "Continue"],
 
-  "WHITELISTED_COLLECTION_IDS_FOR_SAVING_GUEST_PROGRESS": [],
+  "ALLOWED_COLLECTION_IDS_FOR_SAVING_GUEST_PROGRESS": [],
 
   "FEEDBACK_SUBJECT_MAX_CHAR_LIMIT": 50,
 
@@ -5914,8 +6191,6 @@ export default {
 
   "ENABLE_PREREQUISITE_SKILLS": false,
 
-  "ENABLE_NEW_STRUCTURE_VIEWER_UPDATES": true,
-
   "ENABLE_SOLICIT_ANSWER_DETAILS_FEATURE": true,
 
   "MAX_SKILLS_PER_QUESTION": 3,
@@ -5943,6 +6218,11 @@ export default {
   // Dashboard topic selector.
   "TOPIC_SENTINEL_NAME_ALL": "All",
 
+  // Review message to display for an obsolete translation suggestion with no
+  // exploration content.
+  // eslint-disable-next-line max-len
+  "OBSOLETE_TRANSLATION_SUGGESTION_REVIEW_MSG": "The original content was deleted and no longer needs translation. Sorry about that!",
+
   // The following character limit constraints follow from
   // android_validation_constants.py. Both have to be kept in sync.
 
@@ -5951,6 +6231,9 @@ export default {
   // 'math' is the 'classroom URL fragment'.
   "MAX_CHARS_IN_CLASSROOM_URL_FRAGMENT": 20,
   "MAX_CHARS_IN_CLASSROOM_NAME": 39,
+  "MAX_CHARS_IN_CLASSROOM_TEASER_TEXT": 68,
+  "MAX_CHARS_IN_CLASSROOM_COURSE_DETAILS": 720,
+  "MAX_CHARS_IN_CLASSROOM_TOPIC_LIST_INTRO": 240,
   "MAX_CHARS_IN_TOPIC_NAME": 39,
   "MAX_CHARS_IN_ABBREV_TOPIC_NAME": 12,
   // This represents the maximum number of characters in the URL fragment for
@@ -5980,9 +6263,8 @@ export default {
   // in /learn/math/fractions/revision/place-values, 'place-values' is the
   // 'subtopic URL fragment'.
   "MAX_CHARS_IN_SUBTOPIC_URL_FRAGMENT": 25,
-  // This represents the maximum number of characters in the URL fragment for
-  // the blog post.
-  "MAX_CHARS_IN_BLOG_POST_URL_FRAGMENT": 65,
+  // This is same as base_models.ID_Length.
+  "BLOG_POST_ID_LENGTH": 12,
   // The recommended length for meta tag contents. Search engines will truncate
   // results greater than this limit.
   "MAX_CHARS_IN_META_TAG_CONTENT": 160,
@@ -6001,6 +6283,7 @@ export default {
       "html": "",
       "content_id": "content"
     },
+    "inapplicable_skill_misconception_ids": null,
     "interaction": {
       "id": null,
       "customization_args": {},
@@ -6021,22 +6304,12 @@ export default {
       "hints": [],
       "solution": null
     },
-    "next_content_id_index": 0,
     "param_changes": [],
     "recorded_voiceovers": {
-      "voiceovers_mapping": {
-        "content": {},
-        "default_outcome": {}
-      }
+      "voiceovers_mapping": {}
     },
     "solicit_answer_details": false,
-    "card_is_checkpoint": false,
-    "written_translations": {
-      "translations_mapping": {
-        "content": {},
-        "default_outcome": {}
-      }
-    }
+    "card_is_checkpoint": false
   },
 
   // Data required for Firebase authentication.
@@ -6078,7 +6351,7 @@ export default {
 
   // A regular expression for allowed characters in Title field for Blog Post.
   // eslint-disable-next-line max-len
-  "VALID_BLOG_POST_TITLE_REGEX": "^[a-zA-Z0-9][a-zA-Z0-9 ]+([-:][ a-zA-Z0-9]+)*$",
+  "VALID_BLOG_POST_TITLE_REGEX": "^[a-zA-Z0-9(&!,'/)][a-zA-Z0-9(&!,'/) ]+([-:][ a-zA-Z0-9(&!,'/)]+)*$",
 
   // A regular expression for allowed characters in URL fragment for Blog Post.
   "VALID_URL_BLOG_FRAGMENT_REGEX": "^[a-z0-9]+(-[a-z0-9]+)*$",
@@ -6220,14 +6493,17 @@ export default {
 
   "ENABLE_EXP_FEEDBACK_FOR_LOGGED_OUT_USERS": true,
 
-  // Link to open when the Oppia avatar is clicked on any page.
-  "OPPIA_AVATAR_LINK_URL": null,
-
   // Maximum allowed length of a username.
   "MAX_USERNAME_LENGTH": 30,
 
+  // Minimum allowed length of a blog post author's name.
+  "MIN_AUTHOR_NAME_LENGTH": 2,
+
   // Maximum allowed length of a blog post author's name.
   "MAX_AUTHOR_NAME_LENGTH": 35,
+
+  // Minimum allowed characters in a blog post author's bio.
+  "MIN_CHARS_IN_AUTHOR_BIO": 5,
 
   // Maximum allowed characters in a blog post author's bio.
   "MAX_CHARS_IN_AUTHOR_BIO": 250,
@@ -6238,8 +6514,6 @@ export default {
   // Maximum allowed length of unique progress url ID.
   "MAX_PROGRESS_URL_ID_LENGTH": 6,
 
-  "PLATFORM_PARAMETER_ALLOWED_BROWSER_TYPES": [
-    "Chrome", "Edge", "Safari", "Firefox", "Others"],
   "PLATFORM_PARAMETER_ALLOWED_PLATFORM_TYPES": ["Web", "Android", "Backend"],
   // The ordering of in ALLOWED_APP_VERSION_FLAVORS implies the ordering
   // of corresponding flavors, which is used in app_version_flavor filter for
@@ -6255,7 +6529,7 @@ export default {
   // fields must be at most 1500 bytes, and UTF-8 encoded characters can be
   // up to 4 bytes long.
   "MAX_COMMIT_MESSAGE_LENGTH": 375,
-  "MAX_REVIEW_MESSAGE_LENGTH": 10000,
+  "MAX_REVIEW_MESSAGE_LENGTH": 2000,
 
   "EMAIL_DASHBOARD_PREDICATE_DEFINITION": [
     {
@@ -6355,6 +6629,233 @@ export default {
 
   // Pages registered with angular router.
   "PAGES_REGISTERED_WITH_FRONTEND": {
+    "ADMIN": {
+      "ROUTE": "admin",
+      "TITLE": "Oppia Admin Panel",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "REVIEW_TEST": {
+      "ROUTE": "learn/:classroom_url_fragment/:topic_url_fragment/review-test/:story_url_fragment",
+      "TITLE": "Oppia",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "SUBTOPIC_VIEWER": {
+      "ROUTE": "learn/:classroom_url_fragment/:topic_url_fragment/revision/:subtopic_url_fragment",
+      "TITLE": "Oppia",
+      "MANUALLY_REGISTERED_WITH_BACKEND": true,
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "COLLECTION_EDITOR": {
+      "ROUTE": "collection_editor/create/:collection_id",
+      "TITLE": "Collection Editor Page",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "MAINTENANCE": {
+      "ROUTE": "maintenance",
+      "TITLE": "Oppia Maintenance Page",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "STORY_EDITOR": {
+      "ROUTE": "story_editor/:story_id",
+      "TITLE": "Story Editor Page",
+      "MANUALLY_REGISTERED_WITH_BACKEND": true,
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "COLLECTION_PLAYER": {
+      "ROUTE": "collection/:collection_id",
+      "TITLE": "",
+      // Some routes contain url fragments, as syntax for url fragments are
+      // different for angular router and backend. They have to be registered
+      // manually in the backend. Please use angular router syntax here.
+      "MANUALLY_REGISTERED_WITH_BACKEND": true,
+      "META": []
+    },
+    "CREATOR_DASHBOARD": {
+      "ROUTE": "creator-dashboard",
+      "TITLE": "Creator Dashboard | Oppia",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "CONTRIBUTOR_DASHBOARD": {
+      "ROUTE": "contributor-dashboard",
+      "TITLE": "Contributor Dashboard | Oppia",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "EMAIL_DASHBOARD": {
+      "ROUTE": "emaildashboard",
+      "TITLE": "Email Dashboard - Oppia",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "DIAGNOSTIC_TEST_PLAYER": {
+      "ROUTE": "diagnostic-test-player",
+      "TITLE": "Diagnostic Test Player - Oppia",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "FACILITATOR_DASHBOARD": {
+      "ROUTE": "facilitator-dashboard",
+      "TITLE": "Facilitator Dashboard - Oppia",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "MODERATOR": {
+      "ROUTE": "moderator",
+      "TITLE": "Moderator Tools - Oppia",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
     "ABOUT": {
       "ROUTE": "about",
       "TITLE": "I18N_ABOUT_PAGE_TITLE",
@@ -6373,10 +6874,26 @@ export default {
         }
       ]
     },
-    "ABOUT_FOUNDATION": {
-      "ROUTE": "about-foundation",
-      "TITLE": "About the Oppia Foundation | Oppia",
+    "ERROR": {
+      "ROUTE": "error",
+      "TITLE": "I18N_ERROR_PAGE_ROOT_BROWSER_TAB_TITLE",
       "META": []
+    },
+    "ERROR_IFRAMED": {
+      "ROUTE": "error/iframed",
+      "TITLE": "Error Iframed - Oppia",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          "CONTENT": "Error Iframed Page"
+        },
+        {
+          "PROPERTY_TYPE": "property",
+          "PROPERTY_VALUE": "og:description",
+          "CONTENT": "Error Iframed Page"
+        }
+      ]
     },
     "EXPLORATION_PLAYER": {
       "ROUTE": "explore/:exploration_id",
@@ -6396,9 +6913,36 @@ export default {
       "MANUALLY_REGISTERED_WITH_BACKEND": true,
       "META": []
     },
+    "NEW_LESSON_PLAYER": {
+      "ROUTE": "lesson/:exploration_id",
+      "TITLE": "",
+      // Some routes contain url fragments, as syntax for url fragments are
+      // different for angular router and backend. They have to be registered
+      // manually in the backend. Please use angular router syntax here.
+      "MANUALLY_REGISTERED_WITH_BACKEND": true,
+      "META": []
+    },
     "ANDROID": {
       "ROUTE": "android",
       "TITLE": "Android | Oppia",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "CONTRIBUTOR_DASHBOARD_ADMIN": {
+      "ROUTE": "contributor-admin-dashboard",
+      "TITLE": "Contributor Dashboard Admin",
       "META": [
         {
           "PROPERTY_TYPE": "itemprop",
@@ -6432,9 +6976,44 @@ export default {
         }
       ]
     },
+    "CURRICULUM_ADMIN": {
+      "ROUTE": "classroom-admin",
+      "TITLE": "Oppia Classroom Admin Panel",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "SKILL_EDITOR": {
+      "ROUTE": "skill_editor/:skill_id",
+      "TITLE": "Skill Editor",
+      "MANUALLY_REGISTERED_WITH_BACKEND": true,
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          "CONTENT": "Edit and manage skills with the Skill Editor in Oppia."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          "CONTENT": "Edit and manage skills with the Skill Editor in Oppia."
+        }
+      ]
+    },
     "DONATE": {
       "ROUTE": "donate",
-      "TITLE": "Donate | Oppia",
+      "TITLE": "I18N_DONATE_PAGE_BROWSER_TAB_TITLE",
       "META": [
         {
           "PROPERTY_TYPE": "itemprop",
@@ -6463,6 +7042,45 @@ export default {
           "PROPERTY_TYPE": "property",
           "PROPERTY_VALUE": "og:description",
           "CONTENT": "Learn how to get started using Oppia."
+        }
+      ]
+    },
+    "TOPIC_VIEWER": {
+      "ROUTE": "learn/:classroom_url_fragment/:topic_url_fragment",
+      "TITLE": "Topic Viewer Page",
+      // Some routes contain url fragments, as syntax for url fragments are
+      // different for angular router and backend. They have to be registered
+      // manually in the backend. Please use angular router syntax here.
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "LEARNER_DASHBOARD": {
+      "ROUTE": "learner-dashboard",
+      "TITLE": "I18N_TOPNAV_LEARNER_DASHBOARD",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
         }
       ]
     },
@@ -6534,6 +7152,24 @@ export default {
           "PROPERTY_TYPE": "property",
           "PROPERTY_VALUE": "og:description",
           "CONTENT": "Sign up for Oppia and begin exploring a new subject."
+        }
+      ]
+    },
+    "TOPICS_AND_SKILLS_DASHBOARD": {
+      "ROUTE": "topics-and-skills-dashboard",
+      "TITLE": "Topics and Skills Dashboard | Oppia",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
         }
       ]
     },
@@ -6648,6 +7284,45 @@ export default {
         }
       ]
     },
+    "PRACTICE_SESSION": {
+      "ROUTE": "learn/:classroom_url_fragment/:topic_url_fragment/practice/session",
+      "TITLE": "Practice Session Page",
+      // Some routes contain url fragments, as syntax for url fragments are
+      // different for angular router and backend. They have to be registered
+      // manually in the backend. Please use angular router syntax here.
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "BLOG_DASHBOARD": {
+      "ROUTE": "blog-dashboard",
+      "TITLE": "Blog Dashboard - Oppia",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
     "LIBRARY_TOP_RATED": {
       "ROUTE": "community-library/top-rated",
       "TITLE": "Oppia",
@@ -6663,6 +7338,25 @@ export default {
           "PROPERTY_VALUE": "og:description",
           // eslint-disable-next-line max-len
           "CONTENT": "Looking to learn something new? Learn any subject of your choice created by professors, teachers and Oppia users! Free lessons are always available for any topic and level you want."
+        }
+      ]
+    },
+    "EXPLORATION_EDITOR": {
+      "ROUTE": "create/:exporationId",
+      "TITLE": "Exploration Editor - Oppia",
+      "MANUALLY_REGISTERED_WITH_BACKEND": true,
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "Help others learn new things. Create lessons through explorations and share your knowledge with the community."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "Help others learn new things. Create lessons through explorations and share your knowledge with the community."
         }
       ]
     },
@@ -6684,6 +7378,22 @@ export default {
           "PROPERTY_TYPE": "itemprop",
           "PROPERTY_VALUE": "og:description",
           "CONTENT": "Change your Oppia profile settings and preferences"
+        }
+      ]
+    },
+    "FEEDBACK_UPDATES": {
+      "ROUTE": "feedback-updates",
+      "TITLE": "Feedback Updates",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          "CONTENT": "With Oppia,learn and give feedback to improve the lessons"
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          "CONTENT": "With Oppia,learn and give feedback to improve the lessons"
         }
       ]
     },
@@ -6749,6 +7459,24 @@ export default {
           "PROPERTY_VALUE": "og:description",
           // eslint-disable-next-line max-len
           "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it"
+        }
+      ]
+    },
+    "CLASSROOMS": {
+      "ROUTE": "learn",
+      "TITLE": "Oppia Classrooms",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
         }
       ]
     },
@@ -6829,6 +7557,78 @@ export default {
         }
       ]
     },
+    "BLOG_ADMIN": {
+      "ROUTE": "blog-admin",
+      "TITLE": "Oppia Blog Admin Panel",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "VOICEOVER_ADMIN": {
+      "ROUTE": "voiceover-admin",
+      "TITLE": "Voiceover Admin Panel",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "LEARNER_GROUP_CREATOR": {
+      "ROUTE": "create-learner-group",
+      "TITLE": "Create Learner Group | Oppia",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
+    "LEARNER_GROUP_EDITOR": {
+      "ROUTE": "edit-learner-group/:learner_group_id",
+      "TITLE": "Edit Learner Group | Oppia",
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          // eslint-disable-next-line max-len
+          "CONTENT": "With Oppia, you can access free lessons on math, physics, statistics, chemistry, music, history and more from anywhere in the world. Oppia is a nonprofit with the mission of providing high-quality education to those who lack access to it."
+        }
+      ]
+    },
     "LEARNER_GROUP_VIEWER": {
       "ROUTE": "learner-group/:learner_group_id",
       "TITLE": "I18N_LEARNER_GROUP_PAGE_TITLE",
@@ -6837,6 +7637,26 @@ export default {
       // manually in the backend. Please use angular router syntax here.
       "MANUALLY_REGISTERED_WITH_BACKEND": true,
       "META": []
+    },
+    "TOPIC_EDITOR": {
+      "ROUTE": "topic_editor/:topic_id",
+      "TITLE": "Topic Editor",
+      // Some routes contain url fragments, as syntax for url fragments are
+      // different for angular router and backend. They have to be registered
+      // manually in the backend. Please use angular router syntax here.
+      "MANUALLY_REGISTERED_WITH_BACKEND": true,
+      "META": [
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "description",
+          "CONTENT": "Edit and manage topics with the Topic Editor in Oppia."
+        },
+        {
+          "PROPERTY_TYPE": "itemprop",
+          "PROPERTY_VALUE": "og:description",
+          "CONTENT": "Edit and manage topics with the Topic Editor in Oppia."
+        }
+      ]
     },
     "SPLASH": {
       "ROUTE": "",
@@ -6925,8 +7745,49 @@ export default {
   "METADATA_PROPERTIES": [
     "title", "category", "objective", "language_code", "tags", "blurb",
     "author_notes", "states_schema_version", "init_state_name", "param_specs",
-    "param_changes", "auto_tts_enabled", "correctness_feedback_enabled",
+    "param_changes", "auto_tts_enabled",
     "edits_allowed"
   ],
-  "NON_METADATA_PROPERTIES": ["id", "states"]
+  "NON_METADATA_PROPERTIES": [
+    "id", "states", "next_content_id_index", "version"
+  ],
+  "CONTRIBUTOR_CERTIFICATE_WIDTH": 1493,
+  "CONTRIBUTOR_CERTIFICATE_HEIGHT": 1313,
+  "BRANCH_NAME": "",
+  "SHORT_COMMIT_HASH": "",
+
+  "LANGUAGE_CODE_TO_MATH_SYMBOL_PRONUNCIATIONS": {
+    "en": {
+      "+": "plus",
+      "-": "minus",
+      "*": "times",
+      "×": "times",
+      "÷": "divided by",
+      "=": "equals"
+    },
+    "hi": {
+      "+": "जोड़",
+      "-": "घटा",
+      "*": "गुणा",
+      "×": "गुणा",
+      "÷": "विभाजित",
+      "=": "बराबर"
+    },
+    "pt": {
+      "+": "mais",
+      "-": "menos",
+      "*": "vezes",
+      "×": "vezes",
+      "÷": "dividido por",
+      "=": "igual a"
+    },
+    "ar": {
+      "+": "زائد",
+      "-": "ناقص",
+      "*": "ضرب",
+      "×": "ضرب",
+      "÷": "قسمة على",
+      "=": "يساوي"
+    }
+  }
 } as const;

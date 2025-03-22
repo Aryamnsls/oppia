@@ -16,12 +16,11 @@
  * @fileoverview Backend api service for Setting tab;
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import {HttpClient} from '@angular/common/http';
+import {Injectable} from '@angular/core';
 
 interface SettingTabBackendDict {
-  'draft_email_body': string;
+  draft_email_body: string;
 }
 
 export interface SettingTabResponse {
@@ -29,7 +28,7 @@ export interface SettingTabResponse {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class SettingTabBackendApiService {
   constructor(private http: HttpClient) {}
@@ -38,7 +37,3 @@ export class SettingTabBackendApiService {
     return this.http.get<SettingTabBackendDict>(url).toPromise();
   }
 }
-
-angular.module('oppia').factory(
-  'SettingTabBackendApiService',
-  downgradeInjectable(SettingTabBackendApiService));

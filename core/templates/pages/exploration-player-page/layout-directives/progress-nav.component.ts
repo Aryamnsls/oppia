@@ -16,27 +16,33 @@
  * @fileoverview Component for navigation in the conversation skin.
  */
 
-import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { StateCard } from 'domain/state_card/state-card.model';
-import { BrowserCheckerService } from 'domain/utilities/browser-checker.service';
-import { InteractionSpecsConstants, InteractionSpecsKey } from 'pages/interaction-specs.constants';
-import { Subscription } from 'rxjs';
-import { UrlService } from 'services/contextual/url.service';
-import { WindowDimensionsService } from 'services/contextual/window-dimensions.service';
-import { FocusManagerService } from 'services/stateful/focus-manager.service';
-import { ExplorationPlayerConstants } from '../exploration-player-page.constants';
-import { ExplorationPlayerStateService } from '../services/exploration-player-state.service';
-import { PlayerPositionService } from '../services/player-position.service';
-import { PlayerTranscriptService } from '../services/player-transcript.service';
-import { I18nLanguageCodeService } from 'services/i18n-language-code.service';
-import { SchemaFormSubmittedService } from 'services/schema-form-submitted.service';
-import { animate, keyframes, style, transition, trigger } from '@angular/animations';
-import { ContentTranslationManagerService } from '../services/content-translation-manager.service';
+import {Component, EventEmitter, Input, Output} from '@angular/core';
+import {StateCard} from 'domain/state_card/state-card.model';
+import {
+  InteractionSpecsConstants,
+  InteractionSpecsKey,
+} from 'pages/interaction-specs.constants';
+import {Subscription} from 'rxjs';
+import {UrlService} from 'services/contextual/url.service';
+import {WindowDimensionsService} from 'services/contextual/window-dimensions.service';
+import {FocusManagerService} from 'services/stateful/focus-manager.service';
+import {ExplorationPlayerConstants} from '../exploration-player-page.constants';
+import {ExplorationPlayerStateService} from '../services/exploration-player-state.service';
+import {PlayerPositionService} from '../services/player-position.service';
+import {PlayerTranscriptService} from '../services/player-transcript.service';
+import {I18nLanguageCodeService} from 'services/i18n-language-code.service';
+import {SchemaFormSubmittedService} from 'services/schema-form-submitted.service';
+import {
+  animate,
+  keyframes,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import {ContentTranslationManagerService} from '../services/content-translation-manager.service';
 
 import './progress-nav.component.css';
-import { InteractionCustomizationArgs, ItemSelectionInputCustomizationArgs } from 'interactions/customization-args-defs';
-
+import {InteractionCustomizationArgs} from 'interactions/customization-args-defs';
 
 @Component({
   selector: 'oppia-progress-nav',
@@ -46,14 +52,14 @@ import { InteractionCustomizationArgs, ItemSelectionInputCustomizationArgs } fro
     trigger('fadeInOut', [
       transition('void => *', []),
       transition('* <=> *', [
-        style({ opacity: 0 }),
-        animate('1s ease', keyframes([
-          style({ opacity: 0 }),
-          style({ opacity: 1 })
-        ]))
-      ])
-    ])
-  ]
+        style({opacity: 0}),
+        animate(
+          '1s ease',
+          keyframes([style({opacity: 0}), style({opacity: 1})])
+        ),
+      ]),
+    ]),
+  ],
 })
 export class ProgressNavComponent {
   // These properties are initialized using Angular lifecycle hooks
@@ -77,14 +83,12 @@ export class ProgressNavComponent {
   explorationId!: string;
   newCardStateName!: string;
   currentCardIndex!: number;
-  @Output() submit: EventEmitter<void> = (
-    new EventEmitter());
+  @Output() submit: EventEmitter<void> = new EventEmitter();
 
-  @Output() clickContinueButton: EventEmitter<void> = (
-    new EventEmitter());
+  @Output() clickContinueButton: EventEmitter<void> = new EventEmitter();
 
-  @Output() clickContinueToReviseButton: EventEmitter<void> = (
-    new EventEmitter());
+  @Output() clickContinueToReviseButton: EventEmitter<void> =
+    new EventEmitter();
 
   @Output() changeCard: EventEmitter<number> = new EventEmitter();
 
@@ -93,14 +97,15 @@ export class ProgressNavComponent {
   directiveSubscriptions = new Subscription();
   transcriptLength: number = 0;
   interactionIsInline: boolean = true;
-  CONTINUE_BUTTON_FOCUS_LABEL: string = (
-    ExplorationPlayerConstants.CONTINUE_BUTTON_FOCUS_LABEL);
+  CONTINUE_BUTTON_FOCUS_LABEL: string =
+    ExplorationPlayerConstants.CONTINUE_BUTTON_FOCUS_LABEL;
 
   SHOW_SUBMIT_INTERACTIONS_ONLY_FOR_MOBILE: string[] = [
-    'ItemSelectionInput', 'MultipleChoiceInput'];
+    'ItemSelectionInput',
+    'MultipleChoiceInput',
+  ];
 
   constructor(
-    private browserCheckerService: BrowserCheckerService,
     private explorationPlayerStateService: ExplorationPlayerStateService,
     private focusManagerService: FocusManagerService,
     private i18nLanguageCodeService: I18nLanguageCodeService,
@@ -109,7 +114,7 @@ export class ProgressNavComponent {
     private urlService: UrlService,
     private schemaFormSubmittedService: SchemaFormSubmittedService,
     private windowDimensionsService: WindowDimensionsService,
-    private contentTranslationManagerService: ContentTranslationManagerService,
+    private contentTranslationManagerService: ContentTranslationManagerService
   ) {}
 
   ngOnChanges(): void {
@@ -123,11 +128,9 @@ export class ProgressNavComponent {
     this.isIframed = this.urlService.isIframed();
 
     this.directiveSubscriptions.add(
-      this.playerPositionService.onHelpCardAvailable.subscribe(
-        (helpCard) => {
-          this.helpCardHasContinueButton = helpCard.hasContinueButton;
-        }
-      )
+      this.playerPositionService.onHelpCardAvailable.subscribe(helpCard => {
+        this.helpCardHasContinueButton = helpCard.hasContinueButton;
+      })
     );
     this.directiveSubscriptions.add(
       this.schemaFormSubmittedService.onSubmittedSchemaBasedForm.subscribe(
@@ -155,22 +158,22 @@ export class ProgressNavComponent {
 
   updateDisplayedCardInfo(): void {
     this.transcriptLength = this.playerTranscriptService.getNumCards();
-    this.displayedCardIndex = (
-      this.playerPositionService.getDisplayedCardIndex());
+    this.displayedCardIndex =
+      this.playerPositionService.getDisplayedCardIndex();
     this.hasPrevious = this.displayedCardIndex > 0;
     this.hasNext = !this.playerTranscriptService.isLastCard(
-      this.displayedCardIndex);
+      this.displayedCardIndex
+    );
     this.explorationPlayerStateService.isInQuestionMode();
 
-    this.conceptCardIsBeingShown = (
+    this.conceptCardIsBeingShown =
       this.displayedCard.getStateName() === null &&
-        !this.explorationPlayerStateService.isPresentingIsolatedQuestions()
-    );
+      !this.explorationPlayerStateService.isPresentingIsolatedQuestions();
 
     if (!this.conceptCardIsBeingShown) {
       this.interactionIsInline = this.displayedCard.isInteractionInline();
-      this.interactionCustomizationArgs = this.displayedCard
-        .getInteractionCustomizationArgs();
+      this.interactionCustomizationArgs =
+        this.displayedCard.getInteractionCustomizationArgs();
       this.interactionId = this.displayedCard.getInteractionId();
 
       if (this.interactionId === 'Continue') {
@@ -191,39 +194,19 @@ export class ProgressNavComponent {
         Boolean(this.interactionId) &&
         InteractionSpecsConstants.INTERACTION_SPECS[
           this.interactionId as InteractionSpecsKey
-        ].show_generic_submit_button);
-    // The type of error 'e' is unknown because anything can be throw
-    // in TypeScript. We need to make sure to check the type of 'e'.
+        ].show_generic_submit_button
+      );
+      // We use unknown type because we are unsure of the type of error
+      // that was thrown. Since the catch block cannot identify the
+      // specific type of error, we are unable to further optimise the
+      // code by introducing more types of errors.
     } catch (e: unknown) {
-      let additionalInfo = (
-        '\nSubmit button debug logs:\ninterationId: ' +
-        this.interactionId);
+      let additionalInfo =
+        '\nSubmit button debug logs:\ninterationId: ' + this.interactionId;
       if (e instanceof Error) {
         e.message += additionalInfo;
       }
       throw e;
-    }
-  }
-
-  doesInteractionHaveSpecialCaseForMobile(): boolean {
-    // The submit button should be shown:
-    // 1. In mobile mode, if the current interaction is either
-    //    ItemSelectionInput or MultipleChoiceInput.
-    // 2. In desktop mode, if the current interaction is
-    //    ItemSelectionInput with maximum selectable choices > 1.
-    if (this.browserCheckerService.isMobileDevice()) {
-      return (
-        !this.interactionId ||
-        this.SHOW_SUBMIT_INTERACTIONS_ONLY_FOR_MOBILE.indexOf(
-          this.interactionId) >= 0);
-    } else {
-      let interactionCustomizationArgs = (
-        this.interactionCustomizationArgs as
-          ItemSelectionInputCustomizationArgs);
-      return (
-        this.interactionId === 'ItemSelectionInput' &&
-              interactionCustomizationArgs
-                .maxAllowableSelectionCount.value > 1);
     }
   }
 
@@ -238,19 +221,17 @@ export class ProgressNavComponent {
   // Returns whether the screen is wide enough to fit two
   // cards (e.g., the tutor and supplemental cards) side-by-side.
   canWindowShowTwoCards(): boolean {
-    return this.windowDimensionsService.getWidth() >
-      ExplorationPlayerConstants.TWO_CARD_THRESHOLD_PX;
+    return (
+      this.windowDimensionsService.getWidth() >
+      ExplorationPlayerConstants.TWO_CARD_THRESHOLD_PX
+    );
   }
 
   shouldGenericSubmitButtonBeShown(): boolean {
-    if (this.doesInteractionHaveSpecialCaseForMobile()) {
-      return true;
-    }
-
-    return (this.doesInteractionHaveNavSubmitButton() && (
-      this.interactionIsInline ||
-      !this.canWindowShowTwoCards()
-    ));
+    return (
+      this.doesInteractionHaveNavSubmitButton() &&
+      (this.interactionIsInline || !this.canWindowShowTwoCards())
+    );
   }
 
   shouldContinueButtonBeShown(): boolean {
@@ -260,12 +241,8 @@ export class ProgressNavComponent {
 
     return Boolean(
       this.interactionIsInline &&
-      this.displayedCard.isCompleted() &&
-      this.displayedCard.getLastOppiaResponse());
+        this.displayedCard.isCompleted() &&
+        this.displayedCard.getLastOppiaResponse()
+    );
   }
 }
-
-angular.module('oppia').directive('oppiaProgressNav',
-  downgradeComponent({
-    component: ProgressNavComponent
-  }) as angular.IDirectiveFactory);

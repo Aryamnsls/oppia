@@ -19,22 +19,15 @@
 
 export interface LearnerGroupUserInfoBackendDict {
   username: string;
-  profile_picture_data_url: string;
   error: string;
 }
 
 export class LearnerGroupUserInfo {
   _username: string;
-  _userProfilePictureUrl: string;
   _error: string;
 
-  constructor(
-      username: string,
-      userProfilePictureUrl: string,
-      error: string
-  ) {
+  constructor(username: string, error: string) {
     this._username = username;
-    this._userProfilePictureUrl = userProfilePictureUrl;
     this._error = error;
   }
 
@@ -42,20 +35,15 @@ export class LearnerGroupUserInfo {
     return this._username;
   }
 
-  get userProfilePictureUrl(): string {
-    return this._userProfilePictureUrl;
-  }
-
   get error(): string {
     return this._error;
   }
 
   static createFromBackendDict(
-      infoBackendDict: LearnerGroupUserInfoBackendDict
+    infoBackendDict: LearnerGroupUserInfoBackendDict
   ): LearnerGroupUserInfo {
     return new LearnerGroupUserInfo(
       infoBackendDict.username,
-      infoBackendDict.profile_picture_data_url,
       infoBackendDict.error
     );
   }

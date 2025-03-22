@@ -16,19 +16,17 @@
  * @fileoverview Compoennt for the state translation status graph.
  */
 
-import { Component, Input } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
-import { StateEditorService } from 'components/state-editor/state-editor-properties-services/state-editor.service';
-import { StateRecordedVoiceoversService } from 'components/state-editor/state-editor-properties-services/state-recorded-voiceovers.service';
-import { StateWrittenTranslationsService } from 'components/state-editor/state-editor-properties-services/state-written-translations.service';
-import { ExplorationStatesService } from 'pages/exploration-editor-page/services/exploration-states.service';
-import { GraphDataService } from 'pages/exploration-editor-page/services/graph-data.service';
-import { RouterService } from 'pages/exploration-editor-page/services/router.service';
-import { TranslationStatusService } from '../services/translation-status.service';
+import {Component, Input} from '@angular/core';
+import {StateEditorService} from 'components/state-editor/state-editor-properties-services/state-editor.service';
+import {StateRecordedVoiceoversService} from 'components/state-editor/state-editor-properties-services/state-recorded-voiceovers.service';
+import {ExplorationStatesService} from 'pages/exploration-editor-page/services/exploration-states.service';
+import {GraphDataService} from 'pages/exploration-editor-page/services/graph-data.service';
+import {RouterService} from 'pages/exploration-editor-page/services/router.service';
+import {TranslationStatusService} from '../services/translation-status.service';
 
 @Component({
   selector: 'oppia-state-translation-status-graph',
-  templateUrl: './state-translation-status-graph.component.html'
+  templateUrl: './state-translation-status-graph.component.html',
 })
 export class StateTranslationStatusGraphComponent {
   // This property is initialized using Angular lifecycle hooks
@@ -42,9 +40,8 @@ export class StateTranslationStatusGraphComponent {
     private stateEditorService: StateEditorService,
     private routerService: RouterService,
     private stateRecordedVoiceoversService: StateRecordedVoiceoversService,
-    private stateWrittenTranslationsService: StateWrittenTranslationsService,
     private translationStatusService: TranslationStatusService
-  ) { }
+  ) {}
 
   nodeColors(): object {
     return this.translationStatusService.getAllStateStatusColors();
@@ -68,16 +65,11 @@ export class StateTranslationStatusGraphComponent {
 
     if (stateName && stateData) {
       this.stateRecordedVoiceoversService.init(
-        stateName, stateData.recordedVoiceovers);
-      this.stateWrittenTranslationsService.init(
-        stateName, stateData.writtenTranslations);
+        stateName,
+        stateData.recordedVoiceovers
+      );
       this.stateEditorService.onRefreshStateTranslation.emit();
     }
     this.routerService.onCenterGraph.emit();
   }
 }
-
-angular.module('oppia').directive('oppiaStateTranslationStatusGraph',
-  downgradeComponent({
-    component: StateTranslationStatusGraphComponent
-  }) as angular.IDirectiveFactory);

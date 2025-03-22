@@ -16,10 +16,9 @@
  * @fileoverview Service for initializing guppy instances.
  */
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {Injectable} from '@angular/core';
 
-import { MathInteractionsService } from 'services/math-interactions.service';
+import {MathInteractionsService} from 'services/math-interactions.service';
 
 export class GuppyObject {
   // These properties are initialized using constructor function
@@ -34,7 +33,7 @@ export class GuppyObject {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class GuppyInitializationService {
   private guppyInstances: GuppyObject[] = [];
@@ -42,8 +41,11 @@ export class GuppyInitializationService {
   static interactionType: string;
   private static allowedVariables: string[] = [];
 
-  init(guppyDivClassName: string, placeholderText: string, initialValue = ''):
-      void {
+  init(
+    guppyDivClassName: string,
+    placeholderText: string,
+    initialValue = ''
+  ): void {
     this.onScreenKeyboardShown = false;
     let guppyDivs = document.querySelectorAll('.' + guppyDivClassName);
     let divId, guppyInstance;
@@ -57,20 +59,23 @@ export class GuppyInitializationService {
 
       guppyInstance.configure(
         'empty_content',
-        '\\color{grey}{\\text{\\small{' + placeholderText + '}}}');
+        '\\color{grey}{\\text{\\small{' + placeholderText + '}}}'
+      );
 
       // Initialize it with a value for the creator's view.
       if (initialValue.length !== 0) {
         if (initialValue.indexOf('=') !== -1) {
           let splitByEquals = initialValue.split('=');
           splitByEquals[0] = mathInteractionsService.insertMultiplicationSigns(
-            splitByEquals[0]);
+            splitByEquals[0]
+          );
           splitByEquals[1] = mathInteractionsService.insertMultiplicationSigns(
-            splitByEquals[1]);
+            splitByEquals[1]
+          );
           initialValue = splitByEquals.join('=');
         } else {
-          initialValue = mathInteractionsService.insertMultiplicationSigns(
-            initialValue);
+          initialValue =
+            mathInteractionsService.insertMultiplicationSigns(initialValue);
         }
         initialValue = initialValue.replace(/abs\(/g, 'absolutevalue(');
         initialValue = initialValue.replace(/sqrt\(/g, 'squareroot(');
@@ -107,7 +112,3 @@ export class GuppyInitializationService {
     GuppyInitializationService.allowedVariables = allowedVariables;
   }
 }
-
-angular.module('oppia').factory(
-  'GuppyInitializationService',
-  downgradeInjectable(GuppyInitializationService));

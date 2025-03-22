@@ -33,7 +33,7 @@ from .. import concurrent_task_utils
 
 MYPY = False
 if MYPY:  # pragma: no cover
-    from scripts.linters import pre_commit_linter
+    from scripts.linters import run_lint_checks
 
 
 class ThirdPartyLibDict(TypedDict):
@@ -66,32 +66,25 @@ _DEPENDENCY_SOURCE_PACKAGE: Final = 'package.json'
 
 WORKFLOWS_DIR: Final = os.path.join(os.getcwd(), '.github', 'workflows')
 WORKFLOW_FILENAME_REGEX: Final = r'\.(yaml)|(yml)$'
-MERGE_STEP: Final = {'uses': './.github/actions/merge'}
-WORKFLOWS_EXEMPT_FROM_MERGE_REQUIREMENT: Final = (
-    'backend_tests.yml',
-    'develop_commit_notification.yml',
-    'pending-review-notification.yml',
-    'revert-web-wiki-updates.yml',
-    'frontend_tests.yml'
-)
+GIT_COMMIT_HASH_REGEX: Final = r'^git\+https:\/\/github\.com\/.*#(.*)$'
 
 THIRD_PARTY_LIBS: List[ThirdPartyLibDict] = [
     {
         'name': 'Guppy',
-        'dependency_key': 'guppy',
-        'dependency_source': _DEPENDENCY_SOURCE_DEPENDENCIES_JSON,
+        'dependency_key': 'guppy-dev',
+        'dependency_source': _DEPENDENCY_SOURCE_PACKAGE,
         'type_defs_filename_prefix': 'guppy-defs-'
     },
     {
         'name': 'Skulpt',
         'dependency_key': 'skulpt-dist',
-        'dependency_source': _DEPENDENCY_SOURCE_DEPENDENCIES_JSON,
+        'dependency_source': _DEPENDENCY_SOURCE_PACKAGE,
         'type_defs_filename_prefix': 'skulpt-defs-'
     },
     {
         'name': 'MIDI',
-        'dependency_key': 'midiJs',
-        'dependency_source': _DEPENDENCY_SOURCE_DEPENDENCIES_JSON,
+        'dependency_key': 'midi',
+        'dependency_source': _DEPENDENCY_SOURCE_PACKAGE,
         'type_defs_filename_prefix': 'midi-defs-'
     },
     {
@@ -106,7 +99,7 @@ THIRD_PARTY_LIBS: List[ThirdPartyLibDict] = [
 class CustomLintChecksManager(linter_utils.BaseLinter):
     """Manages other files lint checks."""
 
-    def __init__(self, file_cache: pre_commit_linter.FileCache) -> None:
+    def __init__(self, file_cache: run_lint_checks.FileCache) -> None:
         """Constructs a CustomLintChecksManager object.
 
         Args:
@@ -168,9 +161,6 @@ class CustomLintChecksManager(linter_utils.BaseLinter):
         failed = False
         error_messages = []
 
-        dependencies_json = json.load(utils.open_file(
-            DEPENDENCIES_JSON_FILE_PATH, 'r'))['dependencies']['frontend']
-
         package = json.load(utils.open_file(
             PACKAGE_JSON_FILE_PATH, 'r'))['dependencies']
 
@@ -180,16 +170,22 @@ class CustomLintChecksManager(linter_utils.BaseLinter):
         for third_party_lib in THIRD_PARTY_LIBS:
             lib_dependency_source = third_party_lib['dependency_source']
 
-            if lib_dependency_source == _DEPENDENCY_SOURCE_DEPENDENCIES_JSON:
-                lib_version = (
-                    dependencies_json[
-                        third_party_lib['dependency_key']]['version'])
-
-            elif lib_dependency_source == _DEPENDENCY_SOURCE_PACKAGE:
+            if lib_dependency_source == _DEPENDENCY_SOURCE_PACKAGE:
                 lib_version = package[third_party_lib['dependency_key']]
 
                 if lib_version[0] == '^':
                     lib_version = lib_version[1:]
+                # In cases where the version is in the form of git commit hashes
+                # such as 'git+https://github.com/username/repo#commit-hash',
+                # we extract the commit hash and use it as the version.
+                elif re.search(GIT_COMMIT_HASH_REGEX, lib_version):
+                    match = re.search(GIT_COMMIT_HASH_REGEX, lib_version)
+                    # We must verify that the match is not None because
+                    # re.search() returns None when no match is found. Although
+                    # we already check this in the elif statement, the mypy type
+                    # check fails, so we need to include this check here.
+                    if match:
+                        lib_version = match.group(1)
 
             prefix_name = third_party_lib['type_defs_filename_prefix']
 
@@ -278,39 +274,38 @@ class CustomLintChecksManager(linter_utils.BaseLinter):
         return concurrent_task_utils.TaskResult(
             name, failed, error_messages, error_messages)
 
-    def check_github_workflows_use_merge_action(
+    def check_github_workflows_have_name(
         self
     ) -> concurrent_task_utils.TaskResult:
-        """Checks that all github actions workflows use the merge action.
+        """Checks that all github actions workflow steps have a name.
 
         Returns:
             TaskResult. A TaskResult object describing any workflows
-            that failed to use the merge action.
+            steps that do not have a name.
         """
-        name = 'Github workflows use merge action'
+        name = 'Github workflow steps have a name'
         workflow_paths = {
             os.path.join(WORKFLOWS_DIR, filename)
             for filename in os.listdir(WORKFLOWS_DIR)
             if re.search(WORKFLOW_FILENAME_REGEX, filename)
-            if filename not in WORKFLOWS_EXEMPT_FROM_MERGE_REQUIREMENT
         }
         errors = []
         for workflow_path in workflow_paths:
             workflow_str = self.file_cache.read(workflow_path)
             workflow_dict = yaml.load(workflow_str, Loader=yaml.Loader)
-            errors += self._check_that_workflow_steps_use_merge_action(
+            errors += self._check_that_workflow_steps_have_name(
                 workflow_dict, workflow_path)
         return concurrent_task_utils.TaskResult(
             name, bool(errors), errors, errors)
 
-    # Here we use type Any because the argument 'workflow_dict' accept
+    # Here we use type Any because the argument 'workflow_dict' accepts
     # dictionaries that represents the content of workflow YAML file and
-    # that dictionaries can contain various types of values.
+    # those dictionaries can contain various types of values.
     @staticmethod
-    def _check_that_workflow_steps_use_merge_action(
+    def _check_that_workflow_steps_have_name(
         workflow_dict: Dict[str, Any], workflow_path: str
     ) -> List[str]:
-        """Check that a workflow uses the merge action.
+        """Check that workflow steps has a name.
 
         Args:
             workflow_dict: dict. Dictionary representation of the
@@ -319,16 +314,17 @@ class CustomLintChecksManager(linter_utils.BaseLinter):
 
         Returns:
             list(str). A list of error messages describing any jobs
-            failing to use the merge action.
+            with unnamed steps.
         """
-        jobs_without_merge = []
+        jobs_with_unnamed_step = []
         for job, job_dict in workflow_dict['jobs'].items():
-            if MERGE_STEP not in job_dict['steps']:
-                jobs_without_merge.append(job)
+            if ('steps' in job_dict and
+                    any('name' not in step for step in job_dict['steps'])):
+                jobs_with_unnamed_step.append(job)
         return [
-            '%s --> Job %s does not use the .github/actions/merge action.' % (
+            '%s --> Job %s has an unnamed step' % (
                 workflow_path, job)
-            for job in jobs_without_merge
+            for job in jobs_with_unnamed_step
         ]
 
     def perform_all_lint_checks(self) -> List[concurrent_task_utils.TaskResult]:
@@ -344,13 +340,13 @@ class CustomLintChecksManager(linter_utils.BaseLinter):
         linter_stdout.append(self.check_skip_files_in_app_dev_yaml())
         linter_stdout.append(self.check_third_party_libs_type_defs())
         linter_stdout.append(self.check_webpack_config_file())
-        linter_stdout.append(self.check_github_workflows_use_merge_action())
+        linter_stdout.append(self.check_github_workflows_have_name())
 
         return linter_stdout
 
 
 def get_linters(
-    file_cache: pre_commit_linter.FileCache
+    file_cache: run_lint_checks.FileCache
 ) -> Tuple[CustomLintChecksManager, None]:
     """Creates CustomLintChecksManager and returns it.
 

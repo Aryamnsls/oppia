@@ -16,25 +16,20 @@
  * @fileoverview Service for recording and scrutinizing playthroughs.
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { Injectable } from '@angular/core';
+import {Injectable} from '@angular/core';
 
-import { AppConstants } from 'app.constants';
-import { ExplorationFeaturesService } from
-  'services/exploration-features.service';
+import {AppConstants} from 'app.constants';
+import {ExplorationFeaturesService} from 'services/exploration-features.service';
 import {
   CyclicStateTransitionsCustomizationArgs,
   EarlyQuitCustomizationArgs,
-  MultipleIncorrectSubmissionsCustomizationArgs
-} from 'domain/statistics/PlaythroughIssueObjectFactory';
-import { LearnerAction, LearnerActionObjectFactory } from
-  'domain/statistics/LearnerActionObjectFactory';
-import { Playthrough, PlaythroughObjectFactory } from
-  'domain/statistics/PlaythroughObjectFactory';
-import { PlaythroughBackendApiService } from
-  'domain/statistics/playthrough-backend-api.service';
-import { ServicesConstants } from 'services/services.constants';
-import { Stopwatch } from 'domain/utilities/stopwatch.model';
+  MultipleIncorrectSubmissionsCustomizationArgs,
+} from 'domain/statistics/playthrough-issue.model';
+import {LearnerAction} from 'domain/statistics/learner-action.model';
+import {Playthrough} from 'domain/statistics/playthrough.model';
+import {PlaythroughBackendApiService} from 'domain/statistics/playthrough-backend-api.service';
+import {ServicesConstants} from 'services/services.constants';
+import {Stopwatch} from 'domain/utilities/stopwatch.model';
 
 class CyclicStateTransitionsTracker {
   /** A path of visited states without any repeats. */
@@ -85,8 +80,9 @@ class CyclicStateTransitionsTracker {
       return;
     }
     if (this.pathOfVisitedStates.includes(destStateName)) {
-      const cycleOfVisitedStates = (
-        this.makeCycle(this.pathOfVisitedStates.indexOf(destStateName)));
+      const cycleOfVisitedStates = this.makeCycle(
+        this.pathOfVisitedStates.indexOf(destStateName)
+      );
       if (angular.equals(this.cycleOfVisitedStates, cycleOfVisitedStates)) {
         this.numLoops += 1;
       } else {
@@ -100,7 +96,7 @@ class CyclicStateTransitionsTracker {
 
   generateIssueCustomizationArgs(): CyclicStateTransitionsCustomizationArgs {
     return {
-      state_names: {value: this.cycleOfVisitedStates}
+      state_names: {value: this.cycleOfVisitedStates},
     };
   }
 
@@ -123,11 +119,9 @@ class EarlyQuitTracker {
   private expDurationInSecs!: number;
 
   foundAnIssue(): boolean {
-    // TODO(#15212): Remove the below non-null check (!==) after codebase
-    // is strictly typed.
     return (
-      this.expDurationInSecs !== undefined &&
-      this.expDurationInSecs < ServicesConstants.EARLY_QUIT_THRESHOLD_IN_SECS);
+      this.expDurationInSecs < ServicesConstants.EARLY_QUIT_THRESHOLD_IN_SECS
+    );
   }
 
   recordExplorationQuit(stateName: string, expDurationInSecs: number): void {
@@ -165,8 +159,7 @@ class MultipleIncorrectAnswersTracker {
     }
   }
 
-  generateIssueCustomizationArgs(
-  ): MultipleIncorrectSubmissionsCustomizationArgs {
+  generateIssueCustomizationArgs(): MultipleIncorrectSubmissionsCustomizationArgs {
     return {
       state_name: {value: this.currStateName},
       num_times_answered_incorrectly: {value: this.numTries},
@@ -175,7 +168,7 @@ class MultipleIncorrectAnswersTracker {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class PlaythroughService {
   // These properties are initialized using initSession method
@@ -192,18 +185,19 @@ export class PlaythroughService {
   private learnerIsInSamplePopulation: boolean = false;
 
   constructor(
-      private explorationFeaturesService: ExplorationFeaturesService,
-      private learnerActionObjectFactory: LearnerActionObjectFactory,
-      private playthroughBackendApiService: PlaythroughBackendApiService,
-      private playthroughObjectFactory: PlaythroughObjectFactory) {}
+    private explorationFeaturesService: ExplorationFeaturesService,
+    private playthroughBackendApiService: PlaythroughBackendApiService
+  ) {}
 
   initSession(
-      explorationId: string, explorationVersion: number,
-      sampleSizePopulationProportion: number): void {
+    explorationId: string,
+    explorationVersion: number,
+    sampleSizePopulationProportion: number
+  ): void {
     this.explorationId = explorationId;
     this.explorationVersion = explorationVersion;
-    this.learnerIsInSamplePopulation = (
-      Math.random() < sampleSizePopulationProportion);
+    this.learnerIsInSamplePopulation =
+      Math.random() < sampleSizePopulationProportion;
   }
 
   recordExplorationStartAction(initStateName: string): void {
@@ -212,9 +206,9 @@ export class PlaythroughService {
     }
 
     this.recordedLearnerActions = [
-      this.learnerActionObjectFactory.createNewExplorationStartAction({
+      LearnerAction.createNewExplorationStartAction({
         state_name: {value: initStateName},
-      })
+      }),
     ];
 
     this.eqTracker = new EarlyQuitTracker();
@@ -227,60 +221,52 @@ export class PlaythroughService {
   }
 
   recordAnswerSubmitAction(
-      stateName: string, destStateName: string, interactionId: string,
-      answer: string, feedback: string, timeSpentInStateSecs: number): void {
+    stateName: string,
+    destStateName: string,
+    interactionId: string,
+    answer: string,
+    feedback: string,
+    timeSpentInStateSecs: number
+  ): void {
     if (!this.hasRecordingBegun() || this.hasRecordingFinished()) {
       return;
     }
 
-    // TODO(#15212): Remove the below check once codebase is strictly typed.
-    // And if check is needed, means we are actually passes null then add
-    // proper comment to explain why we are doing this check.
-    if (
-      this.recordedLearnerActions &&
-      this.misTracker &&
-      this.cstTracker
-    ) {
-      this.recordedLearnerActions.push(
-        this.learnerActionObjectFactory.createNewAnswerSubmitAction({
-          state_name: {value: stateName},
-          dest_state_name: {value: destStateName},
-          interaction_id: {value: interactionId},
-          submitted_answer: {value: answer},
-          feedback: {value: feedback},
-          time_spent_state_in_msecs: {value: 1000 * timeSpentInStateSecs}
-        }));
+    this.recordedLearnerActions.push(
+      LearnerAction.createNewAnswerSubmitAction({
+        state_name: {value: stateName},
+        dest_state_name: {value: destStateName},
+        interaction_id: {value: interactionId},
+        submitted_answer: {value: answer},
+        feedback: {value: feedback},
+        time_spent_state_in_msecs: {value: 1000 * timeSpentInStateSecs},
+      })
+    );
 
-      this.misTracker.recordStateTransition(destStateName);
-      this.cstTracker.recordStateTransition(destStateName);
-    }
+    this.misTracker.recordStateTransition(destStateName);
+    this.cstTracker.recordStateTransition(destStateName);
   }
 
   recordExplorationQuitAction(
-      stateName: string, timeSpentInStateSecs: number): void {
+    stateName: string,
+    timeSpentInStateSecs: number
+  ): void {
     if (!this.hasRecordingBegun() || this.hasRecordingFinished()) {
       return;
     }
 
-    // TODO(#15212): Remove the below check once codebase is strictly typed.
-    // And if check is needed, means we are actually passes null then add
-    // proper comment to explain why we are doing this check.
-    if (
-      this.recordedLearnerActions &&
-      this.playthroughStopwatch &&
-      this.eqTracker
-    ) {
-      this.recordedLearnerActions.push(
-        this.learnerActionObjectFactory.createNewExplorationQuitAction({
-          state_name: {value: stateName},
-          time_spent_in_state_in_msecs: {value: 1000 * timeSpentInStateSecs}
-        }));
+    this.recordedLearnerActions.push(
+      LearnerAction.createNewExplorationQuitAction({
+        state_name: {value: stateName},
+        time_spent_in_state_in_msecs: {value: 1000 * timeSpentInStateSecs},
+      })
+    );
 
-      this.playthroughDurationInSecs = (
-        this.playthroughStopwatch.getTimeInSecs());
-      this.eqTracker.recordExplorationQuit(
-        stateName, this.playthroughDurationInSecs);
-    }
+    this.playthroughDurationInSecs = this.playthroughStopwatch.getTimeInSecs();
+    this.eqTracker.recordExplorationQuit(
+      stateName,
+      this.playthroughDurationInSecs
+    );
   }
 
   storePlaythrough(): void {
@@ -302,33 +288,27 @@ export class PlaythroughService {
    * If none of the issue types have been discovered, returns null instead.
    */
   private createNewPlaythrough(): Playthrough | null {
-    // TODO(#15212): Remove the below check once codebase is strictly typed.
-    // And if check is needed, means we are actually passes null then add
-    // proper comment to explain why we are doing this check.
-    if (
-      this.explorationId &&
-      this.explorationVersion &&
-      this.recordedLearnerActions
-    ) {
-      if (this.misTracker && this.misTracker.foundAnIssue()) {
-        return this.playthroughObjectFactory
-          .createNewMultipleIncorrectSubmissionsPlaythrough(
-            this.explorationId, this.explorationVersion,
-            this.misTracker.generateIssueCustomizationArgs(),
-            this.recordedLearnerActions);
-      } else if (this.cstTracker && this.cstTracker.foundAnIssue()) {
-        return this.playthroughObjectFactory
-          .createNewCyclicStateTransitionsPlaythrough(
-            this.explorationId, this.explorationVersion,
-            this.cstTracker.generateIssueCustomizationArgs(),
-            this.recordedLearnerActions);
-      } else if (this.eqTracker && this.eqTracker.foundAnIssue()) {
-        return this.playthroughObjectFactory
-          .createNewEarlyQuitPlaythrough(
-            this.explorationId, this.explorationVersion,
-            this.eqTracker.generateIssueCustomizationArgs(),
-            this.recordedLearnerActions);
-      }
+    if (this.misTracker && this.misTracker.foundAnIssue()) {
+      return Playthrough.createNewMultipleIncorrectSubmissionsPlaythrough(
+        this.explorationId,
+        this.explorationVersion,
+        this.misTracker.generateIssueCustomizationArgs(),
+        this.recordedLearnerActions
+      );
+    } else if (this.cstTracker && this.cstTracker.foundAnIssue()) {
+      return Playthrough.createNewCyclicStateTransitionsPlaythrough(
+        this.explorationId,
+        this.explorationVersion,
+        this.cstTracker.generateIssueCustomizationArgs(),
+        this.recordedLearnerActions
+      );
+    } else if (this.eqTracker && this.eqTracker.foundAnIssue()) {
+      return Playthrough.createNewEarlyQuitPlaythrough(
+        this.explorationId,
+        this.explorationVersion,
+        this.eqTracker.generateIssueCustomizationArgs(),
+        this.recordedLearnerActions
+      );
     }
     return null;
   }
@@ -336,51 +316,38 @@ export class PlaythroughService {
   private isPlaythroughRecordingEnabled(): boolean {
     return (
       this.explorationFeaturesService.isPlaythroughRecordingEnabled() &&
-      this.learnerIsInSamplePopulation === true);
+      this.learnerIsInSamplePopulation === true
+    );
   }
 
   private hasRecordingBegun(): boolean {
     return (
-      // TODO(#15212): Remove the below check "this.recordedLearnerActions" once
-      // codebase is strictly typed. And if check is needed, means we are
-      // actually passes null then add proper comment to explain why we are
-      // doing this check.
-      this.recordedLearnerActions &&
-      this.isPlaythroughRecordingEnabled()
+      // Check this.recordedLearnerActions because
+      // it could be null before recording begun.
+      this.recordedLearnerActions && this.isPlaythroughRecordingEnabled()
     );
   }
 
   private hasRecordingFinished(): boolean {
     return (
-      // TODO(#15212): Remove the below check "this.recordedLearnerActions" once
-      // codebase is strictly typed. And if check is needed, means we are
-      // actually passes null then add proper comment to explain why we are
-      // doing this check.
-      this.recordedLearnerActions &&
       this.hasRecordingBegun() &&
       this.recordedLearnerActions.length > 1 &&
       this.recordedLearnerActions[this.recordedLearnerActions.length - 1]
-        .actionType === AppConstants.ACTION_TYPE_EXPLORATION_QUIT);
+        .actionType === AppConstants.ACTION_TYPE_EXPLORATION_QUIT
+    );
   }
 
   private isRecordedPlaythroughHelpful(): boolean {
     return (
-      // TODO(#15212): Remove the below check "this.recordedLearnerActions" once
-      // codebase is strictly typed. And if check is needed, means we are
-      // actually passes null then add proper comment to explain why we are
-      // doing this check.
-      this.recordedLearnerActions &&
       // Playthroughs are only helpful in their entirety.
       this.hasRecordingFinished() &&
       // Playthroughs are only helpful if learners have attempted an answer.
       this.recordedLearnerActions.some(
-        a => a.actionType === AppConstants.ACTION_TYPE_ANSWER_SUBMIT) &&
+        a => a.actionType === AppConstants.ACTION_TYPE_ANSWER_SUBMIT
+      ) &&
       // Playthroughs are only helpful if learners have invested enough time.
       this.playthroughDurationInSecs >=
-          ServicesConstants.MIN_PLAYTHROUGH_DURATION_IN_SECS);
+        ServicesConstants.MIN_PLAYTHROUGH_DURATION_IN_SECS
+    );
   }
 }
-
-angular.module('oppia').factory(
-  'PlaythroughService',
-  downgradeInjectable(PlaythroughService));

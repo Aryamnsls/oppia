@@ -17,25 +17,28 @@
  * its components.
  */
 
-import { Injectable, OnInit } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { ExplorationStatesService } from 'pages/exploration-editor-page/services/exploration-states.service';
-import { TranslationLanguageService } from 'pages/exploration-editor-page/translation-tab/services/translation-language.service';
-import { TranslationTabActiveModeService } from 'pages/exploration-editor-page/translation-tab/services/translation-tab-active-mode.service';
-import { StateRecordedVoiceoversService } from 'components/state-editor/state-editor-properties-services/state-recorded-voiceovers.service';
-import { StateWrittenTranslationsService } from 'components/state-editor/state-editor-properties-services/state-written-translations.service';
+import {Injectable, OnInit} from '@angular/core';
+import {ExplorationStatesService} from 'pages/exploration-editor-page/services/exploration-states.service';
+import {TranslationLanguageService} from 'pages/exploration-editor-page/translation-tab/services/translation-language.service';
+import {TranslationTabActiveModeService} from 'pages/exploration-editor-page/translation-tab/services/translation-tab-active-mode.service';
+import {StateRecordedVoiceoversService} from 'components/state-editor/state-editor-properties-services/state-recorded-voiceovers.service';
 import INTERACTION_SPECS from 'interactions/interaction_specs.json';
-import { AppConstants } from 'app.constants';
-import { WrittenTranslations } from 'domain/exploration/WrittenTranslationsObjectFactory';
-import { RecordedVoiceovers } from 'domain/exploration/recorded-voiceovers.model';
-import { InteractionSpecsKey } from 'pages/interaction-specs.constants';
+import {AppConstants} from 'app.constants';
+import {RecordedVoiceovers} from 'domain/exploration/recorded-voiceovers.model';
+import {EntityTranslation} from 'domain/translation/EntityTranslationObjectFactory';
+import {EntityTranslationsService} from 'services/entity-translations.services';
+import {StateEditorService} from 'components/state-editor/state-editor-properties-services/state-editor.service';
+import {InteractionSpecsKey} from 'pages/interaction-specs.constants';
+import {TranslatedContent} from 'domain/exploration/TranslatedContentObjectFactory';
+import {PlatformFeatureService} from 'services/platform-feature.service';
+import {EntityVoiceoversService} from 'services/entity-voiceovers.services';
 
 interface AvailabilityStatus {
   available: boolean;
   needsUpdate: boolean;
 }
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class TranslationStatusService implements OnInit {
   AUDIO_NEEDS_UPDATE_MESSAGE: string[] = ['Audio needs update!'];
@@ -47,21 +50,24 @@ export class TranslationStatusService implements OnInit {
   // non-null assertion. For more information, see
   // https://github.com/oppia/oppia/wiki/Guide-on-defining-types#ts-7-1
   langCode!: string;
-  stateNeedsUpdateWarnings!: Record<string, string[]>;
+  stateNeedsUpdateWarnings: Record<string, string[]> = {};
   stateWiseStatusColor!: Record<string, string>;
   explorationTranslationContentRequiredCount!: number;
   explorationVoiceoverContentRequiredCount!: number;
   explorationTranslationContentNotAvailableCount!: number;
   explorationVoiceoverContentNotAvailableCount!: number;
-
+  entityTranslation!: EntityTranslation;
 
   constructor(
     private explorationStatesService: ExplorationStatesService,
     private translationLanguageService: TranslationLanguageService,
     private translationTabActiveModeService: TranslationTabActiveModeService,
     private stateRecordedVoiceoversService: StateRecordedVoiceoversService,
-    private stateWrittenTranslationsService: StateWrittenTranslationsService,
-  ) { }
+    private entityTranslationsService: EntityTranslationsService,
+    private stateEditorService: StateEditorService,
+    private platformFeatureService: PlatformFeatureService,
+    private entityVoiceoversService: EntityVoiceoversService
+  ) {}
 
   ngOnInit(): void {
     this.langCode = this.translationLanguageService.getActiveLanguageCode();
@@ -74,65 +80,107 @@ export class TranslationStatusService implements OnInit {
   }
 
   _getVoiceOverStatus(
-      recordedVoiceovers: RecordedVoiceovers,
-      contentId: string): AvailabilityStatus {
+    recordedVoiceovers: RecordedVoiceovers,
+    contentId: string
+  ): AvailabilityStatus {
     let availabilityStatus = {
       available: false,
       needsUpdate: false,
     };
-    let availableLanguages = recordedVoiceovers.getLanguageCodes(
-      contentId);
+    let availableLanguages = recordedVoiceovers.getLanguageCodes(contentId);
 
     if (availableLanguages.indexOf(this.langCode) !== -1) {
       availabilityStatus.available = true;
       let audioTranslation = recordedVoiceovers.getVoiceover(
-        contentId, this.langCode);
+        contentId,
+        this.langCode
+      );
       availabilityStatus.needsUpdate = audioTranslation.needsUpdate;
     }
     return availabilityStatus;
   }
 
-  _getTranslationStatus(
-      writtenTranslations: WrittenTranslations,
-      contentId: string): AvailabilityStatus {
+  _getEntityVoiceoverStatus(contentId: string): AvailabilityStatus {
     let availabilityStatus = {
       available: false,
       needsUpdate: false,
     };
-    this.langCode = this.translationLanguageService.getActiveLanguageCode();
-    let availableLanguages = (
-      writtenTranslations.getLanguageCodes(contentId));
-    if (availableLanguages.indexOf(this.langCode) !== -1) {
-      let writtenTranslation = (
-        writtenTranslations.getWrittenTranslation(contentId, this.langCode));
-      if (writtenTranslation.translation !== '') {
+    let entityVoiceovers =
+      this.entityVoiceoversService.getActiveEntityVoiceovers();
+
+    if (entityVoiceovers === undefined) {
+      return availabilityStatus;
+    }
+
+    let manualVoiceover = entityVoiceovers.getManualVoiceover(contentId);
+    let automaticVoiceover = entityVoiceovers.getAutomaticVoiceover(contentId);
+
+    // Manual voiceovers is given higher priority than automatic voiceovers.
+    if (manualVoiceover) {
+      availabilityStatus.available = true;
+      availabilityStatus.needsUpdate = manualVoiceover.needsUpdate;
+    } else if (
+      automaticVoiceover &&
+      this.isAutomaticVoiceoverRegenerationFromExpFeatureEnabled()
+    ) {
+      availabilityStatus.available = true;
+      availabilityStatus.needsUpdate = automaticVoiceover.needsUpdate;
+    }
+
+    return availabilityStatus;
+  }
+
+  isAutomaticVoiceoverRegenerationFromExpFeatureEnabled(): boolean {
+    return this.platformFeatureService.status
+      .AutomaticVoiceoverRegenerationFromExp.isEnabled;
+  }
+
+  _getTranslationStatus(contentId: string): AvailabilityStatus {
+    let availabilityStatus = {
+      available: false,
+      needsUpdate: false,
+    };
+    if (
+      this.entityTranslation &&
+      this.entityTranslation.hasWrittenTranslation(contentId)
+    ) {
+      let translatedContent = this.entityTranslation.getWrittenTranslation(
+        contentId
+      ) as TranslatedContent;
+      if (translatedContent.translation !== '') {
         availabilityStatus.available = true;
-        availabilityStatus.needsUpdate = writtenTranslation.needsUpdate;
+        availabilityStatus.needsUpdate = translatedContent.needsUpdate;
       }
     }
     return availabilityStatus;
   }
 
   _getContentAvailabilityStatus(
-      stateName: string, contentId: string): AvailabilityStatus {
-    this.langCode = this.translationLanguageService.getActiveLanguageCode();
+    stateName: string,
+    contentId: string
+  ): AvailabilityStatus {
     if (this.translationTabActiveModeService.isTranslationModeActive()) {
-      let writtenTranslations = (
-        this.explorationStatesService.getWrittenTranslationsMemento(stateName));
-      return this._getTranslationStatus(writtenTranslations, contentId);
+      return this._getTranslationStatus(contentId);
     } else {
-      let recordedVoiceovers = (
-        this.explorationStatesService.getRecordedVoiceoversMemento(stateName));
+      if (this.platformFeatureService.status.AddVoiceoverWithAccent.isEnabled) {
+        return this._getEntityVoiceoverStatus(contentId);
+      }
+      this.langCode = this.translationLanguageService.getActiveLanguageCode();
+      let recordedVoiceovers =
+        this.explorationStatesService.getRecordedVoiceoversMemento(stateName);
       return this._getVoiceOverStatus(recordedVoiceovers, contentId);
     }
   }
 
   _getActiveStateContentAvailabilityStatus(
-      contentId: string): AvailabilityStatus {
+    contentId: string
+  ): AvailabilityStatus {
     if (this.translationTabActiveModeService.isTranslationModeActive()) {
-      let writtenTranslations = this.stateWrittenTranslationsService.displayed;
-      return this._getTranslationStatus(writtenTranslations, contentId);
+      return this._getTranslationStatus(contentId);
     } else {
+      if (this.platformFeatureService.status.AddVoiceoverWithAccent.isEnabled) {
+        return this._getEntityVoiceoverStatus(contentId);
+      }
       let recordedVoiceovers = this.stateRecordedVoiceoversService.displayed;
       return this._getVoiceOverStatus(recordedVoiceovers, contentId);
     }
@@ -147,126 +195,190 @@ export class TranslationStatusService implements OnInit {
     this.explorationVoiceoverContentNotAvailableCount = 0;
 
     if (this.explorationStatesService.isInitialized()) {
-      this.explorationStatesService.getStateNames().forEach(
-        (stateName) => {
-          let stateNeedsUpdate = false;
-          let noTranslationCount = 0;
-          let noVoiceoverCount = 0;
-          let recordedVoiceovers = (
-            this.explorationStatesService
-              .getRecordedVoiceoversMemento(stateName));
-          let allContentIds = recordedVoiceovers.getAllContentIds();
-          let interactionId = (
-            this.explorationStatesService.getInteractionIdMemento(
-              stateName));
-          // This is used to prevent users from adding unwanted hints audio, as
-          // of now we do not delete interaction.hints when a user deletes
-          // interaction, so these hints audio are not counted in checking
-          // status of a state.
-          if (!interactionId ||
+      this.explorationStatesService.getStateNames().forEach(stateName => {
+        let stateNeedsUpdate = false;
+        let noTranslationCount = 0;
+        let noVoiceoverCount = 0;
+        let recordedVoiceovers =
+          this.explorationStatesService.getRecordedVoiceoversMemento(stateName);
+
+        let allContentIds = recordedVoiceovers.getAllContentIds();
+        let interactionId =
+          this.explorationStatesService.getInteractionIdMemento(stateName);
+        // This is used to prevent users from adding unwanted hints audio, as
+        // of now we do not delete interaction.hints when a user deletes
+        // interaction, so these hints audio are not counted in checking
+        // status of a state.
+        if (
+          !interactionId ||
           INTERACTION_SPECS[interactionId as InteractionSpecsKey].is_linear ||
-          INTERACTION_SPECS[interactionId as InteractionSpecsKey].is_terminal) {
-            let contentIdToRemove = this._getContentIdListRelatedToComponent(
-              AppConstants.COMPONENT_NAME_HINT,
-              allContentIds);
-            // Excluding default_outcome content status as default outcome's
-            // content is left empty so the translation or voiceover is not
-            // required.
-            contentIdToRemove.push('default_outcome');
-            allContentIds = allContentIds.filter(function(contentId) {
-              return contentIdToRemove.indexOf(contentId) < 0;
-            });
-          }
-
-          this.explorationTranslationContentRequiredCount += (
-            allContentIds.length);
-
-          // Rule inputs do not need voiceovers. To have an accurate
-          // representation of the progress bar for voiceovers, we remove rule
-          // input content ids.
-          const ruleInputContentIds = this._getContentIdListRelatedToComponent(
-            AppConstants.COMPONENT_NAME_RULE_INPUT, allContentIds);
-          this.explorationVoiceoverContentRequiredCount += (
-            allContentIds.length - ruleInputContentIds.length);
-          if (this.translationTabActiveModeService.isVoiceoverModeActive()) {
-            allContentIds = allContentIds.filter(function(contentId) {
-              return ruleInputContentIds.indexOf(contentId) < 0;
-            });
-          }
-
-          allContentIds.forEach((contentId) => {
-            let availabilityStatus = this._getContentAvailabilityStatus(
-              stateName, contentId);
-            if (!availabilityStatus.available) {
-              noTranslationCount++;
-              if (contentId.indexOf(
-                AppConstants.COMPONENT_NAME_RULE_INPUT) !== 0) {
-                noVoiceoverCount++;
-              }
-            }
-            if (availabilityStatus.needsUpdate) {
-              if (this.translationTabActiveModeService
-                .isTranslationModeActive()) {
-                this.stateNeedsUpdateWarnings[stateName] = (
-                  this.TRANSLATION_NEEDS_UPDATE_MESSAGE);
-                stateNeedsUpdate = true;
-              } else {
-                this.stateNeedsUpdateWarnings[stateName] = (
-                  this.AUDIO_NEEDS_UPDATE_MESSAGE);
-                stateNeedsUpdate = true;
-              }
-            }
+          INTERACTION_SPECS[interactionId as InteractionSpecsKey].is_terminal
+        ) {
+          let contentIdToRemove = this._getContentIdListRelatedToComponent(
+            AppConstants.COMPONENT_NAME_HINT,
+            allContentIds
+          );
+          allContentIds = allContentIds.filter(function (contentId) {
+            return !(
+              // Excluding default_outcome content status as default outcome's
+              // content is left empty so the translation or voiceover is not
+              // required.
+              (
+                contentId.startsWith('default_outcome_') ||
+                contentIdToRemove.indexOf(contentId) > 0
+              )
+            );
           });
-          this.explorationTranslationContentNotAvailableCount += (
-            noTranslationCount);
-          this.explorationVoiceoverContentNotAvailableCount += (
-            noVoiceoverCount);
-          if (noTranslationCount === 0 && !stateNeedsUpdate) {
-            this.stateWiseStatusColor[stateName] = (
-              this.ALL_ASSETS_AVAILABLE_COLOR);
-          } else if (
-            noTranslationCount === allContentIds.length && !stateNeedsUpdate) {
-            this.stateWiseStatusColor[stateName] = (
-              this.NO_ASSETS_AVAILABLE_COLOR);
-          } else {
-            this.stateWiseStatusColor[stateName] = (
-              this.FEW_ASSETS_AVAILABLE_COLOR);
+        }
+
+        this.explorationTranslationContentRequiredCount += allContentIds.length;
+
+        // Rule inputs do not need voiceovers. To have an accurate
+        // representation of the progress bar for voiceovers, we remove rule
+        // input content ids.
+        const ruleInputContentIds = this._getContentIdListRelatedToComponent(
+          AppConstants.COMPONENT_NAME_RULE_INPUT,
+          allContentIds
+        );
+        this.explorationVoiceoverContentRequiredCount +=
+          allContentIds.length - ruleInputContentIds.length;
+        if (this.translationTabActiveModeService.isVoiceoverModeActive()) {
+          allContentIds = allContentIds.filter(function (contentId) {
+            return ruleInputContentIds.indexOf(contentId) < 0;
+          });
+        }
+
+        allContentIds.forEach(contentId => {
+          let availabilityStatus = this._getContentAvailabilityStatus(
+            stateName,
+            contentId
+          );
+          if (!availabilityStatus.available) {
+            noTranslationCount++;
+            if (
+              contentId.indexOf(AppConstants.COMPONENT_NAME_RULE_INPUT) !== 0
+            ) {
+              noVoiceoverCount++;
+            }
+          }
+          if (availabilityStatus.needsUpdate) {
+            if (
+              this.translationTabActiveModeService.isTranslationModeActive()
+            ) {
+              this.stateNeedsUpdateWarnings[stateName] =
+                this.TRANSLATION_NEEDS_UPDATE_MESSAGE;
+              stateNeedsUpdate = true;
+            } else {
+              this.stateNeedsUpdateWarnings[stateName] =
+                this.AUDIO_NEEDS_UPDATE_MESSAGE;
+              stateNeedsUpdate = true;
+            }
           }
         });
+
+        this.explorationTranslationContentNotAvailableCount +=
+          noTranslationCount;
+        this.explorationVoiceoverContentNotAvailableCount += noVoiceoverCount;
+
+        let activeEntityVoiceovers =
+          this.entityVoiceoversService.getActiveEntityVoiceovers();
+
+        let voiceoverContentIds: string[] = [];
+        if (activeEntityVoiceovers) {
+          voiceoverContentIds = Object.keys(
+            activeEntityVoiceovers.voiceoversMapping
+          );
+        }
+
+        // If Automatic voiceover regeneration is not enabled, then we need to
+        // check for only manual voiceovers.
+        if (
+          activeEntityVoiceovers &&
+          !this.isAutomaticVoiceoverRegenerationFromExpFeatureEnabled()
+        ) {
+          voiceoverContentIds = [];
+          for (let contentId in activeEntityVoiceovers.voiceoversMapping) {
+            const manualVoiceover =
+              activeEntityVoiceovers.getManualVoiceover(contentId);
+            if (manualVoiceover) {
+              voiceoverContentIds.push(contentId);
+            }
+          }
+        }
+
+        if (
+          this.translationTabActiveModeService.isVoiceoverModeActive() &&
+          this.platformFeatureService.status.AddVoiceoverWithAccent.isEnabled
+        ) {
+          this.stateWiseStatusColor[stateName] =
+            this.getStateGraphColorInVoiceoverMode(
+              allContentIds,
+              voiceoverContentIds
+            );
+        } else if (noTranslationCount === 0 && !stateNeedsUpdate) {
+          this.stateWiseStatusColor[stateName] =
+            this.ALL_ASSETS_AVAILABLE_COLOR;
+        } else if (
+          noTranslationCount === allContentIds.length &&
+          !stateNeedsUpdate
+        ) {
+          this.stateWiseStatusColor[stateName] = this.NO_ASSETS_AVAILABLE_COLOR;
+        } else {
+          this.stateWiseStatusColor[stateName] =
+            this.FEW_ASSETS_AVAILABLE_COLOR;
+        }
+      });
     }
   }
 
+  getStateGraphColorInVoiceoverMode(
+    stateContentIdsNeedingVoiceover: string[],
+    explorationContentIdsWithVoiceover: string[]
+  ): string {
+    let color = this.NO_ASSETS_AVAILABLE_COLOR;
+    let allContentsHaveVoiceover: boolean = true;
+    for (let contentId of stateContentIdsNeedingVoiceover) {
+      if (explorationContentIdsWithVoiceover.indexOf(contentId) !== -1) {
+        color = this.FEW_ASSETS_AVAILABLE_COLOR;
+      } else {
+        allContentsHaveVoiceover = false;
+      }
+    }
+
+    if (allContentsHaveVoiceover) {
+      color = this.ALL_ASSETS_AVAILABLE_COLOR;
+    }
+
+    return color;
+  }
+
   _getContentIdListRelatedToComponent(
-      componentName: string, availableContentIds: string[]): string[] {
-    let contentIdList = [];
+    componentName: string,
+    availableContentIds: string[]
+  ): string[] {
+    let contentIdList: string[] = [];
 
     if (availableContentIds.length > 0) {
-      if (componentName === 'solution' || componentName === 'content') {
-        contentIdList.push(componentName);
-      } else {
-        let searchKey = componentName + '_';
-        availableContentIds.forEach((contentId) => {
-          if (contentId.indexOf(searchKey) > -1) {
-            contentIdList.push(contentId);
-          }
-        });
-
-        if (componentName === 'feedback') {
-          contentIdList.push('default_outcome');
+      var searchKey = componentName + '_';
+      availableContentIds.forEach(function (contentId) {
+        if (contentId.indexOf(searchKey) > -1) {
+          contentIdList.push(contentId);
         }
-      }
+      });
     }
     return contentIdList;
   }
 
   _getActiveStateComponentStatus(componentName: string): string {
     let contentIdList = this._getContentIdListRelatedToComponent(
-      componentName, this._getAvailableContentIds());
+      componentName,
+      this._getAvailableContentIds()
+    );
     let availableAudioCount = 0;
 
-    contentIdList.forEach((contentId) => {
-      let availabilityStatus = this._getActiveStateContentAvailabilityStatus(
-        contentId);
+    contentIdList.forEach(contentId => {
+      let availabilityStatus =
+        this._getActiveStateContentAvailabilityStatus(contentId);
       if (availabilityStatus.available) {
         availableAudioCount++;
       }
@@ -281,27 +393,21 @@ export class TranslationStatusService implements OnInit {
   }
 
   _getAvailableContentIds(): string[] {
-    let availableContentIds: string[] = [];
-    if (this.translationTabActiveModeService.isTranslationModeActive()) {
-      let writtenTranslations = this.stateWrittenTranslationsService.displayed;
-      availableContentIds = writtenTranslations.getAllContentIds();
-    } else if (this.translationTabActiveModeService.isVoiceoverModeActive()) {
-      let recordedVoiceovers = this.stateRecordedVoiceoversService.displayed;
-      availableContentIds = recordedVoiceovers.getAllContentIds();
-    }
-
-    return availableContentIds;
+    let recordedVoiceovers = this.stateRecordedVoiceoversService.displayed;
+    return recordedVoiceovers.getAllContentIds();
   }
 
   _getActiveStateComponentNeedsUpdateStatus(componentName: string): boolean {
     let contentIdList = this._getContentIdListRelatedToComponent(
-      componentName, this._getAvailableContentIds());
+      componentName,
+      this._getAvailableContentIds()
+    );
     let contentId = null;
     if (contentIdList) {
       for (let index in contentIdList) {
         contentId = contentIdList[index];
-        let availabilityStatus = this._getActiveStateContentAvailabilityStatus(
-          contentId);
+        let availabilityStatus =
+          this._getActiveStateContentAvailabilityStatus(contentId);
         if (availabilityStatus.needsUpdate) {
           return true;
         }
@@ -311,8 +417,8 @@ export class TranslationStatusService implements OnInit {
   }
 
   _getActiveStateContentIdStatusColor(contentId: string): string {
-    let availabilityStatus = this._getActiveStateContentAvailabilityStatus(
-      contentId);
+    let availabilityStatus =
+      this._getActiveStateContentAvailabilityStatus(contentId);
     if (availabilityStatus.available) {
       return this.ALL_ASSETS_AVAILABLE_COLOR;
     } else {
@@ -321,8 +427,8 @@ export class TranslationStatusService implements OnInit {
   }
 
   _getActiveStateContentIdNeedsUpdateStatus(contentId: string): boolean {
-    let availabilityStatus = this._getActiveStateContentAvailabilityStatus(
-      contentId);
+    let availabilityStatus =
+      this._getActiveStateContentAvailabilityStatus(contentId);
     return availabilityStatus.needsUpdate;
   }
 
@@ -343,7 +449,13 @@ export class TranslationStatusService implements OnInit {
   }
 
   refresh(): void {
+    this.langCode = this.translationLanguageService.getActiveLanguageCode();
+    this.entityTranslation =
+      this.entityTranslationsService.languageCodeToLatestEntityTranslations[
+        this.langCode
+      ];
     this._computeAllStatesStatus();
+    this.stateEditorService.onRefreshStateTranslation.emit();
   }
 
   getAllStatesNeedUpdatewarning(): Record<string, string[]> {
@@ -378,6 +490,3 @@ export class TranslationStatusService implements OnInit {
     return this._getActiveStateContentIdNeedsUpdateStatus(contentId);
   }
 }
-
-angular.module('oppia').factory('TranslationStatusService',
-  downgradeInjectable(TranslationStatusService));

@@ -16,17 +16,13 @@
  * @fileoverview Component for displaying animated lazy loading container.
  */
 
-import { Component } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
+import {Component} from '@angular/core';
 
 @Component({
   selector: 'lazy-loading',
   templateUrl: './lazy-loading.component.html',
-  styleUrls: []
+  styleUrls: [],
 })
 export class LazyLoadingComponent {
   constructor() {}
 }
-angular.module('oppia').directive(
-  'lazyLoading', downgradeComponent(
-    {component: LazyLoadingComponent}));

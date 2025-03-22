@@ -30,8 +30,8 @@
             {{ tab.text }}
           </div>
         </div>
-        <div class="oppia-contributions-option-group-label"
-             *ngIf="accomplishmentsTabIsEnabled && userIsLoggedIn">
+        <div class="oppia-contributions-option-group-label e2e-test-accomplishments-tab-enabled-indicator"
+             *ngIf="userIsLoggedIn">
           Accomplishments
         </div>
         <div class="oppia-contributions-dropdown-list-option" *ngFor="let tab of accomplishmentsTabs">
@@ -46,9 +46,9 @@
     </div>
   </div>
   <div class="oppia-contributions-show-review-side-navbar-container" >
-    <div class="oppia-contributions-side-navbar-part" *ngIf="reviewTabs.length > 0">
-      <div class="oppia-contributions-navbar-items-list" navbar-label="Available Tasks">
-        <div class="oppia-contributions-navbar-item" *ngFor="let tab of reviewTabs">
+    <div class="oppia-contributions-side-navbar-part e2e-test-available-task-label" *ngIf="reviewTabs.length > 0" tabindex="0">
+      <div class="oppia-contributions-navbar-items-list" navbar-label="Available Tasks" aria-label="Available tasks">
+        <div class="oppia-contributions-navbar-item e2e-test-review-buttons" *ngFor="let tab of reviewTabs">
           <button class="oppia-contributions-navbar-button"
                   (click)="switchToTab(TAB_TYPE_REVIEWS, tab.tabSubType)"
                   [ngClass]="isActiveTab(TAB_TYPE_REVIEWS, tab.tabSubType) ? 'oppia-contributions-active-navbar' : ''">{{tab.text}}
@@ -56,8 +56,8 @@
         </div>
       </div>
     </div>
-    <div class="oppia-contributions-side-navbar-part" *ngIf="userIsLoggedIn">
-      <div class="oppia-contributions-navbar-items-list" navbar-label="Contributions">
+    <div class="oppia-contributions-side-navbar-part" *ngIf="userIsLoggedIn" tabindex="0">
+      <div class="oppia-contributions-navbar-items-list" navbar-label="Contributions" aria-label="Contributions">
         <div class="oppia-contributions-navbar-item" *ngFor="let tab of contributionTabs">
           <button *ngIf="tab && tab.enabled"
                   class="oppia-contributions-navbar-button"
@@ -66,8 +66,8 @@
           </button>
         </div>
       </div>
-      <div class="oppia-contributions-side-navbar-part" *ngIf="accomplishmentsTabIsEnabled && userIsLoggedIn">
-        <div class="oppia-contributions-navbar-items-list" navbar-label="Accomplishments">
+      <div class="oppia-contributions-side-navbar-part" *ngIf="userIsLoggedIn" tabindex="0">
+        <div class="oppia-contributions-navbar-items-list" navbar-label="Accomplishments" aria-label="Accomplishments">
           <div class="oppia-contributions-navbar-item" *ngFor="let tab of accomplishmentsTabs">
             <button *ngIf="tab && tab.enabled"
                     class="oppia-contributions-navbar-button"
@@ -84,12 +84,19 @@
       <login-required-message></login-required-message>
     </div>
     <div class="oppia-login-required" *ngIf="userDetailsLoading || userIsLoggedIn">
-      <div class="oppia-contributions-tab-panel oppia-contributions-tab-panel-container">
+      <div *ngIf="activeExplorationId === null && isReviewTranslationsTab() && !isAccomplishmentsTabActive()" class="oppia-language-selector-container">
+        <review-translation-language-selector class="oppia-language-selector e2e-test-language-dropdown"
+                                              [activeLanguageCode]="languageCode"
+                                              (setActiveLanguageCode)="onChangeLanguage($event)">
+        </review-translation-language-selector>
+      </div>
+      <div class="oppia-contributions-tab-panel oppia-contributions-tab-panel-container" [hidden]="!isReviewQuestionsTab()">
         <span class="sort-questions-select float-right"
               *ngIf="isReviewQuestionsTab()">
           <p class="sort-by-text">Sort By</p>
           <select [(ngModel)]="reviewableQuestionsSortKey"
                   class="sort-options"
+                  aria-label="Sort by"
                   (change)="setReviewableQuestionsSortKey(reviewableQuestionsSortKey)">
             <option *ngFor="let key of REVIEWABLE_QUESTIONS_SORT_KEYS"
                     [value]="key"
@@ -101,10 +108,14 @@
       <oppia-opportunities-list *ngIf="activeExplorationId === null && isReviewTranslationsTab() && !isAccomplishmentsTabActive()"
                                 [loadOpportunities]="loadReviewableTranslationOpportunities.bind(this)"
                                 (clickActionButton)="onClickReviewableTranslations($event)"
+                                (clickPinButton)="pinReviewableTranslationOpportunity($event)"
+                                (clickUnpinButton)="unpinReviewableTranslationOpportunity($event)"
                                 [labelRequired]="!activeReviewTab"
-                                [showOpportunityButton]="true">
+                                [showOpportunityButton]="true"
+                                [showPinUnpinButton]="true"
+                                #opportunitiesList>
       </oppia-opportunities-list>
-      <div *ngIf="activeExplorationId !== null || !isReviewTranslationsTab() && !isAccomplishmentsTabActive()">
+      <div *ngIf="(activeExplorationId !== null || !isReviewTranslationsTab()) && !isAccomplishmentsTabActive()">
         <div *ngIf="isReviewTranslationsTab()" class="oppia-contributions-back-to-lessons-container">
           <button aria-label="Back to reviewable lessons"
                   (click)="onClickBackToReviewableLessons()"
@@ -116,16 +127,17 @@
         <oppia-opportunities-list [loadOpportunities]="loadOpportunities.bind(this)"
                                   [loadMoreOpportunities]="loadMoreOpportunities.bind(this)"
                                   (clickActionButton)="onClickViewSuggestion($event)"
-                                  [labelRequired]="!activeReviewTab"
+                                  [labelRequired]="!isReviewTranslationsTab()"
                                   [opportunityHeadingTruncationLength]="30"
-                                  [showOpportunityButton]="false">
+                                  [showOpportunityButton]="false"
+                                  [showPinUnpinButton]="false">
         </oppia-opportunities-list>
       </div>
-      <div *ngIf="accomplishmentsTabIsEnabled && isAccomplishmentsTabActive() && activeTabSubtype === 'stats'">
+      <div *ngIf="isAccomplishmentsTabActive() && activeTabSubtype === 'stats'">
         <contributor-stats [type]="defaultContributionType">
         </contributor-stats>
       </div>
-      <div *ngIf="accomplishmentsTabIsEnabled && isAccomplishmentsTabActive() && activeTabSubtype === 'badges'">
+      <div *ngIf="isAccomplishmentsTabActive() && activeTabSubtype === 'badges'">
         <contributor-badges>
         </contributor-badges>
       </div>
@@ -144,7 +156,7 @@
   }
 
   .oppia-contributions-show-review-side-navbar-container {
-    background-color: #009688;
+    background-color: #00645d;
     width: 25%;
   }
 
@@ -267,7 +279,7 @@
   }
 
   .oppia-contributions-back-button-label {
-    color: #009688;
+    color: #00645d;
     font-weight: bold;
     margin-left: 6px;
   }
@@ -301,9 +313,14 @@
     width: 80%;
   }
 
+  .oppia-contributions-navbar-button:focus-visible {
+    border: 3px dotted black;
+  }
+
   .oppia-contributions-active-navbar,
   .oppia-contributions-navbar-button:hover {
-    background-color: #0b6c63;
+    background-color: #fff;
+    color: #00645d;
   }
 
   .oppia-contributions-navbar-items-list::before {
@@ -347,11 +364,9 @@
 
   .oppia-contributions-tab-panel {
     font-size: 15px;
-    padding: 5px 0 20px 10px;
   }
 
   .oppia-contributions-tab-panel-container {
-    padding-bottom: 46px;
     padding-top: 13px;
   }
 
@@ -394,6 +409,17 @@
       background-color: transparent;
       width: 95%;
     }
+  }
+
+  .oppia-language-selector-container {
+    display: flex;
+    justify-content: flex-end;
+    margin-right: 15px;
+    margin-top: 20px;
+  }
+
+  .oppia-language-selector-container .oppia-language-selector {
+    min-width: 240px;
   }
 
   @media only screen and (min-width: 601px) and (max-width: 1500px) {

@@ -16,9 +16,15 @@
  * @fileoverview Component for a schema-based editor for booleans.
  */
 
-import { Component, forwardRef, Input } from '@angular/core';
-import { NG_VALUE_ACCESSOR, NG_VALIDATORS, ControlValueAccessor, Validator, AbstractControl, ValidationErrors } from '@angular/forms';
-import { downgradeComponent } from '@angular/upgrade/static';
+import {Component, forwardRef, Input} from '@angular/core';
+import {
+  NG_VALUE_ACCESSOR,
+  NG_VALIDATORS,
+  ControlValueAccessor,
+  Validator,
+  AbstractControl,
+  ValidationErrors,
+} from '@angular/forms';
 
 @Component({
   selector: 'schema-based-bool-editor',
@@ -27,17 +33,18 @@ import { downgradeComponent } from '@angular/upgrade/static';
     {
       provide: NG_VALUE_ACCESSOR,
       useExisting: forwardRef(() => SchemaBasedBoolEditorComponent),
-      multi: true
+      multi: true,
     },
     {
       provide: NG_VALIDATORS,
       useExisting: forwardRef(() => SchemaBasedBoolEditorComponent),
-      multi: true
+      multi: true,
     },
-  ]
+  ],
 })
 export class SchemaBasedBoolEditorComponent
-implements ControlValueAccessor, Validator {
+  implements ControlValueAccessor, Validator
+{
   // These properties are initialized using Angular lifecycle hooks
   // and we need to do non-null assertion. For more information, see
   // https://github.com/oppia/oppia/wiki/Guide-on-defining-types#ts-7-1
@@ -57,8 +64,7 @@ implements ControlValueAccessor, Validator {
   }
 
   // Implemented as a part of ControlValueAccessor interface.
-  registerOnTouched(): void {
-  }
+  registerOnTouched(): void {}
 
   // Implemented as a part of Validator interface.
   validate(control: AbstractControl): ValidationErrors | null {
@@ -76,7 +82,3 @@ implements ControlValueAccessor, Validator {
     this.onChange(val);
   }
 }
-
-angular.module('oppia').directive('schemaBasedBoolEditor', downgradeComponent({
-  component: SchemaBasedBoolEditorComponent
-}) as angular.IDirectiveFactory);

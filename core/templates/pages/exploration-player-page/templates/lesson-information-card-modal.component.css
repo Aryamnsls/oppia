@@ -81,6 +81,7 @@
   bottom: 0;
   color: #fff;
   font-family: "Capriola", "Roboto", Arial, sans-serif;
+  font-size: 1.5em;
   margin: 12px 0 0 0;
   padding: 0;
   position: relative;
@@ -250,6 +251,11 @@
   z-index: 0;
 }
 
+.completed-checkpoint-node:hover {
+  background-color: #00968e;
+  cursor: pointer;
+}
+
 .in-progress-checkpoint-node {
   align-items: flex-start;
   background-color: #fff;
@@ -325,7 +331,7 @@
   border-radius: 10px;
   height: auto;
   left: 50%;
-  max-width: 495px;
+  max-width: 500px;
   position: fixed;
   top: 8vh;
   transform: translateX(-50%);
@@ -397,7 +403,7 @@
 }
 
 .save-progress-menu .uid-box .oppia-tooltip-container {
-  margin-left: -25px;
+  width: 100%;
 }
 
 .save-progress-menu .uid-box .guide-text {

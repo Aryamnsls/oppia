@@ -17,12 +17,12 @@
  * conversions.
  */
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {Injectable} from '@angular/core';
+
 import yaml from 'js-yaml';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class YamlService {
   constructor() {}
@@ -31,10 +31,9 @@ export class YamlService {
     return yaml.dump(objectToBeStringified);
   }
 
+  // Unknown has been used here becuase of use of dependency yaml load.
+  // The return type of yaml load is unknown.
   parse(yamlStringToBeParsed: string): unknown {
     return yaml.load(yamlStringToBeParsed);
   }
 }
-
-angular.module('oppia').factory(
-  'YamlService', downgradeInjectable(YamlService));

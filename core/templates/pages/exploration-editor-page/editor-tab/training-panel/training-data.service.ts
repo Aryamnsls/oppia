@@ -18,17 +18,16 @@
  * across all answer groups.
  */
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { ExplorationStatesService } from 'pages/exploration-editor-page/services/exploration-states.service';
-import { GraphDataService } from 'pages/exploration-editor-page/services/graph-data.service';
-import { ResponsesService } from 'pages/exploration-editor-page/editor-tab/services/responses.service';
-import { StateEditorService } from 'components/state-editor/state-editor-properties-services/state-editor.service';
+import {Injectable} from '@angular/core';
+import {ExplorationStatesService} from 'pages/exploration-editor-page/services/exploration-states.service';
+import {GraphDataService} from 'pages/exploration-editor-page/services/graph-data.service';
+import {ResponsesService} from 'pages/exploration-editor-page/editor-tab/services/responses.service';
+import {StateEditorService} from 'components/state-editor/state-editor-properties-services/state-editor.service';
 import cloneDeep from 'lodash/cloneDeep';
-import { AnswerGroup } from 'domain/exploration/AnswerGroupObjectFactory';
-import { InteractionAnswer } from 'interactions/answer-defs';
-import { State } from 'domain/state/StateObjectFactory';
-import { Outcome } from 'domain/exploration/OutcomeObjectFactory';
+import {AnswerGroup} from 'domain/exploration/AnswerGroupObjectFactory';
+import {InteractionAnswer} from 'interactions/answer-defs';
+import {State} from 'domain/state/StateObjectFactory';
+import {Outcome} from 'domain/exploration/OutcomeObjectFactory';
 
 interface AnswerGroupData {
   answerGroupIndex: number;
@@ -36,18 +35,20 @@ interface AnswerGroupData {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class TrainingDataService {
   constructor(
     private explorationStatesService: ExplorationStatesService,
     private graphDataService: GraphDataService,
     private responsesService: ResponsesService,
-    private stateEditorService: StateEditorService,
-  ) { }
+    private stateEditorService: StateEditorService
+  ) {}
 
   _getIndexOfTrainingData(
-      answer: InteractionAnswer, trainingData: InteractionAnswer[]): number {
+    answer: InteractionAnswer,
+    trainingData: InteractionAnswer[]
+  ): number {
     let index = -1;
     for (let i = 0; i < trainingData.length; i++) {
       if (trainingData[i] === answer) {
@@ -62,7 +63,9 @@ export class TrainingDataService {
   // function returns the index of the answer that was removed if it was
   // successfully removed from the training data, or -1 otherwise.
   _removeAnswerFromTrainingData(
-      answer: InteractionAnswer, trainingData: InteractionAnswer[]): number {
+    answer: InteractionAnswer,
+    trainingData: InteractionAnswer[]
+  ): number {
     let index = this._getIndexOfTrainingData(answer, trainingData);
     if (index !== -1) {
       trainingData.slice(index, 1);
@@ -76,8 +79,9 @@ export class TrainingDataService {
   // show up again.
   _removeAnswer(answer: InteractionAnswer): void {
     let answerGroups = this.responsesService.getAnswerGroups();
-    let confirmedUnclassifiedAnswers = [...(
-      this.responsesService.getConfirmedUnclassifiedAnswers())];
+    let confirmedUnclassifiedAnswers = [
+      ...this.responsesService.getConfirmedUnclassifiedAnswers(),
+    ];
     let updatedAnswerGroups = false;
     let updatedConfirmedUnclassifiedAnswers = false;
 
@@ -85,46 +89,54 @@ export class TrainingDataService {
     for (let i = 0; i < answerGroups.length; i++) {
       let answerGroup = answerGroups[i];
       let trainingData = answerGroup.trainingData;
-      if (trainingData &&
-        this._removeAnswerFromTrainingData(
-          answer, [...trainingData]) !== -1) {
+      if (
+        trainingData &&
+        this._removeAnswerFromTrainingData(answer, [...trainingData]) !== -1
+      ) {
         updatedAnswerGroups = true;
       }
     }
 
     // Remove the answer from the confirmed unclassified answers.
-    updatedConfirmedUnclassifiedAnswers = (this._removeAnswerFromTrainingData(
-      answer, confirmedUnclassifiedAnswers) !== -1);
+    updatedConfirmedUnclassifiedAnswers =
+      this._removeAnswerFromTrainingData(
+        answer,
+        confirmedUnclassifiedAnswers
+      ) !== -1;
 
     if (updatedAnswerGroups) {
       this.responsesService.save(
-        answerGroups, this.responsesService.getDefaultOutcome(),
+        answerGroups,
+        this.responsesService.getDefaultOutcome(),
         (newAnswerGroups, newDefaultOutcome) => {
           let stateName = this.stateEditorService.getActiveStateName();
           if (stateName) {
             this.explorationStatesService.saveInteractionAnswerGroups(
-              stateName, cloneDeep(newAnswerGroups));
+              stateName,
+              cloneDeep(newAnswerGroups)
+            );
 
             this.explorationStatesService.saveInteractionDefaultOutcome(
-              stateName, cloneDeep(newDefaultOutcome) as Outcome);
+              stateName,
+              cloneDeep(newDefaultOutcome) as Outcome
+            );
           }
 
           this.graphDataService.recompute();
-        });
+        }
+      );
     }
 
     if (updatedConfirmedUnclassifiedAnswers) {
       this.responsesService.updateConfirmedUnclassifiedAnswers(
-        confirmedUnclassifiedAnswers);
+        confirmedUnclassifiedAnswers
+      );
       let stateName = this.stateEditorService.getActiveStateName();
       if (stateName) {
-        // TODO(#13015): Remove use of unknown as a type.
-        // unknown has been used here becuase
-        // explorationStatesService.saveConfirmedUnclassifiedAnswers
-        // wants variable of type AnswerGroup[] but
-        // confirmedUnclassifiedAnswers is of InteractionAnswer[] type.
         this.explorationStatesService.saveConfirmedUnclassifiedAnswers(
-          stateName, confirmedUnclassifiedAnswers as unknown as AnswerGroup[]);
+          stateName,
+          confirmedUnclassifiedAnswers
+        );
       }
     }
   }
@@ -137,7 +149,7 @@ export class TrainingDataService {
       let answerGroup = answerGroups[i];
       trainingDataAnswers.push({
         answerGroupIndex: i,
-        answers: answerGroup.trainingData
+        answers: answerGroup.trainingData,
       });
     }
     return trainingDataAnswers;
@@ -145,7 +157,8 @@ export class TrainingDataService {
 
   getTrainingDataOfAnswerGroup(answerGroupIndex: number): InteractionAnswer[] {
     return [
-      ...this.responsesService.getAnswerGroup(answerGroupIndex).trainingData];
+      ...this.responsesService.getAnswerGroup(answerGroupIndex).trainingData,
+    ];
   }
 
   getAllPotentialOutcomes(state: State): Outcome[] {
@@ -164,7 +177,9 @@ export class TrainingDataService {
   }
 
   associateWithAnswerGroup(
-      answerGroupIndex: number, answer: InteractionAnswer): void {
+    answerGroupIndex: number,
+    answer: InteractionAnswer
+  ): void {
     // Remove answer from traning data of any answer group or
     // confirmed unclassified answers.
     this._removeAnswer(answer);
@@ -173,21 +188,25 @@ export class TrainingDataService {
     let answerGroup: AnswerGroup = answerGroups[answerGroupIndex];
 
     // Train the rule to include this answer.
-    answerGroup.trainingData = [
-      ...answerGroup.trainingData,
-      answer];
+    answerGroup.trainingData = [...answerGroup.trainingData, answer];
 
-    this.responsesService.updateAnswerGroup(answerGroupIndex, {
-      trainingData: answerGroup.trainingData
-    } as AnswerGroup, (newAnswerGroups) => {
-      let stateName = this.stateEditorService.getActiveStateName();
-      if (stateName) {
-        this.explorationStatesService.saveInteractionAnswerGroups(
-          stateName, newAnswerGroups);
+    this.responsesService.updateAnswerGroup(
+      answerGroupIndex,
+      {
+        trainingData: answerGroup.trainingData,
+      } as AnswerGroup,
+      newAnswerGroups => {
+        let stateName = this.stateEditorService.getActiveStateName();
+        if (stateName) {
+          this.explorationStatesService.saveInteractionAnswerGroups(
+            stateName,
+            newAnswerGroups
+          );
+        }
+
+        this.graphDataService.recompute();
       }
-
-      this.graphDataService.recompute();
-    });
+    );
   }
 
   associateWithDefaultResponse(answer: InteractionAnswer): void {
@@ -195,58 +214,58 @@ export class TrainingDataService {
     // confirmed unclassified answers.
     this._removeAnswer(answer);
 
-    let confirmedUnclassifiedAnswers = [...(
-      this.responsesService.getConfirmedUnclassifiedAnswers())];
+    let confirmedUnclassifiedAnswers = [
+      ...this.responsesService.getConfirmedUnclassifiedAnswers(),
+    ];
 
     confirmedUnclassifiedAnswers.push(answer);
     this.responsesService.updateConfirmedUnclassifiedAnswers(
-      confirmedUnclassifiedAnswers);
+      confirmedUnclassifiedAnswers
+    );
 
     let stateName = this.stateEditorService.getActiveStateName();
     if (stateName) {
-      // TODO(#13015): Remove use of unknown as a type.
-      // unknown has been used here becuase
-      // explorationStatesService.saveConfirmedUnclassifiedAnswers
-      // wants variable of type AnswerGroup[] but
-      // confirmedUnclassifiedAnswers is of InteractionAnswer[] type.
       this.explorationStatesService.saveConfirmedUnclassifiedAnswers(
-        stateName, confirmedUnclassifiedAnswers as unknown as AnswerGroup[]);
+        stateName,
+        confirmedUnclassifiedAnswers
+      );
     }
   }
 
   isConfirmedUnclassifiedAnswer(answer: InteractionAnswer): boolean {
-    return (this._getIndexOfTrainingData(
-      answer,
-      [...this.responsesService.getConfirmedUnclassifiedAnswers()]) !== -1);
+    return (
+      this._getIndexOfTrainingData(answer, [
+        ...this.responsesService.getConfirmedUnclassifiedAnswers(),
+      ]) !== -1
+    );
   }
 
   removeAnswerFromAnswerGroupTrainingData(
-      answer: InteractionAnswer, answerGroupIndex: number): void {
-    let trainingData = [...this.responsesService.getAnswerGroup(
-      answerGroupIndex).trainingData];
+    answer: InteractionAnswer,
+    answerGroupIndex: number
+  ): void {
+    let trainingData = [
+      ...this.responsesService.getAnswerGroup(answerGroupIndex).trainingData,
+    ];
     this._removeAnswerFromTrainingData(answer, trainingData);
 
     let answerGroups = this.responsesService.getAnswerGroups();
     answerGroups[answerGroupIndex].trainingData = trainingData;
 
-    // TODO(#13015): Remove use of unknown as a type.
-    // unknown has been used here becuase
-    // explorationStatesService.saveConfirmedUnclassifiedAnswers
-    // wants variable of type AnswerGroup[] but
-    // confirmedUnclassifiedAnswers is of InteractionAnswer[] type.
-    this.responsesService.updateAnswerGroup(answerGroupIndex, {
-      trainingData: trainingData
-    } as unknown as AnswerGroup, (newAnswerGroups) => {
-      let stateName = this.stateEditorService.getActiveStateName();
-      if (stateName) {
-        this.explorationStatesService.saveInteractionAnswerGroups(
-          stateName, newAnswerGroups);
-      }
+    this.responsesService.updateAnswerGroup(
+      answerGroupIndex,
+      {} as AnswerGroup,
+      newAnswerGroups => {
+        let stateName = this.stateEditorService.getActiveStateName();
+        if (stateName) {
+          this.explorationStatesService.saveInteractionAnswerGroups(
+            stateName,
+            newAnswerGroups
+          );
+        }
 
-      this.graphDataService.recompute();
-    });
+        this.graphDataService.recompute();
+      }
+    );
   }
 }
-
-angular.module('oppia').factory(
-  'TrainingDataService', downgradeInjectable(TrainingDataService));

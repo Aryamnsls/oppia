@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { LearnerGroupUserProgress } from './learner-group-user-progress.model';
+import {LearnerGroupUserProgress} from './learner-group-user-progress.model';
 
 /**
  * @fileoverview Tests for learner group user progress model.
@@ -27,7 +27,7 @@ describe('Learner Group User Progress', () => {
       parent_topic_name: 'parentTopicName',
       thumbnail_filename: 'thumbnailFilename',
       thumbnail_bg_color: 'red',
-      subtopic_mastery: 0.5
+      subtopic_mastery: 0.5,
     };
 
     let nodeDict = {
@@ -41,7 +41,12 @@ describe('Learner Group User Progress', () => {
       outline: 'Outline',
       exploration_id: null,
       outline_is_finalized: false,
-      thumbnail_bg_color: '#a33f40'
+      thumbnail_bg_color: '#a33f40',
+      status: 'Published',
+      planned_publication_date_msecs: 100.0,
+      last_modified_msecs: 100.0,
+      first_publication_date_msecs: 200.0,
+      unpublishing_reason: null,
     };
 
     const sampleStorySummaryBackendDict = {
@@ -57,25 +62,23 @@ describe('Learner Group User Progress', () => {
       all_node_dicts: [nodeDict],
       topic_name: 'Topic one',
       topic_url_fragment: 'topic-one',
-      classroom_url_fragment: 'math'
+      classroom_url_fragment: 'math',
     };
 
     let sampleLearnerGroupUserProgDict = {
       username: 'user1',
       progress_sharing_is_turned_on: true,
-      profile_picture_data_url: 'picture',
       stories_progress: [sampleStorySummaryBackendDict],
-      subtopic_pages_progress: [sampleLearnerGroupSubtopicSummaryDict]
+      subtopic_pages_progress: [sampleLearnerGroupSubtopicSummaryDict],
     };
 
-    let sampleLearnerGroupUserProg = (
+    let sampleLearnerGroupUserProg =
       LearnerGroupUserProgress.createFromBackendDict(
-        sampleLearnerGroupUserProgDict)
-    );
+        sampleLearnerGroupUserProgDict
+      );
 
     expect(sampleLearnerGroupUserProg.username).toEqual('user1');
     expect(sampleLearnerGroupUserProg.isProgressSharingTurnedOn).toEqual(true);
-    expect(sampleLearnerGroupUserProg.profilePictureDataUrl).toEqual('picture');
     expect(sampleLearnerGroupUserProg.storiesProgress.length).toEqual(1);
     expect(sampleLearnerGroupUserProg.subtopicsProgress.length).toEqual(1);
 

@@ -28,10 +28,10 @@ from core.tests import test_utils
 from typing import Final, List, Tuple
 
 from . import other_files_linter
-from . import pre_commit_linter
+from . import run_lint_checks
 
 NAME_SPACE: Final = multiprocessing.Manager().Namespace()
-NAME_SPACE.files = pre_commit_linter.FileCache()
+NAME_SPACE.files = run_lint_checks.FileCache()
 FILE_CACHE: Final = NAME_SPACE.files
 
 LINTER_TESTS_DIR: Final = os.path.join(
@@ -46,15 +46,18 @@ class CustomLintChecksManagerTests(test_utils.LinterTestBase):
         super().setUp()
         self.verbose_mode_enabled = False
         self.dependencies_file = io.StringIO(
-            '{\"dependencies\":{\"frontend\":{\"guppy\":'
-            '{\"version\": \"0.1\"},\"skulpt-dist\":{\"version\": \"0.2\"}'
-            ',\"midiJs\":{\"version\": \"0.4\"}}}}')
+            '{"dependencies":{"frontend":{}}}'
+        )
         self.package_file = io.StringIO(
-            '{\"dependencies\":{\"nerdamer\":\"^0.6\"}}')
+            '{"dependencies":{"nerdamer":"^0.6","skulpt-dist":"0.2",'
+            '"guppy-dev":"git+https://github.com/oppia/guppy#f509e",'
+            '"midi": "git+https://github.com/oppia/miDI.js#c26eb"}}'
+        )
+
         self.files_in_typings_dir = [
-            'guppy-defs-0.1.d.ts',
+            'guppy-defs-f509e.d.ts',
             'skulpt-defs-0.2.d.ts',
-            'midi-defs-0.4.d.ts',
+            'midi-defs-c26eb.d.ts',
             'nerdamer-defs-0.6.d.ts'
         ]
         def mock_open_file(
@@ -81,7 +84,7 @@ class CustomLintChecksManagerTests(test_utils.LinterTestBase):
                 '- third_party/static/bootstrap-4.3.1/')
 
         readlines_swap = self.swap(
-            pre_commit_linter.FileCache, 'readlines', mock_readlines)
+            run_lint_checks.FileCache, 'readlines', mock_readlines)
         with readlines_swap:
             error_messages = other_files_linter.CustomLintChecksManager(
                 FILE_CACHE).check_skip_files_in_app_dev_yaml()
@@ -99,7 +102,7 @@ class CustomLintChecksManagerTests(test_utils.LinterTestBase):
                 '# Third party files:', '- third_party/static/bootstrap-4.3/')
 
         readlines_swap = self.swap(
-            pre_commit_linter.FileCache, 'readlines', mock_readlines)
+            run_lint_checks.FileCache, 'readlines', mock_readlines)
         with readlines_swap:
             error_messages = other_files_linter.CustomLintChecksManager(
                 FILE_CACHE).check_skip_files_in_app_dev_yaml()
@@ -128,7 +131,7 @@ class CustomLintChecksManagerTests(test_utils.LinterTestBase):
             )
 
         readlines_swap = self.swap(
-            pre_commit_linter.FileCache, 'readlines', mock_readlines)
+            run_lint_checks.FileCache, 'readlines', mock_readlines)
         with readlines_swap:
             error_messages = other_files_linter.CustomLintChecksManager(
                 FILE_CACHE).check_webpack_config_file()
@@ -153,7 +156,7 @@ class CustomLintChecksManagerTests(test_utils.LinterTestBase):
             )
 
         readlines_swap = self.swap(
-            pre_commit_linter.FileCache, 'readlines', mock_readlines)
+            run_lint_checks.FileCache, 'readlines', mock_readlines)
         with readlines_swap:
             error_messages = other_files_linter.CustomLintChecksManager(
                 FILE_CACHE).check_webpack_config_file()
@@ -177,7 +180,7 @@ class CustomLintChecksManagerTests(test_utils.LinterTestBase):
             )
 
         readlines_swap = self.swap(
-            pre_commit_linter.FileCache, 'readlines', mock_readlines)
+            run_lint_checks.FileCache, 'readlines', mock_readlines)
         with readlines_swap:
             error_messages = other_files_linter.CustomLintChecksManager(
                 FILE_CACHE).check_webpack_config_file()
@@ -232,7 +235,7 @@ class CustomLintChecksManagerTests(test_utils.LinterTestBase):
         self.files_in_typings_dir = [
             'skulpt-defs-0.2.d.ts',
             'math-expressions-defs-0.3.d.ts',
-            'midi-defs-0.4.d.ts',
+            'midi-defs-c26eb.d.ts',
             'nerdamer-defs-0.6.d.ts'
         ]
         expected_error_messages = 'FAILED  Third party type defs check failed'
@@ -252,7 +255,7 @@ class CustomLintChecksManagerTests(test_utils.LinterTestBase):
             'guppy-defs-0.2.d.ts',
             'skulpt-defs-0.2.d.ts',
             'math-expressions-defs-0.3.d.ts',
-            'midi-defs-0.4.d.ts',
+            'midi-defs-c26eb.d.ts',
             'nerdamer-defs-0.6.d.ts'
         ]
         expected_error_messages = 'FAILED  Third party type defs check failed'
@@ -263,13 +266,13 @@ class CustomLintChecksManagerTests(test_utils.LinterTestBase):
                 error_messages.get_report()[1], expected_error_messages)
             self.assert_same_list_elements([
                 'Type definitions for Guppy are not up to date. The '
-                'current version of Guppy is 0.1 and the type definitions '
+                'current version of Guppy is f509e and the type definitions '
                 'are for version 0.2. Please refer typings/README.md '
                 'for more details.'], error_messages.get_report())
             self.assertEqual('Third party type defs', error_messages.name)
             self.assertTrue(error_messages.failed)
 
-    def test_check_github_workflows_use_merge_action_checks(self) -> None:
+    def test_check_github_workflows_have_name_checks(self) -> None:
         def mock_listdir(unused_path: str) -> List[str]:
             return ['pass.yml', 'fail.yml', 'README']
 
@@ -285,13 +288,12 @@ class CustomLintChecksManagerTests(test_utils.LinterTestBase):
                     'jobs:',
                     '  run:',
                     '    steps:',
-                    '      - uses: actions/checkout@v2',
-                    '      - uses: ./.github/actions/merge',
-                    '      - run: echo "oppia"',
+                    '      - name: Print',
+                    '        run: echo "oppia"',
                 ])
             elif path.endswith('fail.yml'):
                 return '\n'.join([
-                    'name: Passing workflow file',
+                    'name: Failing workflow file',
                     'on:',
                     '  push:',
                     '    branches:',
@@ -300,7 +302,6 @@ class CustomLintChecksManagerTests(test_utils.LinterTestBase):
                     'jobs:',
                     '  run:',
                     '    steps:',
-                    '      - uses: actions/checkout@v2',
                     '      - run: echo "oppia"',
                 ])
             raise AssertionError(
@@ -312,14 +313,14 @@ class CustomLintChecksManagerTests(test_utils.LinterTestBase):
         read_swap = self.swap(FILE_CACHE, 'read', mock_read)
 
         expected = [
-            '%s --> Job run does not use the .github/actions/merge action.' %
+            '%s --> Job run has an unnamed step' %
             os.path.join(other_files_linter.WORKFLOWS_DIR, 'fail.yml'),
-            'FAILED  Github workflows use merge action check failed',
+            'FAILED  Github workflow steps have a name check failed',
         ]
 
         with listdir_swap, read_swap:
             task_results = other_files_linter.CustomLintChecksManager(
-                FILE_CACHE).check_github_workflows_use_merge_action()
+                FILE_CACHE).check_github_workflows_have_name()
             self.assertEqual(task_results.get_report(), expected)
 
     def test_perform_all_lint_checks(self) -> None:

@@ -18,11 +18,10 @@
  * or collapsed.
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { Injectable } from '@angular/core';
+import {Injectable} from '@angular/core';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AudioBarStatusService {
   audioBarIsExpanded: boolean = false;
@@ -39,6 +38,3 @@ export class AudioBarStatusService {
     return this.audioBarIsExpanded;
   }
 }
-
-angular.module('oppia').factory('AudioBarStatusService',
-  downgradeInjectable(AudioBarStatusService));

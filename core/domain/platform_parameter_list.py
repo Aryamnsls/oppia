@@ -20,66 +20,89 @@ from __future__ import annotations
 
 import enum
 
-from core.domain import platform_parameter_domain
-from core.domain import platform_parameter_registry as registry
-
-Registry = registry.Registry
+from typing import List
 
 
-class ParamNames(enum.Enum):
+class ParamName(enum.Enum):
     """Enum for parameter names."""
 
-    DUMMY_FEATURE = 'dummy_feature'
     DUMMY_PARAMETER = 'dummy_parameter'
+    PROMO_BAR_ENABLED = 'promo_bar_enabled'
+    PROMO_BAR_MESSAGE = 'promo_bar_message'
+    MAX_NUMBER_OF_TAGS_ASSIGNED_TO_BLOG_POST = (
+        'max_number_of_tags_assigned_to_blog_post')
+    ALWAYS_ASK_LEARNERS_FOR_ANSWER_DETAILS = (
+        'always_ask_learners_for_answer_details')
+    HIGH_BOUNCE_RATE_TASK_STATE_BOUNCE_RATE_CREATION_THRESHOLD = (
+        'high_bounce_rate_task_state_bounce_rate_creation_threshold')
+    HIGH_BOUNCE_RATE_TASK_STATE_BOUNCE_RATE_OBSOLETION_THRESHOLD = (
+        'high_bounce_rate_task_state_bounce_rate_obsoletion_threshold')
+    HIGH_BOUNCE_RATE_TASK_MINIMUM_EXPLORATION_STARTS = (
+        'high_bounce_rate_task_minimum_exploration_starts')
+    CONTRIBUTOR_DASHBOARD_REVIEWER_EMAILS_IS_ENABLED = (
+        'contributor_dashboard_reviewer_emails_is_enabled')
+    ENABLE_ADMIN_NOTIFICATIONS_FOR_SUGGESTIONS_NEEDING_REVIEW = (
+        'notify_admins_suggestions_waiting_too_long_is_enabled')
+    ENABLE_ADMIN_NOTIFICATIONS_FOR_REVIEWER_SHORTAGE = (
+        'enable_admin_notifications_for_reviewer_shortage')
+    MAX_NUMBER_OF_SUGGESTIONS_PER_REVIEWER = (
+        'max_number_of_suggestions_per_reviewer')
+    EMAIL_SENDER_NAME = 'email_sender_name'
+    EMAIL_FOOTER = 'email_footer'
+    SIGNUP_EMAIL_SUBJECT_CONTENT = 'signup_email_subject_content'
+    SIGNUP_EMAIL_BODY_CONTENT = 'signup_email_body_content'
+    UNPUBLISH_EXPLORATION_EMAIL_HTML_BODY = (
+        'unpublish_exploration_email_html_body')
+    RECORD_PLAYTHROUGH_PROBABILITY = 'record_playthrough_probability'
+    SERVER_CAN_SEND_EMAILS = 'server_can_send_emails'
+    SYSTEM_EMAIL_ADDRESS = 'system_email_address'
+    SYSTEM_EMAIL_NAME = 'system_email_name'
+    ADMIN_EMAIL_ADDRESS = 'admin_email_address'
+    NOREPLY_EMAIL_ADDRESS = 'noreply_email_address'
+    MAILCHIMP_AUDIENCE_ID = 'mailchimp_audience_id'
+    MAILCHIMP_USERNAME = 'mailchimp_username'
+    MAILGUN_DOMAIN_NAME = 'mailgun_domain_name'
+    ES_CLOUD_ID = 'es_cloud_id'
+    ES_USERNAME = 'es_username'
+    OPPIA_PROJECT_ID = 'oppia_project_id'
+    OPPIA_SITE_URL_FOR_EMAILS = 'oppia_site_url_for_emails'
 
-    END_CHAPTER_CELEBRATION = 'end_chapter_celebration'
-    CHECKPOINT_CELEBRATION = 'checkpoint_celebration'
-    CONTRIBUTOR_DASHBOARD_ACCOMPLISHMENTS = (
-        'contributor_dashboard_accomplishments')
-    ANDROID_BETA_LANDING_PAGE = 'android_beta_landing_page'
-    BLOG_PAGES = 'blog_pages'
 
-
-# Platform parameters should all be defined below.
-
-Registry.create_feature_flag(
-    ParamNames.DUMMY_FEATURE,
-    'This is a dummy feature flag.',
-    platform_parameter_domain.FeatureStages.DEV,
-)
-
-Registry.create_platform_parameter(
-    ParamNames.DUMMY_PARAMETER,
-    'This is a dummy platform parameter.',
-    platform_parameter_domain.DataTypes.STRING
-)
-
-Registry.create_feature_flag(
-    ParamNames.END_CHAPTER_CELEBRATION,
-    'This flag is for the end chapter celebration feature.',
-    platform_parameter_domain.FeatureStages.PROD,
-)
-
-Registry.create_feature_flag(
-    ParamNames.CHECKPOINT_CELEBRATION,
-    'This flag is for the checkpoint celebration feature.',
-    platform_parameter_domain.FeatureStages.PROD,
-)
-
-Registry.create_feature_flag(
-    ParamNames.CONTRIBUTOR_DASHBOARD_ACCOMPLISHMENTS,
-    'This flag enables showing per-contributor accomplishments on the' +
-    ' contributor dashboard.',
-    platform_parameter_domain.FeatureStages.PROD,
-)
-
-Registry.create_feature_flag(
-    ParamNames.ANDROID_BETA_LANDING_PAGE,
-    'This flag is for Android beta promo landing page.',
-    platform_parameter_domain.FeatureStages.PROD)
-
-Registry.create_feature_flag(
-    ParamNames.BLOG_PAGES,
-    'This flag is for blog home page, blog author profile page and blog post' +
-    ' page.',
-    platform_parameter_domain.FeatureStages.PROD)
+ALL_PLATFORM_PARAMS_LIST: List[ParamName] = [
+    ParamName.ALWAYS_ASK_LEARNERS_FOR_ANSWER_DETAILS,
+    ParamName.CONTRIBUTOR_DASHBOARD_REVIEWER_EMAILS_IS_ENABLED,
+    ParamName.DUMMY_PARAMETER,
+    ParamName.EMAIL_FOOTER,
+    ParamName.EMAIL_SENDER_NAME,
+    ParamName.ENABLE_ADMIN_NOTIFICATIONS_FOR_REVIEWER_SHORTAGE,
+    ParamName.ENABLE_ADMIN_NOTIFICATIONS_FOR_SUGGESTIONS_NEEDING_REVIEW,
+    (
+        ParamName.
+        HIGH_BOUNCE_RATE_TASK_STATE_BOUNCE_RATE_CREATION_THRESHOLD
+    ),
+    (
+        ParamName.
+        HIGH_BOUNCE_RATE_TASK_STATE_BOUNCE_RATE_OBSOLETION_THRESHOLD
+    ),
+    ParamName.HIGH_BOUNCE_RATE_TASK_MINIMUM_EXPLORATION_STARTS,
+    ParamName.MAX_NUMBER_OF_TAGS_ASSIGNED_TO_BLOG_POST,
+    ParamName.MAX_NUMBER_OF_SUGGESTIONS_PER_REVIEWER,
+    ParamName.PROMO_BAR_ENABLED,
+    ParamName.PROMO_BAR_MESSAGE,
+    ParamName.SIGNUP_EMAIL_BODY_CONTENT,
+    ParamName.SIGNUP_EMAIL_SUBJECT_CONTENT,
+    ParamName.UNPUBLISH_EXPLORATION_EMAIL_HTML_BODY,
+    ParamName.RECORD_PLAYTHROUGH_PROBABILITY,
+    ParamName.SERVER_CAN_SEND_EMAILS,
+    ParamName.SYSTEM_EMAIL_ADDRESS,
+    ParamName.SYSTEM_EMAIL_NAME,
+    ParamName.ADMIN_EMAIL_ADDRESS,
+    ParamName.NOREPLY_EMAIL_ADDRESS,
+    ParamName.MAILCHIMP_AUDIENCE_ID,
+    ParamName.MAILCHIMP_USERNAME,
+    ParamName.MAILGUN_DOMAIN_NAME,
+    ParamName.ES_CLOUD_ID,
+    ParamName.ES_USERNAME,
+    ParamName.OPPIA_PROJECT_ID,
+    ParamName.OPPIA_SITE_URL_FOR_EMAILS
+]

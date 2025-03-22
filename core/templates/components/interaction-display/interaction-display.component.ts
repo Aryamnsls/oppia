@@ -16,13 +16,18 @@
  * @fileoverview Component for dynamically building and showing interactions.
  */
 
-import { ChangeDetectorRef, Component, ComponentFactoryResolver, Input,
+import {
+  ChangeDetectorRef,
+  Component,
+  ComponentFactoryResolver,
+  Input,
   SimpleChange,
-  ViewChild, ViewContainerRef }
-  from '@angular/core';
+  ViewChild,
+  ViewContainerRef,
+} from '@angular/core';
 import camelCaseFromHyphen from 'utility/string-utility';
 
-import { TAG_TO_INTERACTION_MAPPING } from 'interactions/tag-to-interaction-mapping';
+import {TAG_TO_INTERACTION_MAPPING} from 'interactions/tag-to-interaction-mapping';
 
 @Component({
   selector: 'oppia-interaction-display',
@@ -36,11 +41,14 @@ export class InteractionDisplayComponent {
   // This property contains the list of classes that needs to be applied to
   // parent container of the created interaction.
   @Input() classStr!: string;
+  // TODO(#13015): Remove use of unknown as a type.
   // The passed htmlData sometimes accesses property from parent scope.
   @Input() parentScope!: unknown;
 
   @ViewChild('interactionContainer', {
-    read: ViewContainerRef}) viewContainerRef!: ViewContainerRef;
+    read: ViewContainerRef,
+  })
+  viewContainerRef!: ViewContainerRef;
 
   constructor(
     private componentFactoryResolver: ComponentFactoryResolver,
@@ -56,26 +64,32 @@ export class InteractionDisplayComponent {
       let domparser = new DOMParser();
       let dom = domparser.parseFromString(this.htmlData, 'text/html');
 
-      if (dom.body.firstElementChild &&
-        TAG_TO_INTERACTION_MAPPING[
-          dom.body.firstElementChild.tagName]) {
-        let interaction = TAG_TO_INTERACTION_MAPPING[
-          dom.body.firstElementChild.tagName];
+      if (
+        dom.body.firstElementChild &&
+        TAG_TO_INTERACTION_MAPPING[dom.body.firstElementChild.tagName]
+      ) {
+        let interaction =
+          TAG_TO_INTERACTION_MAPPING[dom.body.firstElementChild.tagName];
 
-        const componentFactory = this.componentFactoryResolver
-          .resolveComponentFactory(interaction);
-        const componentRef = this.viewContainerRef.createComponent(
-          componentFactory);
+        const componentFactory =
+          this.componentFactoryResolver.resolveComponentFactory(interaction);
+        const componentRef =
+          this.viewContainerRef.createComponent(componentFactory);
 
         let attributes = dom.body.firstElementChild.attributes;
 
         Array.from(attributes).forEach(attribute => {
-          let attributeNameInCamelCase = camelCaseFromHyphen(
-            attribute.name);
+          let attributeNameInCamelCase = camelCaseFromHyphen(attribute.name);
 
           let attributeValue = attribute.value;
 
           // Properties enclosed with [] needs to be resolved from parent scope.
+          // NOTE TO DEVELOPERS: The variables in this case are keyed by the
+          // attribute name and not the attribute value, so when passing down
+          // scoped variables (eg in codebase: lastAnswer, savedSolution) make
+          // sure the name of the attribute is the same as the local variable
+          // that it should be bound to and not the value (seems like the value
+          // is irrelevant for this usecase).
           if (/[\])}[{(]/g.test(attribute.name)) {
             if (this.parentScope) {
               attributeValue = this.parentScope[attributeNameInCamelCase];
@@ -84,7 +98,9 @@ export class InteractionDisplayComponent {
             }
           } else {
             componentRef.location.nativeElement.setAttribute(
-              attribute.name, attributeValue);
+              attribute.name,
+              attributeValue
+            );
           }
 
           componentRef.instance[attributeNameInCamelCase] = attributeValue;
@@ -96,9 +112,11 @@ export class InteractionDisplayComponent {
     }
   }
 
-  ngOnChanges(changes: { htmlData: SimpleChange }): void {
-    if (changes.htmlData.currentValue !== changes.htmlData.previousValue &&
-      this.viewContainerRef) {
+  ngOnChanges(changes: {htmlData: SimpleChange}): void {
+    if (
+      changes.htmlData.currentValue !== changes.htmlData.previousValue &&
+      this.viewContainerRef
+    ) {
       this.viewContainerRef.clear();
       this.buildInteraction();
     }

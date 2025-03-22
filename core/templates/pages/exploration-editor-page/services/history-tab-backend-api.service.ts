@@ -16,10 +16,9 @@
  * @fileoverview Backend api service for history tab component;
  */
 
-import { downgradeInjectable } from '@angular/upgrade/static';
-import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import { ExplorationSnapshot } from '../history-tab/services/version-tree.service';
+import {HttpClient} from '@angular/common/http';
+import {Injectable} from '@angular/core';
+import {ExplorationSnapshot} from '../history-tab/services/version-tree.service';
 
 export interface HistoryTabDict {
   summaries: string[];
@@ -31,44 +30,38 @@ interface HistoryTabCheckRevertValidDict {
   details: string;
 }
 
-interface HistoryTabData{
+interface HistoryTabData {
   revertExplorationUrl: string;
   currentVersion: number;
   revertToVersion: number;
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class HistoryTabBackendApiService {
-  constructor(
-        private http: HttpClient
-  ) {}
+  constructor(private http: HttpClient) {}
 
   getData(explorationAllSnapshotsUrl: string): Promise<HistoryTabDict> {
-    return this.http.get<HistoryTabDict>(
-      explorationAllSnapshotsUrl
-    ).toPromise();
+    return this.http
+      .get<HistoryTabDict>(explorationAllSnapshotsUrl)
+      .toPromise();
   }
 
   getCheckRevertValidData(
-      revertExplorationUrl: string
+    revertExplorationUrl: string
   ): Promise<HistoryTabCheckRevertValidDict> {
-    return this.http.get<HistoryTabCheckRevertValidDict>(
-      revertExplorationUrl).toPromise();
+    return this.http
+      .get<HistoryTabCheckRevertValidDict>(revertExplorationUrl)
+      .toPromise();
   }
 
   postData(data: HistoryTabData): Promise<HistoryTabDict> {
-    return this.http.post<HistoryTabDict>(
-      data.revertExplorationUrl,
-      {
+    return this.http
+      .post<HistoryTabDict>(data.revertExplorationUrl, {
         current_version: data.currentVersion,
-        revert_to_version: data.revertToVersion
-      }
-    ).toPromise();
+        revert_to_version: data.revertToVersion,
+      })
+      .toPromise();
   }
 }
-
-angular.module('oppia').factory(
-  'HistoryTabBackendApiService',
-  downgradeInjectable(HistoryTabBackendApiService));

@@ -23,16 +23,87 @@ import os
 import re
 from unittest import mock
 
+from core import feature_flag_list
 from core.constants import constants
 from core.domain import auth_domain
+from core.domain import feature_flag_services
 from core.domain import param_domain
+from core.domain import platform_parameter_list
+from core.domain import platform_parameter_services
+from core.domain import user_services
 from core.platform import models
 from core.tests import test_utils
 
-from typing import Callable, Final, OrderedDict
+import elasticsearch
+from typing import Callable, Final, List, OrderedDict, Tuple
 import webapp2
 
 email_services = models.Registry.import_email_services()
+
+
+class EnableFeatureFlagTests(test_utils.GenericTestBase):
+    """Tests for testing test_utils.enable_feature_flags."""
+
+    @test_utils.enable_feature_flags(
+        [feature_flag_list.FeatureNames.DUMMY_FEATURE_FLAG_FOR_E2E_TESTS])
+    def test_enable_feature_flags_decorator(self) -> None:
+        """Tests if single feature-flag is enabled."""
+        self.assertTrue(feature_flag_services.is_feature_flag_enabled(
+            'dummy_feature_flag_for_e2e_tests', None))
+
+    @test_utils.enable_feature_flags([
+        feature_flag_list.FeatureNames.DUMMY_FEATURE_FLAG_FOR_E2E_TESTS,
+        feature_flag_list.FeatureNames.DIAGNOSTIC_TEST
+    ])
+    def test_enable_multiple_feature_flags_decorator(self) -> None:
+        """Tests if multiple feature flags are enabled."""
+        self.assertTrue(feature_flag_services.is_feature_flag_enabled(
+            'dummy_feature_flag_for_e2e_tests', None))
+        self.assertTrue(feature_flag_services.is_feature_flag_enabled(
+            'diagnostic_test', None))
+
+
+class SetPlatformParametersTests(test_utils.GenericTestBase):
+    """Tests for testing test_utils.set_platform_parameters."""
+
+    @test_utils.set_platform_parameters(
+        [
+            (platform_parameter_list.ParamName.SERVER_CAN_SEND_EMAILS, True),
+            (platform_parameter_list.ParamName.EMAIL_SENDER_NAME, 'admin'),
+        ]
+    )
+    def test_set_platform_parameters_decorator(self) -> None:
+        """Tests if platform parameters are set."""
+        self.assertEqual(
+            platform_parameter_services.get_platform_parameter_value(
+                platform_parameter_list.ParamName.SERVER_CAN_SEND_EMAILS.value
+            ),
+            True
+        )
+        self.assertEqual(
+            platform_parameter_services.get_platform_parameter_value(
+                platform_parameter_list.ParamName.EMAIL_SENDER_NAME.value
+            ),
+            'admin'
+        )
+
+    @test_utils.set_platform_parameters(
+        [
+            (platform_parameter_list.ParamName.SERVER_CAN_SEND_EMAILS, True)
+        ]
+    )
+    def test_set_platform_parameters_decorator_with_invalid_param(self) -> None:
+        """Tests if invalid platform parameter raises an error."""
+        with self.assertRaisesRegex(
+            Exception,
+            'The value for the platform parameter dummy_parameter was '
+            'needed in this test, but not specified in the '
+            'set_platform_parameters decorator. Please use this information in '
+            'the decorator.'
+        ):
+            platform_parameter_services.get_platform_parameter_value(
+                'dummy_parameter'
+            )
 
 
 class FunctionWrapperTests(test_utils.GenericTestBase):
@@ -147,6 +218,7 @@ class FunctionWrapperTests(test_utils.GenericTestBase):
             self.assertEqual(data.get('value'), 'foobar')
 
     def test_wrapper_calls_passed_lambdas(self) -> None:
+        """Tests that FunctionWrapper also works for lambdas."""
         data = {}
 
         def mock_function_with_side_effect(string: str) -> str:
@@ -161,6 +233,7 @@ class FunctionWrapperTests(test_utils.GenericTestBase):
 
 
 class AuthServicesStubTests(test_utils.GenericTestBase):
+    """Test the methods for AuthServices."""
 
     EMAIL: Final = 'user@test.com'
 
@@ -199,6 +272,12 @@ class AuthServicesStubTests(test_utils.GenericTestBase):
     def test_get_association_that_is_missing(self) -> None:
         self.assertIsNone(self.stub.get_user_id_from_auth_id('does_not_exist'))
         self.assertIsNone(self.stub.get_auth_id_from_user_id('does_not_exist'))
+
+    def test_fail_to_get_deleted_association(self) -> None:
+        self.stub.associate_auth_id_with_user_id(auth_domain.AuthIdUserIdPair(
+            'aid', 'uid'))
+        self.stub.mark_user_for_deletion('uid')
+        self.assertIsNone(self.stub.get_user_id_from_auth_id('aid'))
 
     def test_get_multi_associations_with_all_present(self) -> None:
         self.stub.associate_auth_id_with_user_id(auth_domain.AuthIdUserIdPair(
@@ -634,6 +713,21 @@ class TestUtilsTests(test_utils.GenericTestBase):
             with self.assertRaisesRegex(Exception, ''):
                 mock_exception_func()
 
+    def test_invalid_http_method_raises_exception(self) -> None:
+        url = '/mock-url'
+        invalid_http_method = 'INVALID_METHOD'
+        expected_status_int_list = [200]
+
+        with self.assertRaisesRegex(
+            Exception,
+            'Invalid http method %s' % invalid_http_method
+            ):
+            self.get_response_without_checking_for_errors(
+                url=url,
+                expected_status_int_list=expected_status_int_list,
+                http_method=invalid_http_method
+            )
+
     # TODO(#13059): Here we use MyPy ignore because after we fully type
     # the codebase we plan to get rid of the tests that intentionally
     # test wrong inputs that we can normally catch by typing.
@@ -650,6 +744,20 @@ class TestUtilsTests(test_utils.GenericTestBase):
         ):
             test_utils.mock_load_template('invalid_path')
 
+    def test_raises_error_if_multiple_file_paths_found(self) -> None:
+        def mock_walk(_: str) -> List[Tuple[str, List[str], List[str]]]:
+            return [
+                ('page-dir-1', [], ['duplicate_file.ts']),
+                ('page-dir-2', [], ['duplicate_file.ts']),
+            ]
+        walk_swap = self.swap_with_checks(
+            os, 'walk', mock_walk, expected_args=[('core/templates/pages',)])
+        with self.assertRaisesRegex(
+            Exception, 'Multiple files found with name: duplicate_file.ts'
+        ):
+            with walk_swap:
+                test_utils.mock_load_template('duplicate_file.ts')
+
     def test_raises_error_if_no_user_name_exists_with_strict_true(self) -> None:
         with self.assertRaisesRegex(
             Exception, 'No user_id found for the given email address'
@@ -657,6 +765,95 @@ class TestUtilsTests(test_utils.GenericTestBase):
             self.get_user_id_from_email(
                 'invalidemail@gmail.com'
             )
+
+    def test_assert_matches_regexps_error_diff_num_expressions(self) -> None:
+        with self.assertRaisesRegex(
+            AssertionError, 'missing item expected to match: \'1\''
+        ):
+            self.assert_matches_regexps([], ['1'])
+
+        with self.assertRaisesRegex(
+            AssertionError, 'extra item \'1\''
+        ):
+            self.assert_matches_regexps(['1'], [])
+
+    def test_set_translation_coordinators(self) -> None:
+        self.signup('c@example.com', 'C')
+        user_id_c = self.get_user_id_from_email('c@example.com')
+
+        self.set_translation_coordinators(['C'], 'en')
+        self.set_translation_coordinators(['C'], 'hi')
+
+        coordinator_rights_model = (
+            user_services.get_translation_rights_with_user(user_id_c))
+        self.assertEqual(
+            2,
+            len(coordinator_rights_model)
+        )
+        self.assertEqual(
+            'en',
+            coordinator_rights_model[0].language_id
+        )
+        self.assertEqual(
+            'hi',
+            coordinator_rights_model[1].language_id
+        )
+
+
+class CheckImagePngOrWebpTests(test_utils.GenericTestBase):
+
+    def test_png_image_yields_true(self) -> None:
+        self.assertTrue(test_utils.check_image_png_or_webp('data:image/png'))
+
+    def test_webp_image_yields_true(self) -> None:
+        self.assertTrue(test_utils.check_image_png_or_webp('data:image/webp'))
+
+    def test_jpeg_image_yields_false(self) -> None:
+        self.assertFalse(test_utils.check_image_png_or_webp('data:image/jpeg'))
+
+
+class ElasticSearchStubTests(test_utils.GenericTestBase):
+
+    def test_duplicate_index_yields_error(self) -> None:
+        stub = test_utils.ElasticSearchStub()
+        stub.mock_create_index('index1')
+        stub.mock_create_index('index2')
+        with self.assertRaisesRegex(
+            elasticsearch.RequestError,
+            r'RequestError\(400, \'resource_already_exists_exception\'\)',
+        ):
+            stub.mock_create_index('index1')
+
+    def test_delete_from_missing_index_yields_error(self) -> None:
+        stub = test_utils.ElasticSearchStub()
+        with self.assertRaisesRegex(
+            elasticsearch.NotFoundError,
+            (
+                r'NotFoundError\(404, \'index_not_found_exception\', '
+                r'\'no such index \[index1\]\', index1, index_or_alias\)'
+            ),
+        ):
+            stub.mock_delete('index1', 'some_id')
+
+    def test_delete_missing_doc_yields_error(self) -> None:
+        stub = test_utils.ElasticSearchStub()
+        stub.mock_create_index('index1')
+        with self.assertRaisesRegex(
+            elasticsearch.NotFoundError,
+            r'NotFoundError\(404,',
+        ):
+            stub.mock_delete('index1', 'doc_id')
+
+    def test_delete_by_query_with_missing_index_yields_error(self) -> None:
+        stub = test_utils.ElasticSearchStub()
+        with self.assertRaisesRegex(
+            elasticsearch.NotFoundError,
+            (
+                r'NotFoundError\(404, \'index_not_found_exception\', '
+                r'\'no such index \[index1\]\', index1, index_or_alias\)'
+            ),
+        ):
+            stub.mock_delete_by_query('index1', {'query': {'match_all': {}}})
 
 
 class EmailMockTests(test_utils.EmailTestBase):

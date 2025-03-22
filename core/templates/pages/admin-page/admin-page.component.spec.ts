@@ -16,14 +16,13 @@
  * @fileoverview UnitTests for Admin Page component.
  */
 
-import { HttpClientTestingModule } from '@angular/common/http/testing';
-import { ChangeDetectorRef, NO_ERRORS_SCHEMA } from '@angular/core';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import {HttpClientTestingModule} from '@angular/common/http/testing';
+import {ChangeDetectorRef, NO_ERRORS_SCHEMA} from '@angular/core';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 
-import { WindowRef } from 'services/contextual/window-ref.service';
-import { PlatformFeatureService } from 'services/platform-feature.service';
-import { AdminPageComponent } from './admin-page.component';
-import { AdminRouterService } from './services/admin-router.service';
+import {WindowRef} from 'services/contextual/window-ref.service';
+import {AdminPageComponent} from './admin-page.component';
+import {AdminRouterService} from './services/admin-router.service';
 
 class MockWindowRef {
   nativeWindow = {
@@ -35,25 +34,15 @@ class MockWindowRef {
       href: 'href',
       pathname: 'pathname',
       search: 'search',
-      hash: 'hash'
+      hash: 'hash',
     },
     open() {
       return;
     },
     onhashchange() {
       return;
-    }
+    },
   };
-}
-
-class MockPlatformFeatureService {
-  get status() {
-    return {
-      DummyFeature: {
-        isEnabled: true
-      }
-    };
-  }
 }
 
 describe('Admin Page component ', () => {
@@ -73,14 +62,10 @@ describe('Admin Page component ', () => {
         ChangeDetectorRef,
         {
           provide: WindowRef,
-          useValue: mockWindowRef
+          useValue: mockWindowRef,
         },
-        {
-          provide: PlatformFeatureService,
-          useClass: MockPlatformFeatureService
-        }
       ],
-      schemas: [NO_ERRORS_SCHEMA]
+      schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents();
 
     fixture = TestBed.createComponent(AdminPageComponent);
@@ -102,20 +87,11 @@ describe('Admin Page component ', () => {
     expect(result).toBe(true);
   });
 
-  it('should check whether the admin config tab is open', () => {
-    // Setting admin config tab to be open.
-    spyOn(adminRouterService, 'isConfigTabOpen').and.returnValue(true);
+  it('should check whether the admin platform params tab is open', () => {
+    // Setting admin platform params tab to be open.
+    spyOn(adminRouterService, 'isPlatformParamsTabOpen').and.returnValue(true);
 
-    let result = component.isConfigTabOpen();
-
-    expect(result).toBe(true);
-  });
-
-  it('should check whether the admin features tab is open', () => {
-    // Setting admin features tab to be open.
-    spyOn(adminRouterService, 'isFeaturesTabOpen').and.returnValue(true);
-
-    let result = component.isFeaturesTabOpen();
+    let result = component.isPlatformParamsTabOpen();
 
     expect(result).toBe(true);
   });
@@ -138,7 +114,7 @@ describe('Admin Page component ', () => {
     expect(result).toBe(true);
   });
 
-  it('should set status message when calling \'setStatusMessage\'', () => {
+  it("should set status message when calling 'setStatusMessage'", () => {
     expect(component.statusMessage).toBe('');
 
     component.ngOnInit();
@@ -146,12 +122,5 @@ describe('Admin Page component ', () => {
     component.setStatusMessage('message');
 
     expect(component.statusMessage).toBe('message');
-  });
-
-  it('should check whether the dummy features enabled', () => {
-    let result = component.isDummyFeatureEnabled();
-
-    // Mocked 'PlatformFeatureService.status' method to return true.
-    expect(result).toBe(true);
   });
 });

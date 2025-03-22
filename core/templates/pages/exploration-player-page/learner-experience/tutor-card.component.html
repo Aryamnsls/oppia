@@ -12,17 +12,13 @@
        [ngClass]="{'learner-view-card-transition-class': isOnTerminalCard(), 'card-content-hidden': !checkMarkHidden}">
     <div class="oppia-learner-view-card-top-section">
       <oppia-content-language-selector></oppia-content-language-selector>
-      <a [ngClass]="{'oppia-disabled-image-link': (OPPIA_AVATAR_LINK_URL === null)}"
-         [href]="OPPIA_AVATAR_LINK_URL"
-         target="_blank"
-         rel="noopener">
-        <img class="conversation-skin-oppia-avatar"
-             [src]="OPPIA_AVATAR_IMAGE_URL" alt=""
-             *ngIf="avatarImageIsShown">
-      </a>
+      <img class="conversation-skin-oppia-avatar"
+           [src]="OPPIA_AVATAR_IMAGE_URL"
+           alt=""
+           *ngIf="avatarImageIsShown">
       <div class="oppia-rte-viewer oppia-learner-view-card-top-content"
            [ngClass]="getContentAudioHighlightClass()">
-        <div tabindex="1">
+        <div tabindex="0">
           <oppia-rte-output-display [rteString]="displayedCard.getContentHtml()"
                                     class="e2e-test-conversation-content">
           </oppia-rte-output-display>
@@ -52,7 +48,8 @@
       <div *ngFor="let responsePair of displayedCard.getInputResponsePairs(); index as index">
         <div *ngIf="index !== (displayedCard.getInputResponsePairs().length - 1) || !isInteractionInline()">
           <oppia-input-response-pair [data]="responsePair"
-                                     [profilePicture]="profilePicture"
+                                     [profilePicturePngDataUrl]="profilePicturePngDataUrl"
+                                     [profilePictureWebpDataUrl]="profilePictureWebpDataUrl"
                                      [oppiaAvatarImageUrl]="OPPIA_AVATAR_IMAGE_URL"
                                      [inputResponsePairId]="getInputResponsePairId($index)"
                                      [isLastPair]="false"
@@ -66,7 +63,8 @@
     <div class="conversation-skin-tutor-card-bottom-section" *ngIf="isInteractionInline() && displayedCard.getInputResponsePairs().length > 0">
       <oppia-input-response-pair [data]="displayedCard.getInputResponsePairs()[displayedCard.getInputResponsePairs().length - 1]"
                                  [bottomSection]="true"
-                                 [profilePicture]="profilePicture"
+                                 [profilePicturePngDataUrl]="profilePicturePngDataUrl"
+                                 [profilePictureWebpDataUrl]="profilePictureWebpDataUrl"
                                  [oppiaAvatarImageUrl]="OPPIA_AVATAR_IMAGE_URL"
                                  [inputResponsePairId]="getInputResponsePairId(displayedCard.getInputResponsePairs().length - 1)"
                                  [isLastPair]="true"
@@ -97,16 +95,6 @@
       </div>
     </div>
 
-    <div *ngIf="displayedCard.getInteractionId() === 'MultipleChoiceInput'"
-         class="oppia-mcq-question-description-text">
-      <span>
-        <i>
-          Note: When you select an option, the quiz will automatically
-          move to the next question.
-        </i>
-      </span>
-    </div>
-
     <div *ngIf="!isInteractionInline() && !conceptCardIsBeingShown"
          class="conversation-skin-inline-interaction">
       <div class="oppia-conversation-skin-instruction-container">
@@ -126,7 +114,7 @@
         </div>
       </div>
     </div>
-    <div *ngIf="platformFeatureService.status.EndChapterCelebration.isEnabled && isOnTerminalCard() && milestoneMessageIsToBeDisplayed && generateMilestoneMessage() && !setNextMilestoneAndCheckIfProgressBarIsShown()">
+    <div *ngIf="isOnTerminalCard() && milestoneMessageIsToBeDisplayed && generateMilestoneMessage() && !setNextMilestoneAndCheckIfProgressBarIsShown()">
       <div class="conversation-skin-milestone-message">
         <div class="milestone-message-star-container">
           <img [src]="getStaticImageUrl('/general/milestone-message-star-icon.svg')" class="star-icon">
@@ -135,7 +123,7 @@
         <span class="milestone-message-text">{{ generateMilestoneMessage() }}</span>
       </div>
     </div>
-    <div *ngIf="platformFeatureService.status.EndChapterCelebration.isEnabled && isOnTerminalCard() && setNextMilestoneAndCheckIfProgressBarIsShown()">
+    <div *ngIf="isOnTerminalCard() && setNextMilestoneAndCheckIfProgressBarIsShown()">
       <div class="conversation-skin-milestone-message milestone-progress-message">
         <div class="milestone-message-progress-bar-container">
           <div class="milestone-progress-bar-outer">
@@ -168,13 +156,9 @@
 
     <div *ngIf="displayedCardWasCompletedInPrevSession && !conceptCardIsBeingShown && (displayedCard.getInteractionId() != 'Continue')">
       <div class="conversation-skin-oppia-feedback-container conversation-skin-oppia-completed-state-card">
-        <a [ngClass]="{'oppia-disabled-image-link': (OPPIA_AVATAR_LINK_URL === null)}"
-           [href]="OPPIA_AVATAR_LINK_URL"
-           target="_blank"
-           rel="noopener">
-          <img class="conversation-skin-oppia-avatar rounded-circle"
-               [src]="OPPIA_AVATAR_IMAGE_URL" alt="">
-        </a>
+        <img class="conversation-skin-oppia-avatar rounded-circle"
+             [src]="OPPIA_AVATAR_IMAGE_URL"
+             alt="">
         <div class="conversation-skin-oppia-feedback-content">
           {{ 'I18N_EXPLORATION_STATE_PREVIOUSLY_COMPLETED' | translate }}
         </div>

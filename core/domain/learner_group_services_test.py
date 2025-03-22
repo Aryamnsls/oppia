@@ -18,8 +18,8 @@
 
 from __future__ import annotations
 
+from core import feature_flag_list
 from core.constants import constants
-from core.domain import config_services
 from core.domain import learner_group_fetchers
 from core.domain import learner_group_services
 from core.domain import topic_domain
@@ -132,16 +132,12 @@ class LearnerGroupServicesUnitTests(test_utils.GenericTestBase):
             self.learner_group.subtopic_page_ids, ['subtopic_id_1'])
         self.assertEqual(self.learner_group.story_ids, ['story_id_1'])
 
+    @test_utils.enable_feature_flags(
+        [feature_flag_list.FeatureNames.LEARNER_GROUPS_ARE_ENABLED])
     def test_is_learner_group_feature_enabled(self) -> None:
-        config_services.set_property(
-            self.admin_id, 'learner_groups_are_enabled', True)
         self.assertTrue(
-            learner_group_services.is_learner_group_feature_enabled())
-
-        config_services.set_property(
-            self.admin_id, 'learner_groups_are_enabled', False)
-        self.assertFalse(
-            learner_group_services.is_learner_group_feature_enabled())
+            learner_group_services.is_learner_group_feature_enabled(
+                self.admin_id))
 
     def test_update_learner_group(self) -> None:
         updated_group = learner_group_services.update_learner_group(
@@ -248,6 +244,7 @@ class LearnerGroupServicesUnitTests(test_utils.GenericTestBase):
 
     def test_get_matching_syllabus_to_add_with_classroom_filter(self) -> None:
         # Test 4: Classroom name filter.
+        self.save_new_valid_classroom()
         matching_syllabus = (
             learner_group_services.get_matching_learner_group_syllabus_to_add(
                 self.LEARNER_GROUP_ID, 'Place', 'All',

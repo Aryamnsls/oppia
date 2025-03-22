@@ -16,17 +16,16 @@
  * @fileoverview Component for a collection summary tile.
  */
 
-import { Component, Input, OnInit, OnDestroy } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
+import {Component, Input, OnInit, OnDestroy} from '@angular/core';
 
-import constants from 'assets/constants';
-import { CollectionSummaryTileConstants } from 'components/summary-tile/collection-summary-tile.constants';
-import { UrlInterpolationService } from 'domain/utilities/url-interpolation.service';
-import { DateTimeFormatService } from 'services/date-time-format.service';
-import { UserService } from 'services/user.service';
-import { WindowDimensionsService } from 'services/contextual/window-dimensions.service';
-import { UrlService } from 'services/contextual/url.service';
-import { Subscription } from 'rxjs';
+import {AppConstants} from 'app.constants';
+import {CollectionSummaryTileConstants} from 'components/summary-tile/collection-summary-tile.constants';
+import {UrlInterpolationService} from 'domain/utilities/url-interpolation.service';
+import {DateTimeFormatService} from 'services/date-time-format.service';
+import {UserService} from 'services/user.service';
+import {WindowDimensionsService} from 'services/contextual/window-dimensions.service';
+import {UrlService} from 'services/contextual/url.service';
+import {Subscription} from 'rxjs';
 
 @Component({
   selector: 'oppia-collection-summary-tile',
@@ -79,8 +78,9 @@ export class CollectionSummaryTileComponent implements OnInit, OnDestroy {
     }
     this.checkIfMobileCardToBeShown();
     this.defaultEmptyTitle = CollectionSummaryTileConstants.DEFAULT_EMPTY_TITLE;
-    this.activityTypeCollection = constants.ACTIVITY_TYPE_COLLECTION;
-    this.resizeSubscription = this.windowDimensionsService.getResizeEvent()
+    this.activityTypeCollection = AppConstants.ACTIVITY_TYPE_COLLECTION;
+    this.resizeSubscription = this.windowDimensionsService
+      .getResizeEvent()
       .subscribe(event => {
         this.checkIfMobileCardToBeShown();
       });
@@ -97,39 +97,38 @@ export class CollectionSummaryTileComponent implements OnInit, OnDestroy {
     let mobileViewActive =
       this.windowDimensionsService.getWidth() < this.mobileCutoffPx;
     let currentPageUrl = this.urlService.getPathname();
-    this.mobileCardToBeShown = (
-      mobileViewActive && (currentPageUrl === '/community-library'));
+    this.mobileCardToBeShown =
+      mobileViewActive && currentPageUrl === '/community-library';
   }
 
   getLastUpdatedDatetime(): string {
     return this.dateTimeFormatService.getLocaleAbbreviatedDatetimeString(
-      this.getLastUpdatedMsec);
+      this.getLastUpdatedMsec
+    );
   }
 
   getRelativeLastUpdatedDateTime(): string | null {
     if (this.getLastUpdatedMsec) {
       return this.dateTimeFormatService.getRelativeTimeFromNow(
-        this.getLastUpdatedMsec);
+        this.getLastUpdatedMsec
+      );
     }
     return null;
   }
 
   getCollectionLink(): string | null {
-    let targetUrl = (
-      this.isLinkedToEditorPage ?
-        CollectionSummaryTileConstants.COLLECTION_EDITOR_URL :
-        CollectionSummaryTileConstants.COLLECTION_VIEWER_URL
-    );
-    return this.urlInterpolationService.interpolateUrl(
-      targetUrl, {
-        collection_id: this.getCollectionId
-      }
-    );
+    let targetUrl = this.isLinkedToEditorPage
+      ? CollectionSummaryTileConstants.COLLECTION_EDITOR_URL
+      : CollectionSummaryTileConstants.COLLECTION_VIEWER_URL;
+    return this.urlInterpolationService.interpolateUrl(targetUrl, {
+      collection_id: this.getCollectionId,
+    });
   }
 
   getCompleteThumbnailIconUrl(): string {
     return this.urlInterpolationService.getStaticImageUrl(
-      this.getThumbnailIconUrl);
+      this.getThumbnailIconUrl
+    );
   }
 
   getStaticImageUrl(imagePath: string): string {
@@ -140,7 +139,3 @@ export class CollectionSummaryTileComponent implements OnInit, OnDestroy {
     this.collectionIsCurrentlyHoveredOver = hoverState;
   }
 }
-
-angular.module('oppia').directive(
-  'oppiaCollectionSummaryTile', downgradeComponent(
-    {component: CollectionSummaryTileComponent}));

@@ -19,29 +19,34 @@
 
 import cloneDeep from 'lodash/cloneDeep';
 
-import { Injectable } from '@angular/core';
-import { downgradeInjectable } from '@angular/upgrade/static';
+import {Injectable} from '@angular/core';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ThreadStatusDisplayService {
-  static _STATUS_CHOICES = [{
-    id: 'open',
-    text: 'Open'
-  }, {
-    id: 'fixed',
-    text: 'Fixed'
-  }, {
-    id: 'ignored',
-    text: 'Ignored'
-  }, {
-    id: 'compliment',
-    text: 'Compliment'
-  }, {
-    id: 'not_actionable',
-    text: 'Not Actionable'
-  }];
+  static _STATUS_CHOICES = [
+    {
+      id: 'open',
+      text: 'Open',
+    },
+    {
+      id: 'fixed',
+      text: 'Fixed',
+    },
+    {
+      id: 'ignored',
+      text: 'Ignored',
+    },
+    {
+      id: 'compliment',
+      text: 'Compliment',
+    },
+    {
+      id: 'not_actionable',
+      text: 'Not Actionable',
+    },
+  ];
 
   STATUS_CHOICES = cloneDeep(ThreadStatusDisplayService._STATUS_CHOICES);
 
@@ -57,7 +62,10 @@ export class ThreadStatusDisplayService {
 
   getHumanReadableStatus(status: string): string {
     for (
-      var i = 0; i < ThreadStatusDisplayService._STATUS_CHOICES.length; i++) {
+      var i = 0;
+      i < ThreadStatusDisplayService._STATUS_CHOICES.length;
+      i++
+    ) {
       if (ThreadStatusDisplayService._STATUS_CHOICES[i].id === status) {
         return ThreadStatusDisplayService._STATUS_CHOICES[i].text;
       }
@@ -65,7 +73,3 @@ export class ThreadStatusDisplayService {
     return '';
   }
 }
-
-angular.module('oppia').factory(
-  'ThreadStatusDisplayService',
-  downgradeInjectable(ThreadStatusDisplayService));

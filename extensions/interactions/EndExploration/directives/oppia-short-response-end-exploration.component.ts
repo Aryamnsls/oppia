@@ -20,17 +20,11 @@
  * followed by the name of the arg.
  */
 
-import { Component } from '@angular/core';
-import { downgradeComponent } from '@angular/upgrade/static';
+import {Component} from '@angular/core';
 
 @Component({
   selector: 'oppia-short-response-end-exploration',
   templateUrl: './end-exploration-short-response.component.html',
-  styleUrls: []
+  styleUrls: [],
 })
 export class ShortResponseEndExplorationComponent {}
-
-angular.module('oppia').directive('oppiaShortResponseEndExploration',
-  downgradeComponent({
-    component: ShortResponseEndExplorationComponent
-  }) as angular.IDirectiveFactory);

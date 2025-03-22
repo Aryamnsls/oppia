@@ -16,17 +16,21 @@
  * @fileoverview Unit tests for SelectSkillModalComponent.
  */
 
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
-import { FormsModule } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatRadioModule } from '@angular/material/radio';
-import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
-import { CategorizedSkills, SelectSkillModalComponent } from './select-skill-modal.component';
-import { SkillSelectorComponent } from './skill-selector.component';
-import { SkillSummaryBackendDict } from 'domain/skill/skill-summary.model';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
-
+import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
+import {FormsModule} from '@angular/forms';
+import {MatCardModule} from '@angular/material/card';
+import {MatCheckboxModule} from '@angular/material/checkbox';
+import {MatRadioModule} from '@angular/material/radio';
+import {NgbActiveModal} from '@ng-bootstrap/ng-bootstrap';
+import {
+  CategorizedSkills,
+  SelectSkillModalComponent,
+} from './select-skill-modal.component';
+import {SkillSelectorComponent} from './skill-selector.component';
+import {SkillSummaryBackendDict} from 'domain/skill/skill-summary.model';
+import {HttpClientTestingModule} from '@angular/common/http/testing';
+import {ShortSkillSummary} from 'domain/skill/short-skill-summary.model';
+import {MaterialModule} from 'modules/material.module';
 
 describe('Select Skill Modal', () => {
   let fixture: ComponentFixture<SelectSkillModalComponent>;
@@ -42,18 +46,19 @@ describe('Select Skill Modal', () => {
     misconception_count: 0,
     worked_examples_count: 0,
     skill_model_created_on: 2,
-    skill_model_last_updated: 3
+    skill_model_last_updated: 3,
   };
   let shortSkillSummary: SkillSummaryBackendDict = skillSummaryBackendDict;
   let categorizedSkills: CategorizedSkills = {
     'Dummy Topic': {
-      Subtopic1: [shortSkillSummary]
-    }
+      Subtopic1: [shortSkillSummary],
+    },
   };
   let untriagedSkillSummaries: SkillSummaryBackendDict[] = [
-    skillSummaryBackendDict
+    skillSummaryBackendDict,
   ];
   let skillSummaries: SkillSummaryBackendDict[] = [skillSummaryBackendDict];
+  let associatedSkillSummaries: ShortSkillSummary[];
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
@@ -61,16 +66,12 @@ describe('Select Skill Modal', () => {
         MatCardModule,
         MatRadioModule,
         MatCheckboxModule,
+        MaterialModule,
         FormsModule,
-        HttpClientTestingModule
+        HttpClientTestingModule,
       ],
-      declarations: [
-        SelectSkillModalComponent,
-        SkillSelectorComponent
-      ],
-      providers: [
-        NgbActiveModal
-      ]
+      declarations: [SelectSkillModalComponent, SkillSelectorComponent],
+      providers: [NgbActiveModal],
     }).compileComponents();
   }));
 
@@ -82,6 +83,7 @@ describe('Select Skill Modal', () => {
     componentInstance.skillsInSameTopicCount = skillsInSameTopicCount;
     componentInstance.skillSummaries = skillSummaries;
     componentInstance.untriagedSkillSummaries = untriagedSkillSummaries;
+    componentInstance.associatedSkillSummaries = associatedSkillSummaries;
     ngbActiveModal = TestBed.inject(NgbActiveModal);
   });
 
@@ -98,11 +100,13 @@ describe('Select Skill Modal', () => {
     for (let topic in componentInstance.categorizedSkills) {
       for (let subtopic in componentInstance.categorizedSkills[topic]) {
         totalSkills.push(
-          ...componentInstance.categorizedSkills[topic][subtopic]);
+          ...componentInstance.categorizedSkills[topic][subtopic]
+        );
       }
     }
     let summary = totalSkills.find(
-      summary => summary.id === componentInstance.selectedSkillId);
+      summary => summary.id === componentInstance.selectedSkillId
+    );
 
     componentInstance.confirm();
     expect(ngbActiveModal.close).toHaveBeenCalledWith(summary);
@@ -111,5 +115,35 @@ describe('Select Skill Modal', () => {
   it('should set selected skill id', () => {
     componentInstance.setSelectedSkillId('skill_id');
     expect(componentInstance.selectedSkillId).toEqual('skill_id');
+  });
+
+  it('should disable Save button if skill is already linked', () => {
+    componentInstance.associatedSkillSummaries = [
+      ShortSkillSummary.createFromBackendDict({
+        skill_id: 'skillId1',
+        skill_description: 'Skill Description',
+      }),
+      ShortSkillSummary.createFromBackendDict({
+        skill_id: 'skillId2',
+        skill_description: 'Skill Description',
+      }),
+    ];
+
+    componentInstance.setSelectedSkillId('skillId1');
+    expect(componentInstance.isSkillAlreadyLinked()).toBe(false);
+
+    // Selecting a skill which is not already linked.
+    componentInstance.setSelectedSkillId('skillId3');
+    expect(componentInstance.isSkillAlreadyLinked()).toBe(true);
+  });
+
+  it('should keep Done button disabled when no skill is selected', () => {
+    componentInstance.selectedSkillId = '';
+    expect(componentInstance.isDoneButtonDisabled()).toBe(true);
+  });
+
+  it('should activate Done button when a skill is chosen', () => {
+    componentInstance.selectedSkillId = 'skillId3';
+    expect(componentInstance.isDoneButtonDisabled()).toBe(false);
   });
 });

@@ -4,6 +4,7 @@
 <div class="conversation-skin-final-summary">
   <div *ngIf="userIsLoggedIn && !explorationIsInPreviewMode" class="conversation-skin-final-ratings">
     <div class="conversation-skin-final-ratings-header"
+         tabindex="0"
          translate="I18N_PLAYER_RATE_EXPLORATION">
     </div>
     <div placement="bottom"
@@ -62,12 +63,12 @@
         Already have an account?
         <span class="conversation-skin-login-button-text" translate="" (click)="signIn('.conversation-skin-login-button-text')">Sign In</span>
       </button>
-      <button class="conversation-skin-hide-sign-up-section-button e2e-test-dismiss-sign-up-section-button" *ngIf="isEndChapterFeatureEnabled()">
+      <button class="conversation-skin-hide-sign-up-section-button e2e-test-dismiss-sign-up-section-button">
         <span class="conversation-skin-hide-sign-up-section-text" translate="I18N_SIGNUP_SECTION_DONT_ASK_ME_AGAIN" (click)="hideSignUpSection()"></span>
       </button>
     </div>
   </div>
-  <div *ngIf="inStoryMode && isEndChapterFeatureEnabled() && storyId">
+  <div *ngIf="inStoryMode  && storyId">
     <oppia-post-chapter-recommendations [nextStoryNodeLink]="nextLessonLink"
                                         [nextStoryNodeThumbnailUrl]="nextStoryNodeIconUrl ? nextStoryNodeIconUrl : ''"
                                         [nextStoryNodeThumbnailBgColor]="nextStoryNode ? nextStoryNode.thumbnailBgColor : ''"

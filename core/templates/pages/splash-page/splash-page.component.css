@@ -109,6 +109,9 @@
     left: -o-calc(50% - 200px);
     left: calc(50% - 200px);
   }
+  .oppia-splash-section-five-left-testimonial {
+    height: 410px;
+  }
 }
 
 @media (min-width: 575px) {
@@ -140,6 +143,7 @@
   margin-right: 20px;
   margin-top: 50px;
 }
+
 .splash-page .splash-arrows-container {
   position: absolute;
 }
@@ -236,6 +240,12 @@
   width: 50vw;
 }
 
+.oppia-splash-section-five-left-testimonial {
+  height: 300px;
+  overflow: hidden; 
+  transition: height 0.3s ease;
+}
+
 .splash-page .oppia-splash-section-seven-left {
   margin-bottom: auto;
   margin-left: 10vw;
@@ -254,6 +264,8 @@
 }
 
 .splash-page .oppia-splash-section-six-right {
+  display: flex;
+  flex-direction: column;
   margin-bottom: auto;
   margin-left: auto;
   margin-top: auto;
@@ -548,6 +560,7 @@
   }
 
   .splash-page .splash-arrows-container {
+    cursor: pointer;
     position: relative;
   }
 

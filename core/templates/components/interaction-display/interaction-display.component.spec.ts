@@ -16,9 +16,14 @@
  * @fileoverview Unit tests for interaction display component.
  */
 
-import { ComponentFactoryResolver, ComponentRef, SimpleChange, ViewContainerRef } from '@angular/core';
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
-import { InteractionDisplayComponent } from './interaction-display.component';
+import {
+  ComponentFactoryResolver,
+  ComponentRef,
+  SimpleChange,
+  ViewContainerRef,
+} from '@angular/core';
+import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
+import {InteractionDisplayComponent} from './interaction-display.component';
 
 describe('Interaction display', () => {
   let fixture: ComponentFixture<InteractionDisplayComponent>;
@@ -27,7 +32,7 @@ describe('Interaction display', () => {
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      declarations: [InteractionDisplayComponent]
+      declarations: [InteractionDisplayComponent],
     }).compileComponents();
 
     fixture = TestBed.createComponent(InteractionDisplayComponent);
@@ -40,65 +45,69 @@ describe('Interaction display', () => {
   });
 
   it('should build interaction using htmlData', () => {
-    componentInstance.htmlData = (
+    componentInstance.htmlData =
       '<oppia-interactive-text-input rows-with-value="1" ' +
       'placeholder-with-value="{&amp;quot;unicode_str&amp;quot;:&amp;quot;}"' +
-      '[last-answer]="null"></oppia-interactive-text-input>');
+      '[last-answer]="null"></oppia-interactive-text-input>';
 
     let setAttributeSpy = jasmine.createSpy('setAttribute');
     let mockComponentRef = {
       changeDetectorRef: {
-        detectChanges: () => {}
+        detectChanges: () => {},
       },
       location: {
         nativeElement: {
-          setAttribute: setAttributeSpy
-        }
+          setAttribute: setAttributeSpy,
+        },
       },
       instance: {
-        placeholderWithValue: ''
-      }
+        placeholderWithValue: '',
+      },
     };
 
     componentInstance.viewContainerRef = {
-      createComponent: null
+      createComponent: null,
     } as ViewContainerRef;
     spyOn(componentFactoryResolver, 'resolveComponentFactory');
     spyOn(componentInstance.viewContainerRef, 'createComponent')
+      // Unknown type is used here because the type of the component
+      // is not known. This is because the component is dynamically
+      // created.
       .and.returnValue(mockComponentRef as ComponentRef<unknown>);
 
     componentInstance.buildInteraction();
 
     expect(setAttributeSpy).toHaveBeenCalled();
-    expect(mockComponentRef.instance.placeholderWithValue.length)
-      .toBeGreaterThan(0);
+    expect(
+      mockComponentRef.instance.placeholderWithValue.length
+    ).toBeGreaterThan(0);
   });
 
   it('should build interaction using htmlData and parentScope', () => {
     let lastAnswer = 'last-answer';
-    componentInstance.htmlData = (
+    componentInstance.htmlData =
       '<oppia-interactive-text-input rows-with-value="1" ' +
       'placeholder-with-value="{&amp;quot;unicode_str&amp;quot;:&amp;quot;}"' +
-      '[last-answer]="lastAnswer"></oppia-interactive-text-input>');
+      '[last-answer]="lastAnswer"></oppia-interactive-text-input>';
 
     let setAttributeSpy = jasmine.createSpy('setAttribute');
     let mockComponentRef = {
       changeDetectorRef: {
-        detectChanges: () => {}
+        detectChanges: () => {},
       },
       location: {
         nativeElement: {
-          setAttribute: setAttributeSpy
-        }
+          setAttribute: setAttributeSpy,
+        },
       },
       instance: {
         placeholderWithValue: '',
         lastAnswer: '',
-      }
+      },
     };
 
     componentInstance.viewContainerRef = {
-      createComponent: null
+      createComponent: null,
     } as ViewContainerRef;
     componentInstance.parentScope = {
       lastAnswer,
@@ -106,13 +115,17 @@ describe('Interaction display', () => {
 
     spyOn(componentFactoryResolver, 'resolveComponentFactory');
     spyOn(componentInstance.viewContainerRef, 'createComponent')
+      // Unknown type is used here because the type of the component
+      // is not known. This is because the component is dynamically
+      // created.
       .and.returnValue(mockComponentRef as ComponentRef<unknown>);
 
     componentInstance.buildInteraction();
 
     expect(setAttributeSpy).toHaveBeenCalled();
-    expect(mockComponentRef.instance.placeholderWithValue.length)
-      .toBeGreaterThan(0);
+    expect(
+      mockComponentRef.instance.placeholderWithValue.length
+    ).toBeGreaterThan(0);
     expect(mockComponentRef.instance.lastAnswer).toEqual(lastAnswer);
   });
 
@@ -126,12 +139,12 @@ describe('Interaction display', () => {
 
   it('should rebuild interaction if htmlData is updated', () => {
     componentInstance.viewContainerRef = {
-      clear: () => {}
+      clear: () => {},
     } as ViewContainerRef;
     spyOn(componentInstance, 'buildInteraction');
 
     componentInstance.ngOnChanges({
-      htmlData: new SimpleChange('previousValue', 'newValue', true)
+      htmlData: new SimpleChange('previousValue', 'newValue', true),
     });
 
     expect(componentInstance.buildInteraction).toHaveBeenCalled();

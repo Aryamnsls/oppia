@@ -16,11 +16,11 @@
  * @fileoverview Unit tests for TopicEditorRoutingService.
  */
 
-import { TestBed, waitForAsync } from '@angular/core/testing';
-import { UrlInterpolationService } from 'domain/utilities/url-interpolation.service';
-import { WindowRef } from 'services/contextual/window-ref.service';
-import { PageTitleService } from 'services/page-title.service';
-import { TopicEditorRoutingService } from './topic-editor-routing.service';
+import {TestBed, waitForAsync} from '@angular/core/testing';
+import {UrlInterpolationService} from 'domain/utilities/url-interpolation.service';
+import {WindowRef} from 'services/contextual/window-ref.service';
+import {PageTitleService} from 'services/page-title.service';
+import {TopicEditorRoutingService} from './topic-editor-routing.service';
 
 describe('Topic Editor Routing Service', () => {
   let ters: TopicEditorRoutingService;
@@ -30,9 +30,9 @@ describe('Topic Editor Routing Service', () => {
     nativeWindow = {
       location: {
         href: '',
-        hash: '/'
+        hash: '/',
       },
-      open: (url: string) => {}
+      open: (url: string) => {},
     };
   }
 
@@ -41,24 +41,24 @@ describe('Topic Editor Routing Service', () => {
       providers: [
         {
           provide: WindowRef,
-          useClass: MockWindowRef
+          useClass: MockWindowRef,
         },
         PageTitleService,
-        UrlInterpolationService
-      ]
+        UrlInterpolationService,
+      ],
     }).compileComponents();
   }));
 
   beforeEach(() => {
     ters = TestBed.inject(TopicEditorRoutingService);
-    mockWindowRef = TestBed.inject(WindowRef) as unknown as MockWindowRef;
+    mockWindowRef = TestBed.inject(WindowRef) as MockWindowRef;
   });
 
   it('should return the default active tab name', () => {
     expect(ters.getActiveTabName()).toEqual('main');
   });
 
-  it('should navigate to different tabs', function() {
+  it('should navigate to different tabs', function () {
     expect(ters.getActiveTabName()).toEqual('main');
     ters.navigateToSubtopicEditorWithId(1);
     expect(ters.getActiveTabName()).toEqual('subtopic_editor');
@@ -79,11 +79,12 @@ describe('Topic Editor Routing Service', () => {
     expect(ters.getActiveTabName()).toEqual('main');
   });
 
-  it('should navigate to skill editor', function() {
+  it('should navigate to skill editor', function () {
     spyOn(mockWindowRef.nativeWindow, 'open');
     ters.navigateToSkillEditorWithId('10');
-    expect(mockWindowRef.nativeWindow.open)
-      .toHaveBeenCalledWith('/skill_editor/10');
+    expect(mockWindowRef.nativeWindow.open).toHaveBeenCalledWith(
+      '/skill_editor/10'
+    );
   });
 
   it('should return last tab visited', () => {
@@ -94,6 +95,8 @@ describe('Topic Editor Routing Service', () => {
   });
 
   it('should return last visited subtopic id', () => {
+    ters.updateViewEventEmitter.emit();
+
     ters.navigateToSubtopicPreviewTab(1);
     ters.navigateToQuestionsTab();
     expect(ters.getLastSubtopicIdVisited()).toEqual(1);

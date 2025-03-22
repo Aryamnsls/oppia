@@ -29,6 +29,7 @@ from core.domain import story_services
 from core.domain import summary_services
 from core.domain import topic_domain
 from core.domain import topic_services
+from core.domain import translation_domain
 from core.domain import user_services
 from core.tests import test_utils
 
@@ -68,17 +69,13 @@ class BaseStoryViewerControllerTests(test_utils.GenericTestBase):
         self.NEW_STORY_ID = 'new_story_id'
 
         self.save_new_valid_exploration(
-            self.EXP_ID_0, self.admin_id, title='Title 1', end_state_name='End',
-            correctness_feedback_enabled=True)
+            self.EXP_ID_0, self.admin_id, title='Title 1', end_state_name='End')
         self.save_new_valid_exploration(
-            self.EXP_ID_1, self.admin_id, title='Title 2', end_state_name='End',
-            correctness_feedback_enabled=True)
+            self.EXP_ID_1, self.admin_id, title='Title 2', end_state_name='End')
         self.save_new_valid_exploration(
-            self.EXP_ID_9, self.admin_id, title='Title 4', end_state_name='End',
-            correctness_feedback_enabled=True)
+            self.EXP_ID_9, self.admin_id, title='Title 4', end_state_name='End')
         self.save_new_valid_exploration(
-            self.EXP_ID_7, self.admin_id, title='Title 3', end_state_name='End',
-            correctness_feedback_enabled=True)
+            self.EXP_ID_7, self.admin_id, title='Title 3', end_state_name='End')
         self.publish_exploration(self.admin_id, self.EXP_ID_0)
         self.publish_exploration(self.admin_id, self.EXP_ID_1)
         self.publish_exploration(self.admin_id, self.EXP_ID_9)
@@ -105,7 +102,12 @@ class BaseStoryViewerControllerTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': [],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': self.EXP_ID_1
+            'exploration_id': self.EXP_ID_1,
+            'status': None,
+            'planned_publication_date_msecs': None,
+            'last_modified_msecs': None,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         self.node_2: story_domain.StoryNodeDict = {
             'id': self.NODE_ID_2,
@@ -120,7 +122,12 @@ class BaseStoryViewerControllerTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': [],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': self.EXP_ID_0
+            'exploration_id': self.EXP_ID_0,
+            'status': None,
+            'planned_publication_date_msecs': None,
+            'last_modified_msecs': None,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         self.node_3: story_domain.StoryNodeDict = {
             'id': self.NODE_ID_3,
@@ -135,7 +142,12 @@ class BaseStoryViewerControllerTests(test_utils.GenericTestBase):
             'prerequisite_skill_ids': [],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': self.EXP_ID_7
+            'exploration_id': self.EXP_ID_7,
+            'status': None,
+            'planned_publication_date_msecs': None,
+            'last_modified_msecs': None,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         story.story_contents.nodes = [
             story_domain.StoryNode.from_dict(self.node_1),
@@ -225,7 +237,12 @@ class StoryPageDataHandlerTests(BaseStoryViewerControllerTests):
             'outline_is_finalized': False,
             'exploration_id': self.EXP_ID_1,
             'exp_summary_dict': self.exp_summary_dicts[1],
-            'completed': False
+            'completed': False,
+            'status': 'Published',
+            'planned_publication_date_msecs': None,
+            'last_modified_msecs': None,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         node_2 = {
             'id': self.NODE_ID_2,
@@ -242,7 +259,12 @@ class StoryPageDataHandlerTests(BaseStoryViewerControllerTests):
             'outline_is_finalized': False,
             'exploration_id': self.EXP_ID_0,
             'exp_summary_dict': self.exp_summary_dicts[0],
-            'completed': True
+            'completed': True,
+            'status': 'Published',
+            'planned_publication_date_msecs': None,
+            'last_modified_msecs': None,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         node_3 = {
             'id': self.NODE_ID_3,
@@ -259,7 +281,12 @@ class StoryPageDataHandlerTests(BaseStoryViewerControllerTests):
             'outline_is_finalized': False,
             'exploration_id': self.EXP_ID_7,
             'exp_summary_dict': self.exp_summary_dicts[2],
-            'completed': False
+            'completed': False,
+            'status': 'Published',
+            'planned_publication_date_msecs': None,
+            'last_modified_msecs': None,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         json_response = self.get_json(
             '%s/staging/topic/%s'
@@ -297,14 +324,13 @@ class StoryProgressHandlerTests(BaseStoryViewerControllerTests):
     ) -> None:
         self.signup(self.NEW_USER_EMAIL, self.NEW_USER_USERNAME)
         self.login(self.NEW_USER_EMAIL)
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            response = self.get_html_response(
-                '%s/staging/topic/%s/%s' % (
-                    feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
-                    self.NODE_ID_3), expected_status_int=302)
-            self.assertEqual(
-                'http://localhost/learn/staging/topic/story/title-one',
-                response.headers['location'])
+        response = self.get_html_response(
+            '%s/staging/topic/%s/%s' % (
+                feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
+                self.NODE_ID_3), expected_status_int=302)
+        self.assertEqual(
+            'http://localhost/learn/staging/topic/story/title-one',
+            response.headers['location'])
 
     def test_redirect_for_returning_user_with_completed_nodes(self) -> None:
         self.signup(self.NEW_USER_EMAIL, self.NEW_USER_USERNAME)
@@ -313,22 +339,20 @@ class StoryProgressHandlerTests(BaseStoryViewerControllerTests):
             self.viewer_id, self.STORY_ID, self.NODE_ID_2)
         story_services.record_completed_node_in_story_context(
             self.viewer_id, self.STORY_ID, self.NODE_ID_1)
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            response = self.get_html_response(
-                '%s/staging/topic/%s/%s' % (
-                    feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
-                    self.NODE_ID_1), expected_status_int=302)
-            self.assertEqual(
-                'http://localhost/learn/staging/topic/story/title-one',
-                response.headers['location'])
+        response = self.get_html_response(
+            '%s/staging/topic/%s/%s' % (
+                feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
+                self.NODE_ID_1), expected_status_int=302)
+        self.assertEqual(
+            'http://localhost/learn/staging/topic/story/title-one',
+            response.headers['location'])
 
     def test_redirect_for_single_node_story(self) -> None:
         self.login(self.CURRICULUM_ADMIN_EMAIL)
         self.STORY_URL_FRAGMENT = 'story-two'
 
         self.save_new_valid_exploration(
-            self.EXP_ID_0, self.admin_id, title='Title 1', end_state_name='End',
-            correctness_feedback_enabled=True)
+            self.EXP_ID_0, self.admin_id, title='Title 1', end_state_name='End')
         self.publish_exploration(self.admin_id, self.EXP_ID_0)
 
         story = story_domain.Story.create_default_story(
@@ -349,7 +373,12 @@ class StoryProgressHandlerTests(BaseStoryViewerControllerTests):
             'prerequisite_skill_ids': [],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': self.EXP_ID_1
+            'exploration_id': self.EXP_ID_1,
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         story.story_contents.nodes = [
             story_domain.StoryNode.from_dict(self.node_1)
@@ -374,49 +403,36 @@ class StoryProgressHandlerTests(BaseStoryViewerControllerTests):
         self.logout()
         self.signup(self.NEW_USER_EMAIL, self.NEW_USER_USERNAME)
         self.login(self.NEW_USER_EMAIL)
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            response = self.get_html_response(
-                '%s/staging/topic-frag/%s/%s' % (
-                    feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
-                    self.NODE_ID_1), expected_status_int=302)
-            self.assertEqual(
-                'http://localhost/learn/staging/topic-frag/story/story-two',
-                response.headers['location'])
+        response = self.get_html_response(
+            '%s/staging/topic-frag/%s/%s' % (
+                feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
+                self.NODE_ID_1), expected_status_int=302)
+        self.assertEqual(
+            'http://localhost/learn/staging/topic-frag/story/story-two',
+            response.headers['location'])
 
     def test_redirect_to_next_node(self) -> None:
         self.signup(self.NEW_USER_EMAIL, self.NEW_USER_USERNAME)
         self.login(self.NEW_USER_EMAIL)
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            response = self.get_html_response(
-                '%s/staging/topic/%s/%s' % (
-                    feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
-                    self.NODE_ID_2), expected_status_int=302)
-            self.assertEqual(
-                'http://localhost/explore/1?classroom_url_fragment=staging'
-                '&topic_url_fragment=topic&story_url_fragment=title-one'
-                '&node_id=node_1',
-                response.headers['location']
-            )
-
-    def test_post_fails_when_new_structures_not_enabled(self) -> None:
-        csrf_token = self.get_new_csrf_token()
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', False):
-            self.post_json(
-                '%s/staging/topic/%s/%s' % (
-                    feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
-                    self.NODE_ID_2
-                ), {}, csrf_token=csrf_token, expected_status_int=404
-            )
+        response = self.get_html_response(
+            '%s/staging/topic/%s/%s' % (
+                feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
+                self.NODE_ID_2), expected_status_int=302)
+        self.assertEqual(
+            'http://localhost/explore/1?classroom_url_fragment=staging'
+            '&topic_url_fragment=topic&story_url_fragment=title-one'
+            '&node_id=node_1',
+            response.headers['location']
+        )
 
     def test_post_succeeds_when_story_and_node_exist(self) -> None:
         csrf_token = self.get_new_csrf_token()
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            json_response = self.post_json(
-                '%s/staging/topic/%s/%s' % (
-                    feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
-                    self.NODE_ID_1
-                ), {}, csrf_token=csrf_token
-            )
+        json_response = self.post_json(
+            '%s/staging/topic/%s/%s' % (
+                feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
+                self.NODE_ID_1
+            ), {}, csrf_token=csrf_token
+        )
 
         self.assertEqual(json_response['summaries'][0]['id'], self.EXP_ID_7)
         self.assertEqual(json_response['next_node_id'], self.NODE_ID_3)
@@ -426,13 +442,12 @@ class StoryProgressHandlerTests(BaseStoryViewerControllerTests):
         self
     ) -> None:
         csrf_token = self.get_new_csrf_token()
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            json_response = self.post_json(
-                '%s/staging/topic/%s/%s' % (
-                    feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
-                    self.NODE_ID_2
-                ), {}, csrf_token=csrf_token
-            )
+        json_response = self.post_json(
+            '%s/staging/topic/%s/%s' % (
+                feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
+                self.NODE_ID_2
+            ), {}, csrf_token=csrf_token
+        )
 
         self.assertEqual(len(json_response['summaries']), 0)
         self.assertIsNone(json_response['next_node_id'])
@@ -440,45 +455,41 @@ class StoryProgressHandlerTests(BaseStoryViewerControllerTests):
 
     def test_post_fails_when_story_does_not_exist(self) -> None:
         csrf_token = self.get_new_csrf_token()
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            self.post_json(
-                '%s/staging/topic/%s/%s' % (
-                    feconf.STORY_PROGRESS_URL_PREFIX, 'invalid-story',
-                    self.NODE_ID_2
-                ), {}, csrf_token=csrf_token, expected_status_int=404
-            )
+        self.post_json(
+            '%s/staging/topic/%s/%s' % (
+                feconf.STORY_PROGRESS_URL_PREFIX, 'invalid-story',
+                self.NODE_ID_2
+            ), {}, csrf_token=csrf_token, expected_status_int=404
+        )
 
     def test_post_fails_when_node_does_not_exist(self) -> None:
         csrf_token = self.get_new_csrf_token()
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            self.post_json(
-                '%s/staging/topic/%s/%s' % (
-                    feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
-                    'node_0000'
-                ), {}, csrf_token=csrf_token, expected_status_int=404
-            )
+        self.post_json(
+            '%s/staging/topic/%s/%s' % (
+                feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
+                'node_0000'
+            ), {}, csrf_token=csrf_token, expected_status_int=404
+        )
 
     def test_post_fails_when_node_id_schema_is_invalid(self) -> None:
         csrf_token = self.get_new_csrf_token()
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            self.post_json(
-                '%s/staging/topic/%s/%s' % (
-                    feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
-                    'invalid_node'
-                ), {}, csrf_token=csrf_token, expected_status_int=400
-            )
+        self.post_json(
+            '%s/staging/topic/%s/%s' % (
+                feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
+                'invalid_node'
+            ), {}, csrf_token=csrf_token, expected_status_int=400
+        )
 
     def test_post_fails_when_story_is_not_published_in_story_mode(self) -> None:
         topic_services.unpublish_story(
             self.TOPIC_ID, self.STORY_ID, self.admin_id)
         csrf_token = self.get_new_csrf_token()
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            self.post_json(
-                '%s/staging/topic/%s/%s' % (
-                    feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
-                    self.NODE_ID_2
-                ), {}, csrf_token=csrf_token, expected_status_int=404
-            )
+        self.post_json(
+            '%s/staging/topic/%s/%s' % (
+                feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
+                self.NODE_ID_2
+            ), {}, csrf_token=csrf_token, expected_status_int=404
+        )
 
     def test_post_returns_empty_list_when_user_completes_story(self) -> None:
         csrf_token = self.get_new_csrf_token()
@@ -486,13 +497,12 @@ class StoryProgressHandlerTests(BaseStoryViewerControllerTests):
             self.viewer_id, self.STORY_ID, self.NODE_ID_2)
         story_services.record_completed_node_in_story_context(
             self.viewer_id, self.STORY_ID, self.NODE_ID_1)
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            json_response = self.post_json(
-                '%s/staging/topic/%s/%s' % (
-                    feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
-                    self.NODE_ID_3
-                ), {}, csrf_token=csrf_token
-            )
+        json_response = self.post_json(
+            '%s/staging/topic/%s/%s' % (
+                feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
+                self.NODE_ID_3
+            ), {}, csrf_token=csrf_token
+        )
         self.assertEqual(len(json_response['summaries']), 0)
         self.assertIsNone(json_response['next_node_id'])
         self.assertFalse(json_response['ready_for_review_test'])
@@ -503,9 +513,12 @@ class StoryProgressHandlerTests(BaseStoryViewerControllerTests):
         csrf_token = self.get_new_csrf_token()
         self.save_new_skill(
             'skill_1', self.admin_id, description='Skill Description')
+        content_id_generator = translation_domain.ContentIdGenerator()
         self.save_new_question(
             'question_1', self.admin_id,
-            self._create_valid_question_data('ABC'), ['skill_1'])
+            self._create_valid_question_data('ABC', content_id_generator),
+            ['skill_1'],
+            content_id_generator.next_content_id_index)
         question_services.create_new_question_skill_link(
             self.admin_id, 'question_1', 'skill_1', 0.3)
         old_value: List[str] = []
@@ -527,13 +540,12 @@ class StoryProgressHandlerTests(BaseStoryViewerControllerTests):
             self.viewer_id, self.STORY_ID, self.NODE_ID_2)
         story_services.record_completed_node_in_story_context(
             self.viewer_id, self.STORY_ID, self.NODE_ID_1)
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            json_response = self.post_json(
-                '%s/staging/topic/%s/%s' % (
-                    feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
-                    self.NODE_ID_3
-                ), {}, csrf_token=csrf_token
-            )
+        json_response = self.post_json(
+            '%s/staging/topic/%s/%s' % (
+                feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
+                self.NODE_ID_3
+            ), {}, csrf_token=csrf_token
+        )
         self.assertEqual(len(json_response['summaries']), 0)
         self.assertIsNone(json_response['next_node_id'])
         self.assertTrue(json_response['ready_for_review_test'])
@@ -542,13 +554,12 @@ class StoryProgressHandlerTests(BaseStoryViewerControllerTests):
         self
     ) -> None:
         csrf_token = self.get_new_csrf_token()
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            self.post_json(
-                '%s/staging/topic/%s/%s' % (
-                    feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
-                    self.NODE_ID_1
-                ), {}, csrf_token=csrf_token
-            )
+        self.post_json(
+            '%s/staging/topic/%s/%s' % (
+                feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
+                self.NODE_ID_1
+            ), {}, csrf_token=csrf_token
+        )
 
         self.assertEqual(len(
             learner_progress_services.get_all_partially_learnt_topic_ids(
@@ -568,13 +579,12 @@ class StoryProgressHandlerTests(BaseStoryViewerControllerTests):
             self.viewer_id, self.STORY_ID, self.NODE_ID_2)
         story_services.record_completed_node_in_story_context(
             self.viewer_id, self.STORY_ID, self.NODE_ID_1)
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            self.post_json(
-                '%s/staging/topic/%s/%s' % (
-                    feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
-                    self.NODE_ID_3
-                ), {}, csrf_token=csrf_token
-            )
+        self.post_json(
+            '%s/staging/topic/%s/%s' % (
+                feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
+                self.NODE_ID_3
+            ), {}, csrf_token=csrf_token
+        )
 
         self.assertEqual(len(
             learner_progress_services.get_all_learnt_topic_ids(
@@ -589,8 +599,7 @@ class StoryProgressHandlerTests(BaseStoryViewerControllerTests):
     def test_mark_topic_as_learnt_and_story_as_completed(self) -> None:
 
         self.save_new_valid_exploration(
-            self.EXP_ID_3, self.admin_id, title='Title 3', end_state_name='End',
-            correctness_feedback_enabled=True)
+            self.EXP_ID_3, self.admin_id, title='Title 3', end_state_name='End')
         self.publish_exploration(self.admin_id, self.EXP_ID_3)
 
         story = story_domain.Story.create_default_story(
@@ -611,7 +620,12 @@ class StoryProgressHandlerTests(BaseStoryViewerControllerTests):
             'prerequisite_skill_ids': [],
             'outline': '',
             'outline_is_finalized': False,
-            'exploration_id': self.EXP_ID_3
+            'exploration_id': self.EXP_ID_3,
+            'status': 'Draft',
+            'planned_publication_date_msecs': 100.0,
+            'last_modified_msecs': 100.0,
+            'first_publication_date_msecs': None,
+            'unpublishing_reason': None
         }
         story.story_contents.nodes = [
             story_domain.StoryNode.from_dict(self.node_1)
@@ -630,13 +644,12 @@ class StoryProgressHandlerTests(BaseStoryViewerControllerTests):
             self.viewer_id, self.STORY_ID, self.NODE_ID_2)
         story_services.record_completed_node_in_story_context(
             self.viewer_id, self.STORY_ID, self.NODE_ID_1)
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            self.post_json(
-                '%s/staging/topic/%s/%s' % (
-                    feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
-                    self.NODE_ID_3
-                ), {}, csrf_token=csrf_token
-            )
+        self.post_json(
+            '%s/staging/topic/%s/%s' % (
+                feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
+                self.NODE_ID_3
+            ), {}, csrf_token=csrf_token
+        )
 
         self.assertEqual(len(
             learner_progress_services.get_all_learnt_topic_ids(
@@ -676,13 +689,12 @@ class StoryProgressHandlerTests(BaseStoryViewerControllerTests):
             self.viewer_id, self.STORY_ID, self.NODE_ID_2)
         story_services.record_completed_node_in_story_context(
             self.viewer_id, self.STORY_ID, self.NODE_ID_1)
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_VIEWER_UPDATES', True):
-            self.post_json(
-                '%s/staging/topic/%s/%s' % (
-                    feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
-                    self.NODE_ID_3
-                ), {}, csrf_token=csrf_token
-            )
+        self.post_json(
+            '%s/staging/topic/%s/%s' % (
+                feconf.STORY_PROGRESS_URL_PREFIX, self.STORY_URL_FRAGMENT,
+                self.NODE_ID_3
+            ), {}, csrf_token=csrf_token
+        )
 
         self.assertEqual(
             len(learner_goals_services.get_all_topic_ids_to_learn(

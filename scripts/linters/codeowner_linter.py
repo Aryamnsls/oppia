@@ -29,7 +29,7 @@ from .. import concurrent_task_utils
 
 MYPY = False
 if MYPY:  # pragma: no cover
-    from scripts.linters import pre_commit_linter
+    from scripts.linters import run_lint_checks
 
 CODEOWNER_FILEPATH: Final = '.github/CODEOWNERS'
 
@@ -55,8 +55,10 @@ CODEOWNER_IMPORTANT_PATHS: Final = [
     '/scripts/linters/warranted_angular_security_bypasses.py',
     '/core/controllers/access_validators*.py',
     '/core/controllers/acl_decorators*.py',
-    '/core/controllers/android_e2e_config*.py',
+    '/core/controllers/android*.py',
     '/core/controllers/base*.py',
+    '/core/controllers/firebase*.py',
+    '/core/domain/android*.py',
     '/core/domain/html*.py',
     '/core/domain/rights_manager*.py',
     '/core/domain/role_services*.py',
@@ -76,7 +78,7 @@ CODEOWNER_IMPORTANT_PATHS: Final = [
 class CodeownerLintChecksManager(linter_utils.BaseLinter):
     """Manages codeowner checks."""
 
-    def __init__(self, file_cache: pre_commit_linter.FileCache) -> None:
+    def __init__(self, file_cache: run_lint_checks.FileCache) -> None:
         """Constructs a CodeownerLintChecksManager object.
 
         Args:
@@ -203,8 +205,8 @@ class CodeownerLintChecksManager(linter_utils.BaseLinter):
         """Checks the CODEOWNERS file for any uncovered dirs/files and also
         checks that every pattern in the CODEOWNERS file matches at least one
         file/dir. Note that this checks the CODEOWNERS file according to the
-        glob patterns supported by Python2.7 environment. For more information
-        please refer https://docs.python.org/2/library/glob.html.
+        glob patterns supported by Python 3 environment. For more information
+        please refer https://docs.python.org/3/library/glob.html.
         This function also ensures that the most important rules are at the
         bottom of the CODEOWNERS file.
 
@@ -352,7 +354,7 @@ class CodeownerLintChecksManager(linter_utils.BaseLinter):
 
 
 def get_linters(
-    file_cache: pre_commit_linter.FileCache
+    file_cache: run_lint_checks.FileCache
 ) -> Tuple[CodeownerLintChecksManager, None]:
     """Creates CodeownerLintChecksManager object and returns it.
 
